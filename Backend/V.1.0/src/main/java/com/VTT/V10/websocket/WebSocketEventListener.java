@@ -19,23 +19,32 @@ public class WebSocketEventListener {
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-        String username = accessor.getUser().getName();
-        String sessionId = accessor.getSessionId();
-        // فرض می‌کنیم roomId را از هدر در زمان اتصال می‌فرستیم
-        String roomIdStr = accessor.getFirstNativeHeader("roomId");
 
-        if (roomIdStr != null) {
-            UUID roomId = UUID.fromString(roomIdStr);
-            sessionManager.addUser(roomId, sessionId, username);
-            broadcastOnlineUsers(roomId);
+        // جلوگیری از NullPointerException در صورتی که کاربر اهراز هویت نشده باشد
+        if (accessor.getUser() != null) {
+            String username = accessor.getUser().getName();
+            String sessionId = accessor.getSessionId();
+            String roomIdStr = accessor.getFirstNativeHeader("roomId");
+
+            if (roomIdStr != null && sessionId != null) {
+                try {
+                    UUID roomId = UUID.fromString(roomIdStr);
+                    sessionManager.addUser(roomId, sessionId, username);
+                    broadcastOnlineUsers(roomId);
+                } catch (IllegalArgumentException ignored) {
+                    // شناسه نامعتبر اتاق نادیده گرفته می‌شود
+                }
+            }
         }
     }
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-        RoomSessionManager.UserSessionInfo info = sessionManager.removeSession(event.getSessionId());
-        if (info != null) {
-            broadcastOnlineUsers(info.roomId());
+        if (event.getSessionId() != null) {
+            RoomSessionManager.UserSessionInfo info = sessionManager.removeSession(event.getSessionId());
+            if (info != null && info.roomId() != null) {
+                broadcastOnlineUsers(info.roomId());
+            }
         }
     }
 

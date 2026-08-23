@@ -4,6 +4,7 @@ import com.VTT.V10.room.*;
 import com.VTT.V10.room.dto.RoomSettingsResponse;
 import com.VTT.V10.websocket.dto.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.util.UUID;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class RoomWebSocketController {
@@ -32,6 +34,8 @@ public class RoomWebSocketController {
             @DestinationVariable UUID roomId,
             @Payload SocketEvent<TokenMoveEvent> event
     ) {
+        if (event == null || event.getData() == null) return;
+
         // تمدید زمان فعالیت اتاق
         roomService.updateLastActive(roomId);
 
@@ -42,37 +46,45 @@ public class RoomWebSocketController {
                 event.getData().getY(),
                 event.getData().getRotation()
         );
-        // پخش پیام
+        // پخش پیام به تمام اعضای اتاق
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
-    // ۲. نقاشی (Drawing) - با چک کردن پرمیشن
+    // ۲. نقاشی (Drawing) - با بررسی سطح دسترسی
     @MessageMapping("/room/{roomId}/drawing")
     public void handleDrawing(
             @DestinationVariable UUID roomId,
             @Payload SocketEvent<DrawingEvent> event,
             Principal principal
     ) {
+        if (principal == null || event == null || event.getData() == null) return;
+
         roomService.updateLastActive(roomId);
 
         if (hasPermission(roomId, principal.getName(), "DRAWING")) {
             drawingService.saveDrawing(event.getData().getSceneId(), event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+        } else {
+            log.warn("User {} has no DRAWING permission in room {}", principal.getName(), roomId);
         }
     }
 
-    // ۳. مه جنگ (Fog) - با چک کردن پرمیشن
+    // ۳. مه جنگ (Fog) - با بررسی سطح دسترسی
     @MessageMapping("/room/{roomId}/fog")
     public void handleFog(
             @DestinationVariable UUID roomId,
             @Payload SocketEvent<FogEvent> event,
             Principal principal
     ) {
+        if (principal == null || event == null || event.getData() == null) return;
+
         roomService.updateLastActive(roomId);
 
         if (hasPermission(roomId, principal.getName(), "FOG")) {
             fogService.handleFogUpdate(event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+        } else {
+            log.warn("User {} has no FOG permission in room {}", principal.getName(), roomId);
         }
     }
 
@@ -82,8 +94,10 @@ public class RoomWebSocketController {
             @DestinationVariable UUID roomId,
             @Payload SocketEvent<DiceRollEvent> event
     ) {
+        if (event == null) return;
+
         roomService.updateLastActive(roomId);
-        // پخش نتیجه تاس برای همه
+        // پخش نتیجه تاس برای تمام بازیکنان حاضر در اتاق
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
@@ -94,35 +108,43 @@ public class RoomWebSocketController {
             @Payload SocketEvent<RoomSettingsResponse> event,
             Principal principal
     ) {
+        if (principal == null || event == null || event.getData() == null) return;
+
         roomService.updateLastActive(roomId);
 
-        // فقط GM اجازه تغییر تنظیمات را دارد
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName()).orElseThrow();
-        if (member.getRole() == RoomMember.Role.ADMIN) {
+        // فقط GM (Admin) اجازه تغییر تنظیمات را دارد
+        var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
+        if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
             roomSettingsService.updateSettings(roomId, event.getData());
-            // اطلاع به بقیه برای تغییر تم یا گرید در فرانت‌اند
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/settings", event);
         }
     }
 
     /**
-     * متد مرکزی برای بررسی سطح دسترسی کاربر
+     * متد مرکزی برای بررسی سطح دسترسی کاربر به صورت ایمن
      */
     private boolean hasPermission(UUID roomId, String email, String action) {
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email)
-                .orElseThrow(() -> new RuntimeException("کاربر عضو این اتاق نیست"));
+        try {
+            var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
+            if (memberOpt.isEmpty()) return false;
 
-        if (member.getRole() == RoomMember.Role.ADMIN) return true;
+            RoomMember member = memberOpt.get();
+            if (member.getRole() == RoomMember.Role.ADMIN) return true;
 
-        PlayerPermission perm = permissionRepository.findByMemberId(member.getId())
-                .orElseThrow(() -> new RuntimeException("دسترسی‌ها یافت نشد"));
+            var permOpt = permissionRepository.findByMemberId(member.getId());
+            if (permOpt.isEmpty()) return false;
 
-        return switch (action) {
-            case "DRAWING" -> perm.getCanDrawing();
-            case "FOG" -> perm.getCanFog();
-            case "SCENE" -> perm.getCanScene();
-            case "ASSETS" -> perm.getCanAssets();
-            default -> false;
-        };
+            PlayerPermission perm = permOpt.get();
+            return switch (action) {
+                case "DRAWING" -> Boolean.TRUE.equals(perm.getCanDrawing());
+                case "FOG" -> Boolean.TRUE.equals(perm.getCanFog());
+                case "SCENE" -> Boolean.TRUE.equals(perm.getCanScene());
+                case "ASSETS" -> Boolean.TRUE.equals(perm.getCanAssets());
+                default -> false;
+            };
+        } catch (Exception e) {
+            log.error("Error checking permission for user {} in room {}: {}", email, roomId, e.getMessage());
+            return false;
+        }
     }
 }

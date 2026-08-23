@@ -3,8 +3,10 @@ package com.VTT.V10.room;
 import com.VTT.V10.room.dto.PermissionResponse;
 import com.VTT.V10.room.dto.UpdatePermissionRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -12,9 +14,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PlayerPermissionService {
     private final PlayerPermissionRepository permissionRepository;
-    private final RoomMemberRepository memberRepository;
 
-    // ۱. ایجاد دسترسی پیش‌فرض برای بازیکن جدید
     @Transactional
     public void createDefaultPermissions(Room room, RoomMember member) {
         PlayerPermission permission = PlayerPermission.builder()
@@ -30,11 +30,10 @@ public class PlayerPermissionService {
         permissionRepository.save(permission);
     }
 
-    // ۲. آپدیت دسترسی‌ها (فقط توسط GM در کنترلر چک شود)
     @Transactional
     public PermissionResponse updatePermissions(UpdatePermissionRequest request) {
         PlayerPermission perm = permissionRepository.findByMemberId(request.getMemberId())
-                .orElseThrow(() -> new RuntimeException("دسترسی برای این عضو تعریف نشده است"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "دسترسی برای این عضو یافت نشد"));
 
         if (request.getCanAssets() != null) perm.setCanAssets(request.getCanAssets());
         if (request.getCanFog() != null) perm.setCanFog(request.getCanFog());
@@ -47,9 +46,10 @@ public class PlayerPermissionService {
         return convertToResponse(perm);
     }
 
+    @Transactional(readOnly = true)
     public PermissionResponse getMemberPermissions(UUID memberId) {
         PlayerPermission perm = permissionRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new RuntimeException("دسترسی برای عضو با آیدی " + memberId + " یافت نشد"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "دسترسی برای این عضو یافت نشد"));
         return convertToResponse(perm);
     }
 

@@ -7,6 +7,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/assets")
 @RequiredArgsConstructor
@@ -16,16 +18,11 @@ public class AssetController {
     @PostMapping("/upload")
     public ResponseEntity<AssetResponse> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("name") String name,
-            @RequestParam("type") String type,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "type", required = false, defaultValue = "TOKEN") String type,
             Authentication authentication
-    ) {
-        try {
-            AssetResponse response = assetService.uploadAsset(file, name, type, authentication.getName());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // در دنیای واقعی بهتر است از GlobalExceptionHandler استفاده شود
-            throw new RuntimeException("خطا در آپلود فایل: " + e.getMessage());
-        }
+    ) throws IOException {
+        AssetResponse response = assetService.uploadAsset(file, name, type, authentication.getName());
+        return ResponseEntity.ok(response);
     }
 }

@@ -10,10 +10,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuthResponse {
-    private String token;
-    private UUID userId;
+public class UserDto {
+    private UUID id;
     private String username;
     private String email;
-    private UserDto user; // جهت سازگاری مستقیم با آبجکت user در فرانت‌اند
 }

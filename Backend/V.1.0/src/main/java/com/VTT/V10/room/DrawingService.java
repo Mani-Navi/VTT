@@ -3,8 +3,10 @@ package com.VTT.V10.room;
 import com.VTT.V10.room.dto.DrawingResponse;
 import com.VTT.V10.websocket.dto.DrawingEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +21,7 @@ public class DrawingService {
     @Transactional
     public void saveDrawing(UUID sceneId, DrawingEvent event) {
         Scene scene = sceneRepository.findById(sceneId)
-                .orElseThrow(() -> new RuntimeException("سکانس یافت نشد"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "سکانس/صحنه یافت نشد"));
 
         Drawing drawing = Drawing.builder()
                 .scene(scene)
@@ -33,6 +35,7 @@ public class DrawingService {
         drawingRepository.save(drawing);
     }
 
+    @Transactional(readOnly = true)
     public List<DrawingResponse> getByScene(UUID sceneId) {
         return drawingRepository.findBySceneId(sceneId).stream()
                 .map(this::convertToResponse)

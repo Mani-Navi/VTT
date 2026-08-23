@@ -9,19 +9,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/rooms")
 @RequiredArgsConstructor
 public class RoomController {
     private final RoomService roomService;
 
+    // دریافت اتاق‌ها جهت داشبورد (حل خطای GET)
+    @GetMapping
+    public ResponseEntity<List<RoomResponse>> getRooms(Authentication authentication) {
+        return ResponseEntity.ok(roomService.getUserRooms(authentication.getName()));
+    }
+
     @PostMapping
     public ResponseEntity<RoomResponse> createRoom(
             @Valid @RequestBody CreateRoomRequest request,
-            Authentication authentication // گرفتن اطلاعات کاربر از توکن JWT
+            Authentication authentication
     ) {
-        String email = authentication.getName();
-        return ResponseEntity.ok(roomService.createRoom(request, email));
+        return ResponseEntity.ok(roomService.createRoom(request, authentication.getName()));
     }
 
     @PostMapping("/join")
@@ -30,5 +38,14 @@ public class RoomController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(roomService.joinRoom(request.getRoomCode(), authentication.getName()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRoom(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        roomService.deleteRoom(id, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -2,8 +2,11 @@ package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.RoomSettingsResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -12,6 +15,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RoomSettingsController {
     private final RoomSettingsService settingsService;
+    private final RoomMemberRepository roomMemberRepository;
 
     @GetMapping
     public ResponseEntity<RoomSettingsResponse> getSettings(@PathVariable UUID roomId) {
@@ -21,9 +25,17 @@ public class RoomSettingsController {
     @PutMapping
     public ResponseEntity<RoomSettingsResponse> updateSettings(
             @PathVariable UUID roomId,
-            @RequestBody RoomSettingsResponse request
+            @RequestBody RoomSettingsResponse request,
+            Authentication authentication
     ) {
-        // نکته: در اینجا GM بودن کاربر باید چک شود
+        // بررسی سطح دسترسی: فقط کاربر ADMIN (سازنده/GM) مجاز به ویرایش تنظیمات است
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserEmail(roomId, authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید"));
+
+        if (member.getRole() != RoomMember.Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق (GM) اجازه تغییر تنظیمات را دارد");
+        }
+
         return ResponseEntity.ok(settingsService.updateSettings(roomId, request));
     }
 }

@@ -21,8 +21,9 @@ public class JwtService {
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
                 .claim("username", user.getUsername())
+                .claim("email", user.getEmail())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24)) // 24 ساعت مطابق داکیومنت
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
     }
@@ -42,7 +43,7 @@ public class JwtService {
 
     public boolean isTokenValid(String token, String userEmail) {
         final String email = extractEmail(token);
-        return (email.equals(userEmail) && !isTokenExpired(token));
+        return (email != null && email.equals(userEmail) && !isTokenExpired(token));
     }
 
     private boolean isTokenExpired(String token) {

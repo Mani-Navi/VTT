@@ -2,6 +2,7 @@ package com.VTT.V10.config;
 
 import com.VTT.V10.auth.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
@@ -25,16 +27,24 @@ public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+            // پشتیبانی از Authorization با حروف بزرگ یا کوچک
             String authHeader = accessor.getFirstNativeHeader("Authorization");
+            if (authHeader == null) {
+                authHeader = accessor.getFirstNativeHeader("authorization");
+            }
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
-                String userEmail = jwtService.extractEmail(token);
+                try {
+                    String userEmail = jwtService.extractEmail(token);
 
-                if (userEmail != null && jwtService.isTokenValid(token, userEmail)) {
-                    UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(
-                            userEmail, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-                    accessor.setUser(user);
+                    if (userEmail != null && jwtService.isTokenValid(token, userEmail)) {
+                        UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(
+                                userEmail, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                        accessor.setUser(user);
+                    }
+                } catch (Exception e) {
+                    log.warn("WebSocket STOMP authentication failed: {}", e.getMessage());
                 }
             }
         }
