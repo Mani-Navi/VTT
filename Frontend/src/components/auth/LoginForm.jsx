@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { LogIn } from "lucide-react";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { useAuth } from "../../hooks/useAuth";
 
 const loginSchema = z.object({
@@ -38,50 +41,40 @@ export const LoginForm = ({ onSuccess }) => {
   };
 
   return (
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" dir="rtl">
-        <div>
-          <label className="block text-xs font-medium text-vtt-t2 mb-1.5">ایمیل</label>
-          <input
-              type="email"
-              disabled={isSubmitting}
-              className="w-full px-3.5 py-2.5 bg-vtt-s2 text-vtt-t1 rounded-md border border-vtt-border focus:border-neon focus:outline-none transition-colors text-sm disabled:opacity-50"
-              placeholder="name@example.com"
-              {...register("email")}
-          />
-          {errors.email && (
-              <p className="text-vtt-danger text-xs mt-1">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-vtt-t2 mb-1.5">رمز عبور</label>
-          <input
-              type="password"
-              disabled={isSubmitting}
-              className="w-full px-3.5 py-2.5 bg-vtt-s2 text-vtt-t1 rounded-md border border-vtt-border focus:border-neon focus:outline-none transition-colors text-sm disabled:opacity-50"
-              placeholder="••••••••"
-              {...register("password")}
-          />
-          {errors.password && (
-              <p className="text-vtt-danger text-xs mt-1">{errors.password.message}</p>
-          )}
-          {serverError && (
-              <p className="text-vtt-danger text-xs mt-2 bg-vtt-danger/10 p-2 rounded-sm border border-vtt-danger/20">
-                {serverError}
-              </p>
-          )}
-        </div>
-
-        <button
-            type="submit"
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-right" dir="rtl">
+        <Input
+            label="ایمیل حساب کاربری"
+            type="email"
+            placeholder="name@example.com"
+            error={errors.email?.message}
             disabled={isSubmitting}
-            className="w-full py-2.5 px-4 bg-neon text-vtt-bg font-semibold rounded-md hover:opacity-90 active:scale-[0.99] transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            {...register("email")}
+        />
+
+        <Input
+            label="رمز عبور"
+            type="password"
+            placeholder="••••••••"
+            error={errors.password?.message}
+            disabled={isSubmitting}
+            {...register("password")}
+        />
+
+        {serverError && (
+            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium">
+              {serverError}
+            </div>
+        )}
+
+        <Button
+            type="submit"
+            variant="amber"
+            className="w-full mt-2 font-bold shadow-lg shadow-amber-500/10"
+            isLoading={isSubmitting}
         >
-          {isSubmitting ? (
-              <span className="inline-block w-4 h-4 border-2 border-vtt-bg border-t-transparent rounded-full animate-spin" />
-          ) : null}
-          ورود به حساب
-        </button>
+          <LogIn className="w-4 h-4 ml-2" />
+          ورود به حساب کاربری
+        </Button>
       </form>
   );
 };

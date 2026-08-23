@@ -2,10 +2,14 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Sparkles } from "lucide-react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 
 const createRoomSchema = z.object({
-  name: z.string().min(2, "حداقل ۲ کاراکتر").max(100, "حداکثر ۱۰۰ کاراکتر"),
-  expire_days: z.number().int().min(1).max(365).default(30),
+  name: z.string().min(2, "نام اتاق باید حداقل ۲ حرف باشد").max(100, "حداکثر ۱۰۰ حرف"),
+  expire_days: z.number().int().min(1, "حداقل ۱ روز").max(365, "حداکثر ۳۶۵ روز").default(30),
 });
 
 export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
@@ -22,72 +26,53 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
     },
   });
 
-  if (!isOpen) return null;
-
   const onSubmit = async (data) => {
     try {
       await onCreate(data);
       reset();
       onClose();
     } catch {
-      // خطا توسط هوک داشبورد مدیریت می‌شود
+      // مدیریت خطا در هوک انجام می‌شود
     }
   };
 
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-vtt-bg/80 backdrop-blur-xs p-4">
-        <div className="w-full max-w-md bg-vtt-s1 border border-vtt-border rounded-lg p-5 shadow-2xl" dir="rtl">
-          <h2 className="text-base font-bold text-vtt-t1 mb-4 font-fa">ساخت اتاق جدید</h2>
+      <Modal
+          isOpen={isOpen}
+          onClose={onClose}
+          title="Create New Game Room"
+          titleFa="ساخت اتاق جدید بازی"
+          maxWidth="md"
+      >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" dir="rtl">
+          <Input
+              label="نام اتاق یا کمپین"
+              placeholder="مثلا: کمپین نبرد در دخمه سیاه"
+              error={errors.name?.message}
+              disabled={isSubmitting}
+              {...register("name")}
+          />
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-vtt-t2 mb-1.5">نام اتاق</label>
-              <input
-                  type="text"
-                  disabled={isSubmitting}
-                  className="w-full px-3 py-2 bg-vtt-s2 text-vtt-t1 rounded-md border border-vtt-border focus:border-neon focus:outline-none text-sm"
-                  placeholder="مثلا: کمپین دخمه تاریک"
-                  {...register("name")}
-              />
-              {errors.name && (
-                  <p className="text-vtt-danger text-xs mt-1">{errors.name.message}</p>
-              )}
-            </div>
+          <Input
+              label="مدت اعتبار اتاق (روز)"
+              type="number"
+              min={1}
+              max={365}
+              error={errors.expire_days?.message}
+              disabled={isSubmitting}
+              {...register("expire_days", { valueAsNumber: true })}
+          />
 
-            <div>
-              <label className="block text-xs font-medium text-vtt-t2 mb-1.5">مدت اعتبار (روز)</label>
-              <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  disabled={isSubmitting}
-                  className="w-full px-3 py-2 bg-vtt-s2 text-vtt-t1 rounded-md border border-vtt-border focus:border-neon focus:outline-none text-sm"
-                  {...register("expire_days", { valueAsNumber: true })}
-              />
-              {errors.expire_days && (
-                  <p className="text-vtt-danger text-xs mt-1">{errors.expire_days.message}</p>
-              )}
-            </div>
-
-            <div className="pt-3 flex justify-end gap-2 border-t border-vtt-border">
-              <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3.5 py-1.5 rounded-md text-xs font-medium text-vtt-t3 hover:text-vtt-t1 transition-colors"
-              >
-                انصراف
-              </button>
-              <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-1.5 rounded-md text-xs font-semibold bg-neon text-vtt-bg hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {isSubmitting ? <span className="w-3 h-3 border-2 border-vtt-bg border-t-transparent rounded-full animate-spin" /> : null}
-                ساخت اتاق
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+          <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-zinc-800">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              انصراف
+            </Button>
+            <Button type="submit" variant="amber" isLoading={isSubmitting} className="font-bold">
+              <Sparkles className="w-4 h-4 ml-1.5" />
+              ایجاد و ورود به میز بازی
+            </Button>
+          </div>
+        </form>
+      </Modal>
   );
 };

@@ -2,7 +2,11 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { roomApi } from "../../api/room.api";
 
 const joinRoomSchema = z.object({
@@ -23,15 +27,13 @@ export const JoinRoomModal = ({ isOpen, onClose }) => {
     resolver: zodResolver(joinRoomSchema),
   });
 
-  if (!isOpen) return null;
-
   const onSubmit = async (data) => {
     setServerError("");
     try {
       const res = await roomApi.joinRoom(data.code);
       reset();
       onClose();
-      navigate(`/room/${res.roomId}`);
+      navigate(`/room/${res.roomId || res.id}`);
     } catch (err) {
       if (err.response?.status === 404) {
         setServerError("اتاق یافت نشد یا منقضی شده است.");
@@ -42,52 +44,41 @@ export const JoinRoomModal = ({ isOpen, onClose }) => {
   };
 
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-vtt-bg/80 backdrop-blur-xs p-4">
-        <div className="w-full max-w-sm bg-vtt-s1 border border-vtt-border rounded-lg p-5 shadow-2xl" dir="rtl">
-          <h2 className="text-base font-bold text-vtt-t1 mb-4 font-fa">ورود با کد اتاق</h2>
+      <Modal
+          isOpen={isOpen}
+          onClose={onClose}
+          title="Join Room by Code"
+          titleFa="ورود به اتاق با کد دعوت"
+          maxWidth="sm"
+      >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" dir="rtl">
+          <Input
+              label="کد ۶ حرفی اتاق بازی"
+              placeholder="مثلا: OWL772"
+              error={errors.code?.message}
+              disabled={isSubmitting}
+              className="uppercase font-mono text-center tracking-widest text-base font-bold"
+              {...register("code", {
+                onChange: (e) => setValue("code", e.target.value.toUpperCase()),
+              })}
+          />
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-vtt-t2 mb-1.5">کد ۶ رقمی اتاق</label>
-              <input
-                  type="text"
-                  maxLength={6}
-                  disabled={isSubmitting}
-                  className="w-full px-3 py-2 bg-vtt-s2 text-vtt-t1 rounded-md border border-vtt-border focus:border-neon focus:outline-none text-center font-mono text-base uppercase tracking-widest"
-                  placeholder="ABC123"
-                  {...register("code", {
-                    onChange: (e) => setValue("code", e.target.value.toUpperCase()),
-                  })}
-              />
-              {errors.code && (
-                  <p className="text-vtt-danger text-xs mt-1 text-center">{errors.code.message}</p>
-              )}
-              {serverError && (
-                  <p className="text-vtt-danger text-xs mt-2 text-center bg-vtt-danger/10 p-2 rounded-sm border border-vtt-danger/20">
-                    {serverError}
-                  </p>
-              )}
-            </div>
+          {serverError && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-center font-medium">
+                {serverError}
+              </div>
+          )}
 
-            <div className="pt-3 flex justify-end gap-2 border-t border-vtt-border">
-              <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3.5 py-1.5 rounded-md text-xs font-medium text-vtt-t3 hover:text-vtt-t1 transition-colors"
-              >
-                انصراف
-              </button>
-              <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-1.5 rounded-md text-xs font-semibold bg-neon text-vtt-bg hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {isSubmitting ? <span className="w-3 h-3 border-2 border-vtt-bg border-t-transparent rounded-full animate-spin" /> : null}
-                ورود
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+          <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-zinc-800">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              انصراف
+            </Button>
+            <Button type="submit" variant="amber" isLoading={isSubmitting} className="font-bold">
+              <LogIn className="w-4 h-4 ml-1.5" />
+              ورود به اتاق
+            </Button>
+          </div>
+        </form>
+      </Modal>
   );
 };
