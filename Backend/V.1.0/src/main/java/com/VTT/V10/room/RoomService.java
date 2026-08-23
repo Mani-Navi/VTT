@@ -18,14 +18,17 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class RoomService {
+
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final RoomMemberRepository memberRepository;
     private final RoomTemplateRepository templateRepository;
     private final JournalRepository journalRepository;
     private final PlayerPermissionService permissionService;
+    private final PlayerPermissionRepository permissionRepository;
+    private final RoomSettingsRepository settingsRepository;
 
-    // دریافت تمام اتاق‌های کاربر
+    // ۱. دریافت اتاق‌های کاربر برای داشبورد
     @Transactional(readOnly = true)
     public List<RoomResponse> getUserRooms(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -36,19 +39,19 @@ public class RoomService {
                 .map(member -> {
                     Room room = member.getRoom();
                     RoomResponse response = convertToResponse(room);
-                    response.setRole(member.getRole().name().equals("ADMIN") ? "GM" : "Player");
+                    response.setRole(member.getRole() == RoomMember.Role.ADMIN ? "GM" : "Player");
                     return response;
                 })
                 .collect(Collectors.toList());
     }
 
-    // ۱. ساخت اتاق جدید
+    // ۲. ساخت اتاق جدید
     @Transactional
     public RoomResponse createRoom(CreateRoomRequest request, String userEmail) {
         User owner = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        int expireDays = request.getExpireDays() != null ? request.getExpireDays() : 30;
+        int expireDays = (request.getExpireDays() != null) ? request.getExpireDays() : 30;
 
         Room.RoomBuilder roomBuilder = Room.builder()
                 .name(request.getName())
@@ -74,7 +77,7 @@ public class RoomService {
 
         Room room = roomRepository.save(roomBuilder.build());
 
-        // ثبت سازنده به عنوان ADMIN به همراه مقدار joinedAt
+        // ثبت سازنده به عنوان ADMIN
         RoomMember admin = RoomMember.builder()
                 .room(room)
                 .user(owner)
@@ -83,7 +86,7 @@ public class RoomService {
                 .build();
         memberRepository.save(admin);
 
-        // کپی ژورنال‌ها در صورت وجود قالب
+        // ثبت نوت‌های پیش‌فرض سناریو
         if (room.getType() == Room.RoomType.OFFICIAL && room.getTemplate() != null && room.getTemplate().getDefaultJournals() != null) {
             for (TemplateJournal tj : room.getTemplate().getDefaultJournals()) {
                 Journal journal = Journal.builder()
@@ -101,7 +104,7 @@ public class RoomService {
         return response;
     }
 
-    // ۲. عضویت در اتاق با کد
+    // ۳. عضویت در اتاق
     @Transactional
     public RoomResponse joinRoom(String roomCode, String userEmail) {
         Room room = roomRepository.findByCode(roomCode.trim().toUpperCase())
@@ -129,14 +132,22 @@ public class RoomService {
         return response;
     }
 
-    // ۳. حذف اتاق توسط سازنده (GM)
+    // ۴. حذف ایمن اتاق
     @Transactional
     public void deleteRoom(UUID roomId, String userEmail) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "اتاق یافت نشد"));
 
         if (!room.getOwner().getEmail().equals(userEmail)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما اجازه حذف این اتاق را ندارید");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق اجازه حذف آن را دارد");
+        }
+
+        // حذف وابستگی‌ها به ترتیب
+        permissionRepository.deleteByRoomId(roomId);
+        memberRepository.deleteByRoomId(roomId);
+        journalRepository.deleteByRoomId(roomId);
+        if (settingsRepository.existsById(roomId)) {
+            settingsRepository.deleteById(roomId);
         }
 
         roomRepository.delete(room);
