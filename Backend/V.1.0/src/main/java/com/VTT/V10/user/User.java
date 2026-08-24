@@ -24,8 +24,28 @@ public class User {
     @Column(unique = true, nullable = false, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String password;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Column(name = "google_id", length = 100)
+    private String googleId;
+
+    @Column(name = "is_email_verified", nullable = false)
+    @Builder.Default
+    private boolean isEmailVerified = false;
+
+    @Column(name = "is_premium", nullable = false)
+    @Builder.Default
+    private boolean isPremium = false;
+
+    @Column(name = "verification_code", length = 6)
+    private String verificationCode;
+
+    @Column(name = "verification_expiry")
+    private LocalDateTime verificationExpiry;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

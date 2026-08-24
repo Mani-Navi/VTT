@@ -17,13 +17,16 @@ public class JwtService {
     private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
 
     public String generateToken(User user) {
+        String userIdStr = user.getId() != null ? user.getId().toString() : "";
+
         return Jwts.builder()
                 .subject(user.getEmail())
-                .claim("userId", user.getId())
+                .claim("userId", userIdStr)
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
+                .claim("avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "")
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24)) // 24 ساعت مطابق داکیومنت
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24)) // ۲۴ ساعت اعتبار
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
     }
@@ -43,7 +46,7 @@ public class JwtService {
 
     public boolean isTokenValid(String token, String userEmail) {
         final String email = extractEmail(token);
-        return (email != null && email.equals(userEmail) && !isTokenExpired(token));
+        return (email != null && email.equalsIgnoreCase(userEmail) && !isTokenExpired(token));
     }
 
     private boolean isTokenExpired(String token) {
