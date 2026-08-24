@@ -5,7 +5,7 @@ import { RoomCard } from "../../components/dashboard/RoomCard";
 import { CreateRoomModal } from "../../components/dashboard/CreateRoomModal";
 import { JoinRoomModal } from "../../components/dashboard/JoinRoomModal";
 import { EmptyRooms } from "../../components/dashboard/EmptyRooms";
-import { Button } from "../../components/ui/Button";
+import { Button } from "../../components/ui/Button.jsx";
 import { Dices, Plus, KeyRound, LogOut, RefreshCw, AlertCircle } from "lucide-react";
 
 export const DashboardPage = () => {

@@ -3,9 +3,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Sparkles } from "lucide-react";
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Modal } from "../ui/Modal.jsx";
+import { Button } from "../ui/Button.jsx";
+import { Input } from "../ui/Input.jsx";
 
 const createRoomSchema = z.object({
   name: z.string().min(2, "نام اتاق باید حداقل ۲ حرف باشد").max(100, "حداکثر ۱۰۰ حرف"),

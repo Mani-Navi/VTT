@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserPlus } from "lucide-react";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Button } from "../ui/Button.jsx";
+import { Input } from "../ui/Input.jsx";
 import { useAuth } from "../../hooks/useAuth";
 
 const registerSchema = z

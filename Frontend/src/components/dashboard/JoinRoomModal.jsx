@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Modal } from "../ui/Modal.jsx";
+import { Button } from "../ui/Button.jsx";
+import { Input } from "../ui/Input.jsx";
 import { roomApi } from "../../api/room.api";
 
 const joinRoomSchema = z.object({
