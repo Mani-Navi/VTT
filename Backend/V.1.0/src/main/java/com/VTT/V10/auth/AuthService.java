@@ -48,9 +48,10 @@ public class AuthService {
                 .email(request.getEmail().trim().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .isEmailVerified(false)
+                .isPremium(false)
                 .build();
 
-        // دریافت شیء ذخیره شده حاوی ID معتبر
+        // دریافت موجودیت پایدارشده با ID تولیدی معتبر
         user = userRepository.save(user);
 
         String token = jwtService.generateToken(user);
@@ -124,6 +125,7 @@ public class AuthService {
                         .avatarUrl(pictureUrl)
                         .googleId(googleSub)
                         .isEmailVerified(true)
+                        .isPremium(false)
                         .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                         .build();
 
@@ -161,6 +163,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .avatarUrl(user.getAvatarUrl())
                 .isEmailVerified(user.isEmailVerified())
+                .isPremium(user.isPremium())
                 .createdAt(user.getCreatedAt())
                 .build();
     }
