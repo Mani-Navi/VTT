@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./router";
 import { useAuthStore } from "./store/auth.store";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "MOCK_GOOGLE_CLIENT_ID";
 
 export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -19,7 +22,6 @@ export default function App() {
       const payloadBase64 = token.split(".")[1];
       const payload = JSON.parse(atob(payloadBase64));
 
-      // بررسی انقضا
       if (payload.exp && payload.exp * 1000 > Date.now()) {
         setAuth(payload, token);
       } else {
@@ -32,14 +34,17 @@ export default function App() {
     }
   }, [setAuth, logout]);
 
-  // اسپینر تمام صفحه تا زمان پایان بررسی JWT
   if (isCheckingAuth) {
     return (
-        <div className="min-h-screen bg-vtt-bg flex items-center justify-center">
-          <div className="w-8 h-8 border-3 border-neon border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen bg-[#090a0f] flex items-center justify-center">
+          <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
         </div>
     );
   }
 
-  return <RouterProvider router={router} />;
+  return (
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <RouterProvider router={router} />
+      </GoogleOAuthProvider>
+  );
 }

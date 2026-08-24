@@ -10,6 +10,12 @@ export const useAuthStore = create((set) => ({
     set({ user, token, isAuthenticated: true });
   },
 
+  updateUser: (updatedFields) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updatedFields } : updatedFields,
+    }));
+  },
+
   logout: () => {
     localStorage.removeItem("vtt_jwt");
     set({ user: null, token: null, isAuthenticated: false });

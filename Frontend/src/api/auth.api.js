@@ -10,4 +10,9 @@ export const authApi = {
     const res = await api.post("/auth/login", data);
     return res.data;
   },
+
+  googleLogin: async (idToken) => {
+    const res = await api.post("/auth/google", { idToken });
+    return res.data;
+  },
 };

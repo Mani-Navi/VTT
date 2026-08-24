@@ -20,12 +20,19 @@ export function useAuth() {
     return data;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    const data = await authApi.googleLogin(idToken);
+    setAuth(data.user, data.token);
+    return data;
+  };
+
   return {
     user,
     token,
     isAuthenticated,
     login,
     register,
+    loginWithGoogle,
     logout,
   };
 }

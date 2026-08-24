@@ -36,21 +36,21 @@ export const LoginForm = ({ onSuccess }) => {
             } else if (err.response?.status === 429) {
                 setServerError("تعداد درخواست‌ها بیش از حد مجاز است — لطفاً کمی صبر کنید.");
             } else {
-                setServerError("خطا در برقراری ارتباط با سرور.");
+                const errorMsg = err.response?.data?.message || err.response?.data?.error;
+                setServerError(errorMsg || "خطا در برقراری ارتباط با سرور.");
             }
         }
     };
 
     return (
         <div className="space-y-4 text-right" dir="rtl">
-            {/* دکمه‌های ورود با شبکه‌های اجتماعی (طرح تصویر) */}
+            {/* دکمه ورود سریع با گوگل */}
             <div className="flex items-center justify-center gap-3">
                 <button
                     type="button"
                     aria-label="ورود با گوگل"
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm"
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm cursor-pointer"
                 >
-                    {/* آیکون استاندارد گوگل */}
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path
                             fill="#EA4335"
@@ -69,11 +69,10 @@ export const LoginForm = ({ onSuccess }) => {
                             d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
                         />
                     </svg>
-                    ورود با گوگل
+                    ورود با حساب گوگل
                 </button>
             </div>
 
-            {/* خط جداکننده Or */}
             <div className="relative flex items-center justify-center my-3">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
@@ -104,7 +103,7 @@ export const LoginForm = ({ onSuccess }) => {
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-9 text-zinc-400 hover:text-zinc-200 transition-colors p-1"
+                        className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
                         tabIndex={-1}
                     >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -112,7 +111,7 @@ export const LoginForm = ({ onSuccess }) => {
                 </div>
 
                 {serverError && (
-                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium animate-fadeIn">
+                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
                         {serverError}
                     </div>
                 )}

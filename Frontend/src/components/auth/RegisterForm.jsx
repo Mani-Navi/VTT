@@ -23,28 +23,26 @@ const registerSchema = z
         path: ["confirmPassword"],
     });
 
-const checkPasswordCriteria = (pass = "") => {
-    return [
-        { label: "حداقل ۸ کاراکتر", valid: pass.length >= 8 },
-        { label: "حروف کوچک و بزرگ انگلیسی (a-Z)", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
-        { label: "حداقل یک عدد (0-9)", valid: /\d/.test(pass) },
-        { label: "حداقل یک نماد ویژه (!@#$%)", valid: /[^A-Za-z0-9]/.test(pass) },
-    ];
-};
+const checkPasswordCriteria = (pass = "") => [
+    { label: "حداقل ۸ کاراکتر", valid: pass.length >= 8 },
+    { label: "حروف بزرگ و کوچک (a-Z)", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
+    { label: "حداقل یک عدد (0-9)", valid: /\d/.test(pass) },
+    { label: "حداقل یک نماد خاص (!@#$%)", valid: /[^A-Za-z0-9]/.test(pass) },
+];
 
 export const RegisterForm = ({ onSuccess }) => {
     const { register: registerUser } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [serverError, setServerError] = useState("");
 
     const {
         register,
         handleSubmit,
-        setError,
         watch,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(registerSchema),
-        mode: "onChange",
     });
 
     const passwordValue = watch("password", "");
@@ -60,16 +58,18 @@ export const RegisterForm = ({ onSuccess }) => {
     }, [passwordValue, passedCriteriaCount]);
 
     const onSubmit = async (data) => {
+        setServerError("");
         try {
             await registerUser(data.username, data.email, data.password);
             onSuccess?.();
         } catch (err) {
+            const serverMsg = err.response?.data?.message || err.response?.data?.error;
             if (err.response?.status === 409) {
-                setError("email", { message: "این ایمیل یا نام کاربری قبلاً ثبت شده است." });
-            } else if (err.response?.status === 400 && err.response?.data?.message) {
-                setError("root", { message: err.response.data.message });
+                setServerError(serverMsg || "این ایمیل یا نام کاربری قبلاً ثبت شده است.");
+            } else if (err.response?.status === 400 && serverMsg) {
+                setServerError(serverMsg);
             } else {
-                setError("root", { message: "خطا در ارتباط با سرور — دوباره تلاش کنید." });
+                setServerError(serverMsg || "خطا در ارتباط با سرور — لطفاً دوباره تلاش کنید.");
             }
         }
     };
@@ -80,7 +80,7 @@ export const RegisterForm = ({ onSuccess }) => {
             <button
                 type="button"
                 aria-label="ثبت‌نام با گوگل"
-                className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm"
+                className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm cursor-pointer"
             >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
@@ -103,7 +103,6 @@ export const RegisterForm = ({ onSuccess }) => {
                 ثبت‌نام سریع با حساب گوگل
             </button>
 
-            {/* خط جداکننده */}
             <div className="relative flex items-center justify-center my-2">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
@@ -113,9 +112,9 @@ export const RegisterForm = ({ onSuccess }) => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                {errors.root && (
-                    <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium">
-                        {errors.root.message}
+                {serverError && (
+                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
+                        {serverError}
                     </div>
                 )}
 
@@ -149,14 +148,13 @@ export const RegisterForm = ({ onSuccess }) => {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-3 top-9 text-zinc-400 hover:text-zinc-200 transition-colors p-1"
+                            className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
                             tabIndex={-1}
                         >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                     </div>
 
-                    {/* نوار و چک‌لیست قدرت پسورد */}
                     {passwordValue.length > 0 && (
                         <div className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs space-y-2 mt-1">
                             <div className="flex items-center justify-between text-[11px]">
@@ -204,14 +202,24 @@ export const RegisterForm = ({ onSuccess }) => {
                     )}
                 </div>
 
-                <Input
-                    label="تکرار رمز عبور"
-                    type="password"
-                    placeholder="••••••••"
-                    error={errors.confirmPassword?.message}
-                    disabled={isSubmitting}
-                    {...register("confirmPassword")}
-                />
+                <div className="relative">
+                    <Input
+                        label="تکرار رمز عبور"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        error={errors.confirmPassword?.message}
+                        disabled={isSubmitting}
+                        {...register("confirmPassword")}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                        tabIndex={-1}
+                    >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                </div>
 
                 <Button
                     type="submit"
