@@ -4,6 +4,7 @@ import com.VTT.V10.room.dto.CreateRoomRequest;
 import com.VTT.V10.room.dto.JoinRoomRequest;
 import com.VTT.V10.room.dto.RoomResponse;
 import com.VTT.V10.room.dto.RoomTemplateResponse;
+import com.VTT.V10.room.dto.UpdateRoomRequest;
 import com.VTT.V10.user.User;
 import com.VTT.V10.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,6 @@ public class RoomService {
     private final RoomSettingsRepository settingsRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // دریافت قالب‌های آماده
     @Transactional(readOnly = true)
     public List<RoomTemplateResponse> getAvailableTemplates() {
         return templateRepository.findAll().stream()
@@ -48,7 +48,6 @@ public class RoomService {
                 .collect(Collectors.toList());
     }
 
-    // ۱. دریافت اتاق‌های کاربر برای داشبورد
     @Transactional(readOnly = true)
     public List<RoomResponse> getUserRooms(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -65,13 +64,11 @@ public class RoomService {
                 .collect(Collectors.toList());
     }
 
-    // ۲. ساخت اتاق جدید با بررسی یکتایی نام برای کاربر
     @Transactional
     public RoomResponse createRoom(CreateRoomRequest request, String userEmail) {
         User owner = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        // بررسی یکتایی نام اتاق برای این کاربر
         boolean exists = roomRepository.findAll().stream()
                 .anyMatch(r -> r.getOwner().getId().equals(owner.getId()) && r.getName().trim().equalsIgnoreCase(request.getName().trim()));
         if (exists) {
@@ -108,7 +105,6 @@ public class RoomService {
 
         Room room = roomRepository.save(roomBuilder.build());
 
-        // ثبت سازنده به عنوان ADMIN
         RoomMember admin = RoomMember.builder()
                 .room(room)
                 .user(owner)
@@ -117,7 +113,6 @@ public class RoomService {
                 .build();
         memberRepository.save(admin);
 
-        // کپی ژورنال‌های پیش‌فرض قالب
         if (room.getType() == Room.RoomType.OFFICIAL && room.getTemplate() != null && room.getTemplate().getDefaultJournals() != null) {
             for (TemplateJournal tj : room.getTemplate().getDefaultJournals()) {
                 Journal journal = Journal.builder()
@@ -135,7 +130,33 @@ public class RoomService {
         return response;
     }
 
-    // ۳. عضویت در اتاق
+    // ویرایش مشخصات اتاق توسط GM
+    @Transactional
+    public RoomResponse updateRoom(UUID roomId, UpdateRoomRequest request, String userEmail) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "اتاق یافت نشد"));
+
+        if (!room.getOwner().getEmail().equals(userEmail)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها دانجن‌مستر اجازه ویرایش مشخصات اتاق را دارد");
+        }
+
+        room.setName(request.getName().trim());
+        room.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+
+        if (request.getPassword() != null) {
+            if (request.getPassword().trim().isEmpty()) {
+                room.setPassword(null); // حذف پسورد
+            } else {
+                room.setPassword(passwordEncoder.encode(request.getPassword().trim()));
+            }
+        }
+
+        Room updated = roomRepository.save(room);
+        RoomResponse response = convertToResponse(updated);
+        response.setRole("GM");
+        return response;
+    }
+
     @Transactional
     public RoomResponse joinRoom(JoinRoomRequest request, String userEmail) {
         Room room = roomRepository.findByCode(request.getRoomCode().trim().toUpperCase())
@@ -144,7 +165,6 @@ public class RoomService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        // اگر کاربر قبلا عضو نبوده و اتاق رمز دارد، اعتبارسنجی رمز
         if (!memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) {
             if (room.getPassword() != null && !room.getPassword().isEmpty()) {
                 if (request.getPassword() == null || !passwordEncoder.matches(request.getPassword(), room.getPassword())) {
@@ -168,7 +188,22 @@ public class RoomService {
         return response;
     }
 
-    // ۴. حذف ایمن اتاق
+    // خروج بازیکن از اتاق
+    @Transactional
+    public void leaveRoom(UUID roomId, String userEmail) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "اتاق یافت نشد"));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
+
+        if (room.getOwner().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "دانجن‌مستر نمی‌تواند از اتاق خود خارج شود؛ در صورت نیاز باید اتاق را حذف کنید");
+        }
+
+        memberRepository.deleteByRoomIdAndUserId(roomId, user.getId());
+    }
+
     @Transactional
     public void deleteRoom(UUID roomId, String userEmail) {
         Room room = roomRepository.findById(roomId)

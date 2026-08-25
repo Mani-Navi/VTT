@@ -4,6 +4,7 @@ import com.VTT.V10.room.dto.CreateRoomRequest;
 import com.VTT.V10.room.dto.JoinRoomRequest;
 import com.VTT.V10.room.dto.RoomResponse;
 import com.VTT.V10.room.dto.RoomTemplateResponse;
+import com.VTT.V10.room.dto.UpdateRoomRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,12 +38,30 @@ public class RoomController {
         return ResponseEntity.ok(roomService.createRoom(request, authentication.getName()));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<RoomResponse> updateRoom(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateRoomRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(roomService.updateRoom(id, request, authentication.getName()));
+    }
+
     @PostMapping("/join")
     public ResponseEntity<RoomResponse> joinRoom(
             @Valid @RequestBody JoinRoomRequest request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(roomService.joinRoom(request, authentication.getName()));
+    }
+
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<Void> leaveRoom(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        roomService.leaveRoom(id, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
