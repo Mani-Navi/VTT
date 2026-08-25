@@ -16,8 +16,18 @@ export const roomApi = {
     return res.data;
   },
 
+  updateRoom: async (id, data) => {
+    const res = await api.put(`/rooms/${id}`, data);
+    return res.data;
+  },
+
   deleteRoom: async (id) => {
     const res = await api.delete(`/rooms/${id}`);
+    return res.data;
+  },
+
+  leaveRoom: async (id) => {
+    const res = await api.post(`/rooms/${id}/leave`);
     return res.data;
   },
 

@@ -8,6 +8,7 @@ export function useRooms() {
   const error = useRoomStore((state) => state.error);
   const setRooms = useRoomStore((state) => state.setRooms);
   const addRoom = useRoomStore((state) => state.addRoom);
+  const updateRoomInStore = useRoomStore((state) => state.updateRoomInStore);
   const removeRoom = useRoomStore((state) => state.removeRoom);
   const setLoading = useRoomStore((state) => state.setLoading);
   const setError = useRoomStore((state) => state.setError);
@@ -23,17 +24,20 @@ export function useRooms() {
     }
   }, [setRooms, setLoading, setError]);
 
-  // Optimistic Create Room
+  // ساخت خوش‌بینانه اتاق
   const createRoom = async (roomData) => {
     const tempId = `temp-${Date.now()}`;
     const optimisticRoom = {
       id: tempId,
       name: roomData.name,
+      description: roomData.description,
       code: "......",
       player_count: 1,
       role: "GM",
+      type: roomData.templateId ? "OFFICIAL" : "STANDARD",
+      isProtected: !!roomData.password,
       is_active: true,
-      expires_at: new Date(Date.now() + (roomData.expire_days || 30) * 86400000).toISOString(),
+      expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
       isOptimistic: true,
     };
 
@@ -50,11 +54,31 @@ export function useRooms() {
     }
   };
 
-  // Optimistic Delete Room
+  // ویرایش مشخصات اتاق توسط GM
+  const updateRoom = async (id, payload) => {
+    const updated = await roomApi.updateRoom(id, payload);
+    if (updateRoomInStore) {
+      updateRoomInStore(updated);
+    }
+    return updated;
+  };
+
+  // حذف خوش‌بینانه اتاق توسط GM
   const deleteRoom = async (id, roomBackup) => {
     removeRoom(id);
     try {
       await roomApi.deleteRoom(id);
+    } catch (err) {
+      if (roomBackup) addRoom(roomBackup);
+      throw err;
+    }
+  };
+
+  // خروج خوش‌بینانه بازیکن از ماجراجویی
+  const leaveRoom = async (id, roomBackup) => {
+    removeRoom(id);
+    try {
+      await roomApi.leaveRoom(id);
     } catch (err) {
       if (roomBackup) addRoom(roomBackup);
       throw err;
@@ -67,6 +91,8 @@ export function useRooms() {
     error,
     fetchRooms,
     createRoom,
+    updateRoom,
     deleteRoom,
+    leaveRoom,
   };
 }

@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClipboard } from "../../hooks/useClipboard";
-import { Users, Clock, Copy, Check, Trash2, ArrowRight, Lock, Scroll, Crown, Swords, Link2 } from "lucide-react";
+import { Users, Clock, Copy, Check, Trash2, ArrowRight, Lock, Scroll, Crown, Swords, Link2, Settings2, LogOut } from "lucide-react";
 import { Badge } from "../ui/Badge.jsx";
 import { Button } from "../ui/Button.jsx";
 
-export const RoomCard = ({ room, onRequestDelete }) => {
+export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave }) => {
   const navigate = useNavigate();
   const { copy, copied } = useClipboard();
   const [linkCopied, setLinkCopied] = useState(false);
@@ -21,7 +21,7 @@ export const RoomCard = ({ room, onRequestDelete }) => {
   const isGM = room.role === "GM";
 
   const handleCopyLink = () => {
-    const inviteUrl = `${window.location.origin}/room/${room.id}`;
+    const inviteUrl = `${window.location.origin}/dashboard?join=${room.code}`;
     navigator.clipboard.writeText(inviteUrl);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
@@ -68,7 +68,6 @@ export const RoomCard = ({ room, onRequestDelete }) => {
                 )}
               </div>
 
-              {/* توضیحات سناریو */}
               {room.description ? (
                   <p
                       className="text-xs text-zinc-400 leading-relaxed line-clamp-2 group-hover:text-zinc-300 transition-colors"
@@ -93,7 +92,7 @@ export const RoomCard = ({ room, onRequestDelete }) => {
                 type="button"
                 onClick={() => copy(room.code)}
                 className="group/code text-xs font-mono bg-zinc-950/80 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 px-2.5 py-1.5 rounded-xl border border-zinc-700/60 hover:border-amber-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-inner"
-                title="کلیک برای کپی کد دعوت ۶ حرفی"
+                title="کلیک برای کپی کد ۶ حرفی"
             >
               <span className="tracking-widest font-bold">{room.code}</span>
               {copied ? (
@@ -105,7 +104,6 @@ export const RoomCard = ({ room, onRequestDelete }) => {
               )}
             </button>
 
-            {/* دکمه کپی لینک مستقیم */}
             <button
                 type="button"
                 onClick={handleCopyLink}
@@ -134,7 +132,7 @@ export const RoomCard = ({ room, onRequestDelete }) => {
           </div>
         </div>
 
-        {/* فوتر: تعداد بازیکنان، روزهای مانده و دکمه ورود */}
+        {/* فوتر: اکشن‌ها */}
         <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-zinc-400 font-medium">
@@ -148,24 +146,48 @@ export const RoomCard = ({ room, onRequestDelete }) => {
           </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* دکمه‌های مخصوص GM */}
             {isGM && (
+                <>
+                  <button
+                      type="button"
+                      onClick={() => onRequestEdit(room)}
+                      className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all cursor-pointer"
+                      title="ویرایش مشخصات اتاق"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                  <button
+                      type="button"
+                      onClick={() => onRequestDelete(room)}
+                      className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                      title="حذف اتاق"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+            )}
+
+            {/* دکمه مخصوص بازیکن: خروج از اتاق */}
+            {!isGM && !isOptimistic && (
                 <button
                     type="button"
-                    onClick={() => onRequestDelete(room)}
-                    className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
-                    title="حذف اتاق"
+                    onClick={() => onRequestLeave(room)}
+                    className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                    title="خروج از این ماجراجویی"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <LogOut className="w-4 h-4" />
                 </button>
             )}
+
             <Button
                 size="sm"
                 variant="amber"
                 onClick={() => navigate(`/room/${room.id}`)}
-                className="px-3.5 py-1.5 text-xs gap-1.5 font-bold shadow-md shadow-amber-500/10 hover:shadow-amber-500/20"
+                className="px-3 py-1.5 text-xs gap-1.5 font-bold shadow-md shadow-amber-500/10 hover:shadow-amber-500/20"
             >
-              ورود به بازی
+              ورود
               <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>

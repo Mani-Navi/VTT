@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useRooms } from "../../hooks/useRooms";
 import { useAuth } from "../../hooks/useAuth";
 import { RoomCard } from "../../components/dashboard/RoomCard";
 import { CreateRoomModal } from "../../components/dashboard/CreateRoomModal";
 import { JoinRoomModal } from "../../components/dashboard/JoinRoomModal";
 import { DeleteRoomModal } from "../../components/dashboard/DeleteRoomModal";
+import { EditRoomModal } from "../../components/dashboard/EditRoomModal";
+import { LeaveRoomModal } from "../../components/dashboard/LeaveRoomModal";
 import { EmptyRooms } from "../../components/dashboard/EmptyRooms";
 import { RpgAvatar } from "../../components/profile/RpgAvatar";
 import { Button } from "../../components/ui/Button.jsx";
@@ -23,15 +25,46 @@ import {
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
-  const { rooms, isLoading, error, fetchRooms, createRoom, deleteRoom } = useRooms();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { rooms, isLoading, error, fetchRooms, createRoom, updateRoom, deleteRoom, leaveRoom } = useRooms();
   const { user, logout } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [roomToEdit, setRoomToEdit] = useState(null);
+  const [roomToLeave, setRoomToLeave] = useState(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastError, setToastError] = useState("");
+
+  // بررسی پارامتر دعوت ?join=CODE در URL
+  useEffect(() => {
+    const inviteCode = searchParams.get("join");
+    if (inviteCode) {
+      setIsJoinOpen(true);
+      // پاک کردن پارامتر از URL پس از باز شدن مدال
+      searchParams.delete("join");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // کلیدهای میانبر کیبورد (N برای ساخت اتاق، J برای ورود)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // اگر داخل input یا textarea تایپ نمی‌کند
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+      if (e.key === "n" || e.key === "N" || e.key === "د") {
+        e.preventDefault();
+        setIsCreateOpen(true);
+      } else if (e.key === "j" || e.key === "J" || e.key === "ت") {
+        e.preventDefault();
+        setIsJoinOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     fetchRooms();
@@ -47,9 +80,13 @@ export const DashboardPage = () => {
     await createRoom(data);
   };
 
+  const handleUpdateRoom = async (id, data) => {
+    await updateRoom(id, data);
+  };
+
   const handleConfirmDelete = async () => {
     if (!roomToDelete) return;
-    setIsDeleting(true);
+    setIsActionLoading(true);
     try {
       await deleteRoom(roomToDelete.id, roomToDelete);
       setRoomToDelete(null);
@@ -57,11 +94,24 @@ export const DashboardPage = () => {
       setToastError("خطا در حذف اتاق");
       setTimeout(() => setToastError(""), 3500);
     } finally {
-      setIsDeleting(false);
+      setIsActionLoading(false);
     }
   };
 
-  // فیلتر کردن اتاق‌ها با سرچ یکپارچه روی تمامی اتاق‌ها
+  const handleConfirmLeave = async () => {
+    if (!roomToLeave) return;
+    setIsActionLoading(true);
+    try {
+      await leaveRoom(roomToLeave.id, roomToLeave);
+      setRoomToLeave(null);
+    } catch {
+      setToastError("خطا در خروج از اتاق");
+      setTimeout(() => setToastError(""), 3500);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const filteredRooms = useMemo(() => {
     if (!searchQuery.trim()) return rooms;
     const query = searchQuery.trim().toLowerCase();
@@ -73,7 +123,6 @@ export const DashboardPage = () => {
     );
   }, [rooms, searchQuery]);
 
-  // دسته‌بندی به اتاق‌های GM (ماجراهای من) و Player (ماجراجویی‌های من)
   const myCreatedAdventures = useMemo(
       () => filteredRooms.filter((r) => r.role === "GM"),
       [filteredRooms]
@@ -92,7 +141,7 @@ export const DashboardPage = () => {
             </div>
         )}
 
-        {/* هدر بالایی داشبورد Titipool */}
+        {/* هدر بالایی داشبورد */}
         <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
@@ -122,9 +171,11 @@ export const DashboardPage = () => {
                 size="sm"
                 onClick={() => setIsJoinOpen(true)}
                 className="text-xs gap-1.5"
+                title="میانبر: کلید J"
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-400" />
               ورود با کد
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-zinc-800 text-zinc-400 rounded border border-zinc-700">J</kbd>
             </Button>
 
             <Button
@@ -133,9 +184,11 @@ export const DashboardPage = () => {
                 size="sm"
                 onClick={() => setIsCreateOpen(true)}
                 className="text-xs font-bold gap-1.5 shadow-lg shadow-amber-500/10"
+                title="میانبر: کلید N"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              ایجاد اتاق جدید
+              ایجاد ماجرا
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-amber-600/30 text-amber-200 rounded border border-amber-400/40">N</kbd>
             </Button>
 
             <div className="h-5 w-px bg-zinc-800 mx-1" />
@@ -160,9 +213,8 @@ export const DashboardPage = () => {
           </div>
         </header>
 
-        {/* محتوای اصلی داشبورد */}
+        {/* محتوای داشبورد */}
         <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8 space-y-8">
-          {/* نوار جستجوی یکپارچه و آمار */}
           {rooms.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
                 <div className="relative w-full sm:w-80">
@@ -225,7 +277,7 @@ export const DashboardPage = () => {
               <EmptyRooms onCreateClick={() => setIsCreateOpen(true)} />
           ) : (
               <div className="space-y-8">
-                {/* دسته‌بندی ۱: ماجراهای من (GM) */}
+                {/* ماجراهای من (GM) */}
                 {myCreatedAdventures.length > 0 && (
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
@@ -240,6 +292,7 @@ export const DashboardPage = () => {
                             <RoomCard
                                 key={room.id}
                                 room={room}
+                                onRequestEdit={(r) => setRoomToEdit(r)}
                                 onRequestDelete={(r) => setRoomToDelete(r)}
                             />
                         ))}
@@ -247,7 +300,7 @@ export const DashboardPage = () => {
                     </section>
                 )}
 
-                {/* دسته‌بندی ۲: ماجراجویی‌های من (Player) */}
+                {/* ماجراجویی‌های من (Player) */}
                 {myJoinedAdventures.length > 0 && (
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
@@ -262,14 +315,13 @@ export const DashboardPage = () => {
                             <RoomCard
                                 key={room.id}
                                 room={room}
-                                onRequestDelete={(r) => setRoomToDelete(r)}
+                                onRequestLeave={(r) => setRoomToLeave(r)}
                             />
                         ))}
                       </div>
                     </section>
                 )}
 
-                {/* عدم وجود نتیجه در جستجو */}
                 {filteredRooms.length === 0 && searchQuery.trim() && (
                     <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 space-y-2">
                       <p className="text-sm">اتاقی با عبارت «{searchQuery}» پیدا نشد.</p>
@@ -286,7 +338,7 @@ export const DashboardPage = () => {
           )}
         </main>
 
-        {/* مدال‌ها */}
+        {/* تمام مدال‌های مورد نیاز */}
         <CreateRoomModal
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
@@ -296,12 +348,25 @@ export const DashboardPage = () => {
             isOpen={isJoinOpen}
             onClose={() => setIsJoinOpen(false)}
         />
+        <EditRoomModal
+            isOpen={!!roomToEdit}
+            onClose={() => setRoomToEdit(null)}
+            onUpdate={handleUpdateRoom}
+            room={roomToEdit}
+        />
         <DeleteRoomModal
             isOpen={!!roomToDelete}
             onClose={() => setRoomToDelete(null)}
             onConfirm={handleConfirmDelete}
             room={roomToDelete}
-            isLoading={isDeleting}
+            isLoading={isActionLoading}
+        />
+        <LeaveRoomModal
+            isOpen={!!roomToLeave}
+            onClose={() => setRoomToLeave(null)}
+            onConfirm={handleConfirmLeave}
+            room={roomToLeave}
+            isLoading={isActionLoading}
         />
       </div>
   );
