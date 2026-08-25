@@ -6,6 +6,11 @@ export const roomApi = {
     return res.data;
   },
 
+  getTemplates: async () => {
+    const res = await api.get("/rooms/templates");
+    return res.data;
+  },
+
   createRoom: async (data) => {
     const res = await api.post("/rooms", data);
     return res.data;
@@ -16,8 +21,8 @@ export const roomApi = {
     return res.data;
   },
 
-  joinRoom: async (code) => {
-    const res = await api.post("/rooms/join", { code });
+  joinRoom: async (code, password) => {
+    const res = await api.post("/rooms/join", { roomCode: code, password });
     return res.data;
   },
 };

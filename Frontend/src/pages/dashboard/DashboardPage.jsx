@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRooms } from "../../hooks/useRooms";
 import { useAuth } from "../../hooks/useAuth";
 import { RoomCard } from "../../components/dashboard/RoomCard";
 import { CreateRoomModal } from "../../components/dashboard/CreateRoomModal";
 import { JoinRoomModal } from "../../components/dashboard/JoinRoomModal";
+import { DeleteRoomModal } from "../../components/dashboard/DeleteRoomModal";
 import { EmptyRooms } from "../../components/dashboard/EmptyRooms";
 import { RpgAvatar } from "../../components/profile/RpgAvatar";
 import { Button } from "../../components/ui/Button.jsx";
@@ -15,6 +16,9 @@ import {
   LogOut,
   RefreshCw,
   AlertCircle,
+  Search,
+  Crown,
+  Swords,
 } from "lucide-react";
 
 export const DashboardPage = () => {
@@ -24,14 +28,15 @@ export const DashboardPage = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [toastError, setToastError] = useState("");
 
-  // دریافت اولیه اتاق‌ها هنگام لود صفحه
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
 
-  // به‌روزرسانی هوشمند لیست اتاق‌ها هنگام فوکوس مجدد مرورگر
   useEffect(() => {
     const handleFocus = () => fetchRooms();
     window.addEventListener("focus", handleFocus);
@@ -39,26 +44,47 @@ export const DashboardPage = () => {
   }, [fetchRooms]);
 
   const handleCreateRoom = async (data) => {
-    try {
-      await createRoom(data);
-    } catch {
-      setToastError("اتاق ساخته نشد — لطفاً دوباره تلاش کنید");
-      setTimeout(() => setToastError(""), 3500);
-    }
+    await createRoom(data);
   };
 
-  const handleDeleteRoom = async (id, roomBackup) => {
+  const handleConfirmDelete = async () => {
+    if (!roomToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteRoom(id, roomBackup);
+      await deleteRoom(roomToDelete.id, roomToDelete);
+      setRoomToDelete(null);
     } catch {
       setToastError("خطا در حذف اتاق");
       setTimeout(() => setToastError(""), 3500);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  // فیلتر کردن اتاق‌ها با سرچ یکپارچه روی تمامی اتاق‌ها
+  const filteredRooms = useMemo(() => {
+    if (!searchQuery.trim()) return rooms;
+    const query = searchQuery.trim().toLowerCase();
+    return rooms.filter(
+        (r) =>
+            r.name?.toLowerCase().includes(query) ||
+            r.code?.toLowerCase().includes(query) ||
+            r.description?.toLowerCase().includes(query)
+    );
+  }, [rooms, searchQuery]);
+
+  // دسته‌بندی به اتاق‌های GM (ماجراهای من) و Player (ماجراجویی‌های من)
+  const myCreatedAdventures = useMemo(
+      () => filteredRooms.filter((r) => r.role === "GM"),
+      [filteredRooms]
+  );
+  const myJoinedAdventures = useMemo(
+      () => filteredRooms.filter((r) => r.role !== "GM"),
+      [filteredRooms]
+  );
+
   return (
       <div className="h-screen w-full bg-[#090a0f] text-zinc-100 flex flex-col font-fa select-none overflow-y-auto" dir="rtl">
-        {/* نوتیفیکیشن خطا (Toast) */}
         {toastError && (
             <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-rose-600/95 backdrop-blur-md text-white px-5 py-2.5 rounded-xl shadow-2xl text-xs font-semibold border border-rose-500/40 flex items-center gap-2 animate-bounce">
               <AlertCircle className="w-4 h-4" />
@@ -66,7 +92,7 @@ export const DashboardPage = () => {
             </div>
         )}
 
-        {/* هدر بالایی داشبورد */}
+        {/* هدر بالایی داشبورد Titipool */}
         <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
@@ -114,7 +140,6 @@ export const DashboardPage = () => {
 
             <div className="h-5 w-px bg-zinc-800 mx-1" />
 
-            {/* آواتار کاربر متصل به روت /profile */}
             <button
                 type="button"
                 onClick={() => navigate("/profile")}
@@ -136,9 +161,39 @@ export const DashboardPage = () => {
         </header>
 
         {/* محتوای اصلی داشبورد */}
-        <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
+        <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8 space-y-8">
+          {/* نوار جستجوی یکپارچه و آمار */}
+          {rooms.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
+                <div className="relative w-full sm:w-80">
+                  <input
+                      type="text"
+                      placeholder="جستجو در بین تمامی اتاق‌ها..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-3.5 py-2 pl-9 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                </div>
+
+                <div className="flex items-center gap-4 text-xs text-zinc-400">
+              <span>
+                مجموع اتاق‌ها: <strong className="text-zinc-200">{rooms.length}</strong>
+              </span>
+                  <span className="h-3 w-px bg-zinc-700" />
+                  <span>
+                ماجراهای من: <strong className="text-amber-400">{rooms.filter(r => r.role === "GM").length}</strong>
+              </span>
+                  <span className="h-3 w-px bg-zinc-700" />
+                  <span>
+                ماجراجویی‌های من: <strong className="text-blue-400">{rooms.filter(r => r.role !== "GM").length}</strong>
+              </span>
+                </div>
+              </div>
+          )}
+
           {error && (
-              <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400">
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400">
                 <span>{error}</span>
                 <button
                     type="button"
@@ -169,19 +224,69 @@ export const DashboardPage = () => {
           ) : rooms.length === 0 && !isLoading ? (
               <EmptyRooms onCreateClick={() => setIsCreateOpen(true)} />
           ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {rooms.map((room) => (
-                    <RoomCard
-                        key={room.id}
-                        room={room}
-                        onDelete={handleDeleteRoom}
-                    />
-                ))}
+              <div className="space-y-8">
+                {/* دسته‌بندی ۱: ماجراهای من (GM) */}
+                {myCreatedAdventures.length > 0 && (
+                    <section className="space-y-4">
+                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        <h2 className="text-sm font-bold text-zinc-100">ماجراهای من</h2>
+                        <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+                    {myCreatedAdventures.length}
+                  </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {myCreatedAdventures.map((room) => (
+                            <RoomCard
+                                key={room.id}
+                                room={room}
+                                onRequestDelete={(r) => setRoomToDelete(r)}
+                            />
+                        ))}
+                      </div>
+                    </section>
+                )}
+
+                {/* دسته‌بندی ۲: ماجراجویی‌های من (Player) */}
+                {myJoinedAdventures.length > 0 && (
+                    <section className="space-y-4">
+                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                        <Swords className="w-4 h-4 text-blue-400" />
+                        <h2 className="text-sm font-bold text-zinc-100">ماجراجویی‌های من</h2>
+                        <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-bold">
+                    {myJoinedAdventures.length}
+                  </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {myJoinedAdventures.map((room) => (
+                            <RoomCard
+                                key={room.id}
+                                room={room}
+                                onRequestDelete={(r) => setRoomToDelete(r)}
+                            />
+                        ))}
+                      </div>
+                    </section>
+                )}
+
+                {/* عدم وجود نتیجه در جستجو */}
+                {filteredRooms.length === 0 && searchQuery.trim() && (
+                    <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 space-y-2">
+                      <p className="text-sm">اتاقی با عبارت «{searchQuery}» پیدا نشد.</p>
+                      <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="text-xs text-amber-400 hover:underline cursor-pointer"
+                      >
+                        پاک کردن جستجو
+                      </button>
+                    </div>
+                )}
               </div>
           )}
         </main>
 
-        {/* مدال‌های ساخت اتاق و ملحق شدن */}
+        {/* مدال‌ها */}
         <CreateRoomModal
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
@@ -190,6 +295,13 @@ export const DashboardPage = () => {
         <JoinRoomModal
             isOpen={isJoinOpen}
             onClose={() => setIsJoinOpen(false)}
+        />
+        <DeleteRoomModal
+            isOpen={!!roomToDelete}
+            onClose={() => setRoomToDelete(null)}
+            onConfirm={handleConfirmDelete}
+            room={roomToDelete}
+            isLoading={isDeleting}
         />
       </div>
   );

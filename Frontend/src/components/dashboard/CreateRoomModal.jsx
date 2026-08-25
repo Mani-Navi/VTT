@@ -1,78 +1,325 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Scroll, Box, Lock, Eye, EyeOff, FileText, CheckCircle2, MousePointerClick, Image as ImageIcon } from "lucide-react";
 import { Modal } from "../ui/Modal.jsx";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
+import { roomApi } from "../../api/room.api";
 
 const createRoomSchema = z.object({
-  name: z.string().min(2, "نام اتاق باید حداقل ۲ حرف باشد").max(100, "حداکثر ۱۰۰ حرف"),
-  expire_days: z.number().int().min(1, "حداقل ۱ روز").max(365, "حداکثر ۳۶۵ روز").default(30),
+  name: z
+      .string()
+      .min(3, "نام اتاق باید حداقل ۳ حرف باشد")
+      .max(40, "نام اتاق نمی‌تواند بیشتر از ۴۰ حرف باشد"),
+  description: z
+      .string()
+      .max(200, "توضیحات اتاق نمی‌تواند بیشتر از ۲۰۰ حرف باشد")
+      .optional(),
+  password: z
+      .string()
+      .max(30, "رمز عبور حداکثر ۳۰ کاراکتر است")
+      .optional(),
 });
 
 export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
+  const [tab, setTab] = useState("blank"); // "blank" | "template"
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [serverError, setServerError] = useState("");
+
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
       name: "",
-      expire_days: 30,
+      description: "",
+      password: "",
     },
   });
 
-  const onSubmit = async (data) => {
-    try {
-      await onCreate(data);
-      reset();
-      onClose();
-    } catch {
-      // مدیریت خطا در هوک انجام می‌شود
+  const nameValue = watch("name") || "";
+  const descValue = watch("description") || "";
+
+  useEffect(() => {
+    if (isOpen && tab === "template" && templates.length === 0) {
+      setIsLoadingTemplates(true);
+      roomApi
+          .getTemplates()
+          .then((data) => setTemplates(data))
+          .catch(() => {})
+          .finally(() => setIsLoadingTemplates(false));
+    }
+  }, [isOpen, tab, templates.length]);
+
+  const handleSelectTemplate = (tpl) => {
+    setSelectedTemplate(tpl);
+    setValue("name", tpl.title || "");
+    setValue("description", tpl.description || "");
+  };
+
+  const handleSwitchTab = (newTab) => {
+    setTab(newTab);
+    setServerError("");
+    if (newTab === "blank") {
+      setSelectedTemplate(null);
+      setValue("name", "");
+      setValue("description", "");
+      setValue("password", "");
+    } else {
+      setSelectedTemplate(null);
+      setValue("name", "");
+      setValue("description", "");
+      setValue("password", "");
     }
   };
+
+  const handleClose = () => {
+    reset();
+    setSelectedTemplate(null);
+    setShowPassword(false);
+    setServerError("");
+    setTab("blank");
+    onClose();
+  };
+
+  const onSubmit = async (data) => {
+    setServerError("");
+    try {
+      const payload = {
+        name: data.name.trim(),
+        description: data.description?.trim() || null,
+        password: data.password?.trim() || null,
+        templateId: tab === "template" ? selectedTemplate?.id : null,
+      };
+      await onCreate(payload);
+      handleClose();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setServerError("شما قبلاً اتاقی با همین نام ساخته‌اید. لطفاً نام دیگری انتخاب کنید.");
+      } else {
+        setServerError("خطا در ساخت اتاق. لطفاً مجدداً تلاش نمایید.");
+      }
+    }
+  };
+
+  const shouldShowForm = tab === "blank" || (tab === "template" && selectedTemplate !== null);
 
   return (
       <Modal
           isOpen={isOpen}
-          onClose={onClose}
-          title="Create New Game Room"
-          titleFa="ساخت اتاق جدید بازی"
-          maxWidth="md"
+          onClose={handleClose}
+          title="Create Game Room"
+          titleFa="ساخت اتاق بازی Titipool"
+          maxWidth="lg"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" dir="rtl">
-          <Input
-              label="نام اتاق یا کمپین"
-              placeholder="مثلا: کمپین نبرد در دخمه سیاه"
-              error={errors.name?.message}
-              disabled={isSubmitting}
-              {...register("name")}
-          />
-
-          <Input
-              label="مدت اعتبار اتاق (روز)"
-              type="number"
-              min={1}
-              max={365}
-              error={errors.expire_days?.message}
-              disabled={isSubmitting}
-              {...register("expire_days", { valueAsNumber: true })}
-          />
-
-          <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-zinc-800">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              انصراف
-            </Button>
-            <Button type="submit" variant="amber" isLoading={isSubmitting} className="font-bold">
-              <Sparkles className="w-4 h-4 ml-1.5" />
-              ایجاد و ورود به میز بازی
-            </Button>
+        <div className="space-y-4" dir="rtl">
+          {/* انتخاب نوع ساخت اتاق */}
+          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800/80">
+            <button
+                type="button"
+                onClick={() => handleSwitchTab("blank")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tab === "blank"
+                        ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
+                        : "text-zinc-400 hover:text-zinc-200"
+                }`}
+            >
+              <Box className="w-4 h-4" />
+              میز خام و بدون قالب
+            </button>
+            <button
+                type="button"
+                onClick={() => handleSwitchTab("template")}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tab === "template"
+                        ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
+                        : "text-zinc-400 hover:text-zinc-200"
+                }`}
+            >
+              <Scroll className="w-4 h-4" />
+              انتخاب از قالب‌های ماجراجویی
+            </button>
           </div>
-        </form>
+
+          {/* لیست قالب‌های آماده همراه با پیش‌نمایش بندانگشتی مپ */}
+          {tab === "template" && (
+              <div className="space-y-2.5 p-3 bg-zinc-950/70 rounded-xl border border-zinc-800/90">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400">یک سناریو را برای شروع انتخاب کنید:</span>
+                  {selectedTemplate && (
+                      <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> قالب «{selectedTemplate.title}» انتخاب شد
+                </span>
+                  )}
+                </div>
+
+                {isLoadingTemplates ? (
+                    <div className="h-24 rounded-lg bg-zinc-900/60 border border-zinc-800 flex items-center justify-center text-xs text-zinc-500">
+                      در حال بارگذاری سناریوها...
+                    </div>
+                ) : templates.length === 0 ? (
+                    <div className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800 text-center text-xs text-zinc-400">
+                      هیچ قالب پیش‌فرضی یافت نشد.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                      {templates.map((tpl) => {
+                        const isSelected = selectedTemplate?.id === tpl.id;
+                        return (
+                            <div
+                                key={tpl.id}
+                                onClick={() => handleSelectTemplate(tpl)}
+                                className={`p-2.5 rounded-xl border cursor-pointer transition-all flex gap-3 items-center ${
+                                    isSelected
+                                        ? "bg-amber-500/15 border-amber-500 text-zinc-100 ring-1 ring-amber-500/50 shadow-md shadow-amber-500/10"
+                                        : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 text-zinc-300"
+                                }`}
+                            >
+                              {/* بندانگشتی نقشه */}
+                              <div className="w-14 h-14 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center relative">
+                                {tpl.baseMapUrl ? (
+                                    <img src={tpl.baseMapUrl} alt={tpl.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <ImageIcon className="w-6 h-6 text-zinc-700" />
+                                )}
+                                {isSelected && (
+                                    <div className="absolute inset-0 bg-amber-500/20 backdrop-blur-2xs flex items-center justify-center">
+                                      <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                                    </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-xs text-amber-300/90 truncate">{tpl.title}</h4>
+                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                                  {tpl.description || "شامل مپ، توکن‌ها و ژورنال‌های آماده"}
+                                </p>
+                              </div>
+                            </div>
+                        );
+                      })}
+                    </div>
+                )}
+              </div>
+          )}
+
+          {!shouldShowForm && (
+              <div className="p-6 rounded-xl bg-zinc-950/40 border border-dashed border-zinc-800 text-center text-zinc-500 flex flex-col items-center justify-center gap-2">
+                <MousePointerClick className="w-6 h-6 text-amber-500/60 animate-bounce" />
+                <p className="text-xs font-medium text-zinc-400">
+                  جهت تنظیم مشخصات و ساخت میز، لطفاً یکی از قالب‌های بالا را انتخاب کنید.
+                </p>
+              </div>
+          )}
+
+          {serverError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-center font-medium">
+                {serverError}
+              </div>
+          )}
+
+          {shouldShowForm && (
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 transition-all duration-300 animate-fadeIn">
+                {/* نام اتاق */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-zinc-300">
+                      نام اتاق یا کمپین <span className="text-amber-400">*</span>
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                  {nameValue.length}/40
+                </span>
+                  </div>
+                  <Input
+                      placeholder="مثلا: دخمه اشباح سرخ"
+                      error={errors.name?.message}
+                      disabled={isSubmitting}
+                      maxLength={40}
+                      {...register("name")}
+                  />
+                </div>
+
+                {/* توضیحات */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-zinc-300">
+                      توضیحات و خلاصه ماجرا (اختیاری)
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                  {descValue.length}/200
+                </span>
+                  </div>
+                  <div className="relative">
+                <textarea
+                    rows={2}
+                    placeholder="توضیحات کوتاه درباره سناریو، سطح کاراکترها یا اهداف..."
+                    maxLength={200}
+                    className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2 pl-9 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors resize-none"
+                    disabled={isSubmitting}
+                    {...register("description")}
+                />
+                    <FileText className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 pointer-events-none" />
+                  </div>
+                  {errors.description && (
+                      <p className="text-[11px] text-rose-400 font-medium">{errors.description.message}</p>
+                  )}
+                </div>
+
+                {/* رمز عبور */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-zinc-300">
+                    رمز عبور اتاق (اختیاری جهت خصوصی‌سازی)
+                  </label>
+                  <div className="relative">
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="در صورت تمایل یک رمز تعیین کنید"
+                        maxLength={30}
+                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 pl-10 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors"
+                        disabled={isSubmitting}
+                        {...register("password")}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+                        title={showPassword ? "مخفی‌سازی رمز" : "نمایش رمز"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                      <p className="text-[11px] text-rose-400 font-medium">{errors.password.message}</p>
+                  )}
+                </div>
+
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-zinc-800">
+                  <Button type="button" variant="ghost" onClick={handleClose}>
+                    انصراف
+                  </Button>
+                  <Button
+                      type="submit"
+                      variant="amber"
+                      isLoading={isSubmitting}
+                      className="font-bold shadow-lg shadow-amber-500/10"
+                  >
+                    <Sparkles className="w-4 h-4 ml-1.5" />
+                    ایجاد و راه‌اندازی میز
+                  </Button>
+                </div>
+              </form>
+          )}
+        </div>
       </Modal>
   );
 };
