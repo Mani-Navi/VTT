@@ -7,15 +7,27 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity @Table(name = "rooms")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Entity
+@Table(name = "rooms")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Room {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(unique = true, nullable = false)
     private String code;
+
+    @Column(nullable = false)
     private String name;
+
+    @Column(length = 500)
+    private String description;
+
+    private String password;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
@@ -33,13 +45,16 @@ public class Room {
     private Integer maxPlayers = 10;
 
     @Builder.Default
-    private Integer expireDays = 7;
+    private Integer expireDays = 30;
 
     private String musicUrl;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
     private LocalDateTime lastActive;
+
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "expires_at", insertable = false, updatable = false)

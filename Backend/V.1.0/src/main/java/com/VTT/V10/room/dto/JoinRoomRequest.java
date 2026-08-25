@@ -16,4 +16,6 @@ public class JoinRoomRequest {
     @JsonAlias({"code", "roomCode"})
     @NotBlank(message = "کد اتاق الزامی است")
     private String roomCode;
+
+    private String password;
 }

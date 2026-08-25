@@ -1,11 +1,14 @@
 package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.CreateRoomRequest;
+import com.VTT.V10.room.dto.JoinRoomRequest;
 import com.VTT.V10.room.dto.RoomResponse;
+import com.VTT.V10.room.dto.RoomTemplateResponse;
 import com.VTT.V10.user.User;
 import com.VTT.V10.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,6 +30,23 @@ public class RoomService {
     private final PlayerPermissionService permissionService;
     private final PlayerPermissionRepository permissionRepository;
     private final RoomSettingsRepository settingsRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // دریافت قالب‌های آماده
+    @Transactional(readOnly = true)
+    public List<RoomTemplateResponse> getAvailableTemplates() {
+        return templateRepository.findAll().stream()
+                .map(t -> RoomTemplateResponse.builder()
+                        .id(t.getId())
+                        .title(t.getTitle())
+                        .description(t.getDescription())
+                        .maxPlayers(t.getMaxPlayers())
+                        .expireDays(t.getExpireDays())
+                        .baseMapUrl(t.getBaseMapUrl())
+                        .musicUrl(t.getMusicUrl())
+                        .build())
+                .collect(Collectors.toList());
+    }
 
     // ۱. دریافت اتاق‌های کاربر برای داشبورد
     @Transactional(readOnly = true)
@@ -45,20 +65,31 @@ public class RoomService {
                 .collect(Collectors.toList());
     }
 
-    // ۲. ساخت اتاق جدید
+    // ۲. ساخت اتاق جدید با بررسی یکتایی نام برای کاربر
     @Transactional
     public RoomResponse createRoom(CreateRoomRequest request, String userEmail) {
         User owner = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        int expireDays = (request.getExpireDays() != null) ? request.getExpireDays() : 30;
+        // بررسی یکتایی نام اتاق برای این کاربر
+        boolean exists = roomRepository.findAll().stream()
+                .anyMatch(r -> r.getOwner().getId().equals(owner.getId()) && r.getName().trim().equalsIgnoreCase(request.getName().trim()));
+        if (exists) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "شما قبلاً اتاقی با همین نام ایجاد کرده‌اید");
+        }
+
+        String encodedPassword = (request.getPassword() != null && !request.getPassword().trim().isEmpty())
+                ? passwordEncoder.encode(request.getPassword().trim())
+                : null;
 
         Room.RoomBuilder roomBuilder = Room.builder()
-                .name(request.getName())
+                .name(request.getName().trim())
+                .description(request.getDescription())
+                .password(encodedPassword)
                 .code(generateRandomCode())
                 .owner(owner)
                 .isActive(true)
-                .expireDays(expireDays)
+                .expireDays(30)
                 .lastActive(LocalDateTime.now());
 
         if (request.getTemplateId() != null) {
@@ -67,8 +98,8 @@ public class RoomService {
 
             roomBuilder.type(Room.RoomType.OFFICIAL)
                     .template(template)
-                    .maxPlayers(template.getMaxPlayers())
-                    .expireDays(template.getExpireDays())
+                    .maxPlayers(template.getMaxPlayers() != null ? template.getMaxPlayers() : 10)
+                    .expireDays(template.getExpireDays() != null ? template.getExpireDays() : 30)
                     .musicUrl(template.getMusicUrl());
         } else {
             roomBuilder.type(Room.RoomType.STANDARD)
@@ -86,7 +117,7 @@ public class RoomService {
                 .build();
         memberRepository.save(admin);
 
-        // ثبت نوت‌های پیش‌فرض سناریو
+        // کپی ژورنال‌های پیش‌فرض قالب
         if (room.getType() == Room.RoomType.OFFICIAL && room.getTemplate() != null && room.getTemplate().getDefaultJournals() != null) {
             for (TemplateJournal tj : room.getTemplate().getDefaultJournals()) {
                 Journal journal = Journal.builder()
@@ -106,29 +137,34 @@ public class RoomService {
 
     // ۳. عضویت در اتاق
     @Transactional
-    public RoomResponse joinRoom(String roomCode, String userEmail) {
-        Room room = roomRepository.findByCode(roomCode.trim().toUpperCase())
+    public RoomResponse joinRoom(JoinRoomRequest request, String userEmail) {
+        Room room = roomRepository.findByCode(request.getRoomCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "اتاقی با این کد یافت نشد"));
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        if (memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) {
-            return convertToResponse(room);
+        // اگر کاربر قبلا عضو نبوده و اتاق رمز دارد، اعتبارسنجی رمز
+        if (!memberRepository.existsByRoomIdAndUserId(room.getId(), user.getId())) {
+            if (room.getPassword() != null && !room.getPassword().isEmpty()) {
+                if (request.getPassword() == null || !passwordEncoder.matches(request.getPassword(), room.getPassword())) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "رمز عبور اتاق اشتباه است");
+                }
+            }
+
+            RoomMember member = RoomMember.builder()
+                    .room(room)
+                    .user(user)
+                    .role(RoomMember.Role.PLAYER)
+                    .joinedAt(LocalDateTime.now())
+                    .build();
+            memberRepository.save(member);
+
+            permissionService.createDefaultPermissions(room, member);
         }
 
-        RoomMember member = RoomMember.builder()
-                .room(room)
-                .user(user)
-                .role(RoomMember.Role.PLAYER)
-                .joinedAt(LocalDateTime.now())
-                .build();
-        memberRepository.save(member);
-
-        permissionService.createDefaultPermissions(room, member);
-
         RoomResponse response = convertToResponse(room);
-        response.setRole("Player");
+        response.setRole(room.getOwner().getId().equals(user.getId()) ? "GM" : "Player");
         return response;
     }
 
@@ -142,7 +178,6 @@ public class RoomService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق اجازه حذف آن را دارد");
         }
 
-        // حذف وابستگی‌ها به ترتیب
         permissionRepository.deleteByRoomId(roomId);
         memberRepository.deleteByRoomId(roomId);
         journalRepository.deleteByRoomId(roomId);
@@ -174,11 +209,14 @@ public class RoomService {
                 .id(room.getId())
                 .code(room.getCode())
                 .name(room.getName())
+                .description(room.getDescription())
                 .type(room.getType().name())
+                .isProtected(room.getPassword() != null && !room.getPassword().isEmpty())
                 .ownerUsername(room.getOwner() != null ? room.getOwner().getUsername() : "")
                 .isActive(room.getIsActive() != null ? room.getIsActive() : true)
                 .playerCount(1)
                 .expiresAt(expiresAt)
+                .templateId(room.getTemplate() != null ? room.getTemplate().getId() : null)
                 .build();
     }
 }

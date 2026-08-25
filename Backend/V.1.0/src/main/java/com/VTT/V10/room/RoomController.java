@@ -1,8 +1,9 @@
 package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.CreateRoomRequest;
-import com.VTT.V10.room.dto.RoomResponse;
 import com.VTT.V10.room.dto.JoinRoomRequest;
+import com.VTT.V10.room.dto.RoomResponse;
+import com.VTT.V10.room.dto.RoomTemplateResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,10 +19,14 @@ import java.util.UUID;
 public class RoomController {
     private final RoomService roomService;
 
-    // دریافت اتاق‌ها جهت داشبورد (حل خطای GET)
     @GetMapping
     public ResponseEntity<List<RoomResponse>> getRooms(Authentication authentication) {
         return ResponseEntity.ok(roomService.getUserRooms(authentication.getName()));
+    }
+
+    @GetMapping("/templates")
+    public ResponseEntity<List<RoomTemplateResponse>> getTemplates() {
+        return ResponseEntity.ok(roomService.getAvailableTemplates());
     }
 
     @PostMapping
@@ -37,7 +42,7 @@ public class RoomController {
             @Valid @RequestBody JoinRoomRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(roomService.joinRoom(request.getRoomCode(), authentication.getName()));
+        return ResponseEntity.ok(roomService.joinRoom(request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

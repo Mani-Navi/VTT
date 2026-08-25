@@ -1,9 +1,5 @@
 package com.VTT.V10.room.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -23,14 +19,11 @@ public class CreateRoomRequest {
     @Size(min = 2, max = 100, message = "نام اتاق باید بین ۲ تا ۱۰۰ کاراکتر باشد")
     private String name;
 
-    // پشتیبانی همزمان از expire_days و expireDays
-    @JsonProperty("expire_days")
-    @JsonAlias({"expireDays", "expire_days"})
-    @Min(value = 1, message = "مدت اعتبار حداقل ۱ روز است")
-    @Max(value = 365, message = "مدت اعتبار حداکثر ۳۶۵ روز است")
-    private Integer expireDays;
+    @Size(max = 500, message = "توضیحات اتاق حداکثر ۵۰۰ کاراکتر است")
+    private String description;
 
-    // برای انتخاب سناریو (اتاق رسمی)
-    // اگر null باشد، اتاق به صورت STANDARD ساخته می‌شود
+    private String password;
+
+    // شناسه قالب برای ساخت اتاق از پیش‌طراحی‌شده (اختیاری)
     private UUID templateId;
 }

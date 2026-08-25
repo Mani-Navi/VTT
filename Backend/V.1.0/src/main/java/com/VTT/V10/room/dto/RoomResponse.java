@@ -17,9 +17,11 @@ public class RoomResponse {
     private UUID id;
     private String code;
     private String name;
+    private String description;
     private String type; // STANDARD یا OFFICIAL
     private String ownerUsername;
     private String role; // "GM" یا "Player"
+    private boolean isProtected;
 
     @JsonProperty("is_active")
     @Builder.Default
@@ -32,7 +34,9 @@ public class RoomResponse {
     @JsonProperty("expires_at")
     private LocalDateTime expiresAt;
 
-    // متد کمکی برای فرانت‌اند تا هر دو فرمت res.id و res.roomId کار کنند
+    @JsonProperty("template_id")
+    private UUID templateId;
+
     @JsonProperty("roomId")
     public UUID getRoomId() {
         return this.id;
