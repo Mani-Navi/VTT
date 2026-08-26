@@ -60,6 +60,15 @@ public class RoomController {
         return ResponseEntity.ok(roomService.joinRoom(request, authentication.getName()));
     }
 
+    @PostMapping("/{roomId}/close")
+    public ResponseEntity<Void> closeRoom(
+            @PathVariable UUID roomId,
+            Authentication authentication
+    ) {
+        roomService.closeRoom(roomId, authentication.getName());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{roomId}/members")
     public ResponseEntity<List<RoomMemberResponse>> getRoomMembers(
             @PathVariable UUID roomId,

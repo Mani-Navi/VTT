@@ -20,5 +20,6 @@ public class RoomMemberResponse {
     private Boolean isOwner;
     private Boolean isMuted;
     private Boolean isBanned;
+    private Boolean isOnline; // وضعیت آنلاین لحظه‌ای
     private PermissionResponse permissions;
 }

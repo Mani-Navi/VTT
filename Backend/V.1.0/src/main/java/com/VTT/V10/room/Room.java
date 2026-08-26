@@ -54,8 +54,10 @@ public class Room {
 
     private LocalDateTime lastActive;
 
+    private LocalDateTime gmLastSeenAt;
+
     @Builder.Default
-    private Boolean isActive = true;
+    private Boolean isActive = false;
 
     @Column(name = "expires_at", insertable = false, updatable = false)
     private LocalDateTime expiresAt;

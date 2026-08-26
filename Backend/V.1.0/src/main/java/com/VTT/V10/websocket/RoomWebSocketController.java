@@ -2,16 +2,20 @@ package com.VTT.V10.websocket;
 
 import com.VTT.V10.room.*;
 import com.VTT.V10.room.dto.RoomSettingsResponse;
+import com.VTT.V10.user.User;
+import com.VTT.V10.user.UserRepository;
 import com.VTT.V10.websocket.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -27,30 +31,61 @@ public class RoomWebSocketController {
     private final RoomSettingsService roomSettingsService;
     private final RoomMemberRepository roomMemberRepository;
     private final PlayerPermissionRepository permissionRepository;
+    private final RoomSessionManager sessionManager;
+    private final UserRepository userRepository;
 
-    // ۱. جابه‌جایی توکن (Token Move)
+    /**
+     * اعلام پیوستن فعال به اتاق و درخواست وضعیت زنده حضور اعضا (Presence Join)
+     */
+    @MessageMapping("/room/{roomId}/presence/join")
+    public void handlePresenceJoin(
+            @DestinationVariable UUID roomId,
+            @Header("simpSessionId") String sessionId,
+            Principal principal
+    ) {
+        if (principal == null || sessionId == null) return;
+
+        Optional<User> userOpt = userRepository.findByEmail(principal.getName());
+        userOpt.ifPresent(user -> {
+            sessionManager.addUser(roomId, sessionId, user.getId(), user.getUsername(), user.getEmail());
+            roomService.updateLastActive(roomId, user.getUsername());
+        });
+    }
+
+    /**
+     * اعلام خروج فعال از اتاق (Presence Leave)
+     */
+    @MessageMapping("/room/{roomId}/presence/leave")
+    public void handlePresenceLeave(
+            @DestinationVariable UUID roomId,
+            Principal principal
+    ) {
+        if (principal == null) return;
+        Optional<User> userOpt = userRepository.findByEmail(principal.getName());
+        userOpt.ifPresent(user -> sessionManager.removeUser(roomId, user.getId()));
+    }
+
     @MessageMapping("/room/{roomId}/token/move")
     public void handleTokenMove(
             @DestinationVariable UUID roomId,
-            @Payload SocketEvent<TokenMoveEvent> event
+            @Payload SocketEvent<TokenMoveEvent> event,
+            Principal principal
     ) {
         if (event == null || event.getData() == null) return;
 
-        // تمدید زمان فعالیت اتاق
-        roomService.updateLastActive(roomId);
+        if (principal != null) {
+            roomService.updateLastActive(roomId, principal.getName());
+        }
 
-        // آپدیت در دیتابیس
         tokenService.updateTokenPosition(
                 event.getData().getTokenId(),
                 event.getData().getX(),
                 event.getData().getY(),
                 event.getData().getRotation()
         );
-        // پخش پیام به تمام اعضای اتاق
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
-    // ۲. نقاشی (Drawing) - با بررسی سطح دسترسی
     @MessageMapping("/room/{roomId}/drawing")
     public void handleDrawing(
             @DestinationVariable UUID roomId,
@@ -59,17 +94,14 @@ public class RoomWebSocketController {
     ) {
         if (principal == null || event == null || event.getData() == null) return;
 
-        roomService.updateLastActive(roomId);
+        roomService.updateLastActive(roomId, principal.getName());
 
         if (hasPermission(roomId, principal.getName(), "DRAWING")) {
             drawingService.saveDrawing(event.getData().getSceneId(), event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
-        } else {
-            log.warn("User {} has no DRAWING permission in room {}", principal.getName(), roomId);
         }
     }
 
-    // ۳. مه جنگ (Fog) - با بررسی سطح دسترسی
     @MessageMapping("/room/{roomId}/fog")
     public void handleFog(
             @DestinationVariable UUID roomId,
@@ -78,30 +110,27 @@ public class RoomWebSocketController {
     ) {
         if (principal == null || event == null || event.getData() == null) return;
 
-        roomService.updateLastActive(roomId);
+        roomService.updateLastActive(roomId, principal.getName());
 
         if (hasPermission(roomId, principal.getName(), "FOG")) {
             fogService.handleFogUpdate(event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
-        } else {
-            log.warn("User {} has no FOG permission in room {}", principal.getName(), roomId);
         }
     }
 
-    // ۴. سیستم تاس‌ریز (Dice Roller)
     @MessageMapping("/room/{roomId}/dice")
     public void handleDiceRoll(
             @DestinationVariable UUID roomId,
-            @Payload SocketEvent<DiceRollEvent> event
+            @Payload SocketEvent<DiceRollEvent> event,
+            Principal principal
     ) {
         if (event == null) return;
-
-        roomService.updateLastActive(roomId);
-        // پخش نتیجه تاس برای تمام بازیکنان حاضر در اتاق
+        if (principal != null) {
+            roomService.updateLastActive(roomId, principal.getName());
+        }
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
-    // ۵. آپدیت تنظیمات اتاق (Settings)
     @MessageMapping("/room/{roomId}/settings")
     public void handleSettingsUpdate(
             @DestinationVariable UUID roomId,
@@ -110,9 +139,8 @@ public class RoomWebSocketController {
     ) {
         if (principal == null || event == null || event.getData() == null) return;
 
-        roomService.updateLastActive(roomId);
+        roomService.updateLastActive(roomId, principal.getName());
 
-        // فقط GM (Admin) اجازه تغییر تنظیمات را دارد
         var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
         if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
             roomSettingsService.updateSettings(roomId, event.getData());
@@ -120,9 +148,6 @@ public class RoomWebSocketController {
         }
     }
 
-    /**
-     * متد مرکزی برای بررسی سطح دسترسی کاربر به صورت ایمن
-     */
     private boolean hasPermission(UUID roomId, String email, String action) {
         try {
             var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
