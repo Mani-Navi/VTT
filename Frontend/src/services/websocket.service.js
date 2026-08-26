@@ -4,24 +4,22 @@ import { useWebSocketStore } from "../store/websocket.store.js";
 class WebSocketService {
   constructor() {
     this.client = null;
-    this.broadcastChannel = null;
     this.listeners = new Map();
     this.isConnected = false;
     this.currentRoomId = null;
 
-    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-      try {
-        this.broadcastChannel = new BroadcastChannel("persian_vtt_room_sync");
-        this.broadcastChannel.onmessage = (event) => {
-          this.handleIncomingMessage(event.data);
-        };
-      } catch (e) {
-        console.warn("BroadcastChannel not supported", e);
-      }
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        this.sendPresenceLeave();
+      });
     }
   }
 
   connect(roomId, token) {
+    if (this.isConnected && this.currentRoomId === roomId) {
+      return;
+    }
+
     this.currentRoomId = roomId;
     const authToken = token || localStorage.getItem("vtt_jwt");
 
@@ -37,9 +35,9 @@ class WebSocketService {
               roomId: roomId,
             }
             : { roomId: roomId },
-        reconnectDelay: 4000,
-        heartbeatIncoming: 4000,
-        heartbeatOutgoing: 4000,
+        reconnectDelay: 3000,
+        heartbeatIncoming: 5000,
+        heartbeatOutgoing: 5000,
         debug: () => {},
       });
 
@@ -47,7 +45,7 @@ class WebSocketService {
         this.isConnected = true;
         useWebSocketStore.getState().setStatus("CONNECTED");
 
-        // ۱. سابسکرایب به کانال اصلی رویدادهای اتاق
+        // ۱. سابسکرایب به کانال اصلی اتاق
         this.client.subscribe(`/topic/room/${roomId}`, (message) => {
           try {
             const payload = JSON.parse(message.body);
@@ -57,11 +55,11 @@ class WebSocketService {
           }
         });
 
-        // ۲. سابسکرایب به کانال کاربران آنلاین
+        // ۲. سابسکرایب به کانال اعضای آنلاین (Discord-like Live Presence)
         this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
           try {
-            const users = JSON.parse(message.body);
-            this.trigger("USERS_UPDATE", { users });
+            const onlineMembers = JSON.parse(message.body);
+            this.trigger("USERS_UPDATE", onlineMembers);
           } catch (e) {
             console.error("Users parse error:", e);
           }
@@ -76,6 +74,9 @@ class WebSocketService {
             console.error("Settings parse error:", e);
           }
         });
+
+        // ارسال سیگنال ورود برای دریافت آنی لیست همه حاضرین
+        this.sendPresenceJoin();
       };
 
       this.client.onWebSocketClose = () => {
@@ -93,7 +94,28 @@ class WebSocketService {
     }
   }
 
+  sendPresenceJoin() {
+    if (this.client && this.isConnected && this.currentRoomId) {
+      this.client.publish({
+        destination: `/app/room/${this.currentRoomId}/presence/join`,
+        body: JSON.stringify({}),
+      });
+    }
+  }
+
+  sendPresenceLeave() {
+    if (this.client && this.isConnected && this.currentRoomId) {
+      try {
+        this.client.publish({
+          destination: `/app/room/${this.currentRoomId}/presence/leave`,
+          body: JSON.stringify({}),
+        });
+      } catch (ignored) {}
+    }
+  }
+
   disconnect() {
+    this.sendPresenceLeave();
     if (this.client && this.isConnected) {
       this.client.deactivate();
     }
@@ -101,9 +123,8 @@ class WebSocketService {
     useWebSocketStore.getState().setStatus("DISCONNECTED");
   }
 
-  // ارسال دقیق پیام به اندپوینت مربوطه در اسپرینگ بوت
   send(type, data) {
-    if (!this.currentRoomId) return;
+    if (!this.currentRoomId || !this.client || !this.isConnected) return;
 
     let destination = `/app/room/${this.currentRoomId}/event`;
     let action = "UPDATE";
@@ -129,6 +150,9 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/settings`;
         action = "UPDATE";
         break;
+      default:
+        action = type;
+        break;
     }
 
     const socketEvent = {
@@ -137,20 +161,13 @@ class WebSocketService {
       data: data,
     };
 
-    if (this.client && this.isConnected) {
-      try {
-        this.client.publish({
-          destination: destination,
-          body: JSON.stringify(socketEvent),
-        });
-      } catch (err) {
-        console.warn("STOMP publish failed, using BroadcastChannel", err);
-      }
-    }
-
-    // پخش محلی بین تب‌ها
-    if (this.broadcastChannel) {
-      this.broadcastChannel.postMessage({ type, data });
+    try {
+      this.client.publish({
+        destination: destination,
+        body: JSON.stringify(socketEvent),
+      });
+    } catch (err) {
+      console.warn("STOMP publish failed", err);
     }
   }
 
@@ -176,8 +193,13 @@ class WebSocketService {
     if (!payload) return;
     useWebSocketStore.getState().touchEvent();
 
-    // هندل SocketEvent ارسالی از سرور
-    if (payload.action && payload.data) {
+    this.trigger("MESSAGE", payload);
+
+    if (payload.action) {
+      this.trigger(payload.action, payload);
+    }
+
+    if (payload.data) {
       if (payload.data.tokenId !== undefined) {
         this.trigger("TOKEN_MOVE", payload);
       } else if (payload.data.tool !== undefined) {
@@ -185,10 +207,6 @@ class WebSocketService {
       } else if (payload.data.formula !== undefined) {
         this.trigger("DICE_ROLL", payload);
       }
-    }
-
-    if (payload.type) {
-      this.trigger(payload.type, payload.data);
     }
   }
 }

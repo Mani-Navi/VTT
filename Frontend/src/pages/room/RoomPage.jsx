@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   LogOut,
   Maximize2,
   Minimize2,
   HelpCircle,
+  PowerOff,
 } from "lucide-react";
 import { useSceneStore } from "../../store/scene.store.js";
 import { useAuthStore } from "../../store/auth.store";
@@ -28,11 +29,66 @@ export const RoomPage = () => {
   const user = useAuthStore((state) => state.user);
   const loadScenes = useSceneStore((state) => state.loadScenes);
 
-  const { isConnected } = useWebSocket(roomId);
-
   const [roomData, setRoomData] = useState(null);
+  const [onlineMembers, setOnlineMembers] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  const handleSocketMessage = useCallback(
+      (event) => {
+        if (!event) return;
+
+        // دریافت زنده لیست کامل اعضای آنلاین
+        if (Array.isArray(event)) {
+          setOnlineMembers(event);
+          return;
+        }
+
+        const { action, data } = event;
+
+        // خروج آنی و تضمینی به داشبورد در صورت بسته شدن یا غیرفعال‌سازی خودکار اتاق
+        if (action === "ROOM_CLOSED") {
+          alert(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.");
+          window.location.href = "/dashboard";
+          return;
+        }
+
+        if (action === "MEMBER_KICKED") {
+          if (data?.userId === user?.id || data?.username === user?.username) {
+            alert("شما توسط دانجن‌مستر از اتاق اخراج شدید.");
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
+        if (action === "MEMBER_BANNED") {
+          if (data?.userId === user?.id || data?.username === user?.username) {
+            alert("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.");
+            window.location.href = "/dashboard";
+            return;
+          }
+        }
+
+        if (action === "PERMISSION_UPDATED") {
+          if (data?.username === user?.username || data?.memberId === user?.id) {
+            setRoomData((prev) => ({
+              ...prev,
+              permissions: {
+                canAssets: data.canAssets,
+                canText: data.canText,
+                canFog: data.canFog,
+                canDrawing: data.canDrawing,
+                canScene: data.canScene,
+                canRuler: data.canRuler,
+              },
+            }));
+          }
+        }
+      },
+      [user]
+  );
+
+  const { isConnected } = useWebSocket(roomId, handleSocketMessage);
 
   useEffect(() => {
     if (!roomId) return;
@@ -44,6 +100,9 @@ export const RoomPage = () => {
         })
         .catch((err) => {
           console.error("خطا در دریافت اطلاعات اتاق:", err);
+          const message = err.response?.data?.message || "امکان ورود به این اتاق وجود ندارد";
+          alert(message);
+          window.location.href = "/dashboard";
         });
 
     loadScenes(roomId);
@@ -65,6 +124,18 @@ export const RoomPage = () => {
     canRuler: true,
   };
 
+  const handleCloseRoom = async () => {
+    if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
+      return;
+    }
+    try {
+      await roomApi.closeRoom(roomId);
+      window.location.href = "/dashboard";
+    } catch (err) {
+      console.error("خطا در بستن اتاق:", err);
+    }
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().then(() => setIsFullscreen(true));
@@ -76,12 +147,17 @@ export const RoomPage = () => {
   return (
       <div className="relative w-screen h-screen overflow-hidden bg-[#090a0f] select-none font-fa">
         {/* هدر سمت راست: مشخصات اتاق + منوی بازیکنان */}
-        <PlayerMenu isGM={isGM} roomId={roomId} roomData={roomData} />
+        <PlayerMenu
+            isGM={isGM}
+            roomId={roomId}
+            roomData={roomData}
+            onlineMembers={onlineMembers}
+        />
 
         {/* نوار مدیریت صحنه‌ها در بالای وسط صفحه */}
         <SceneBar isGM={isGM} roomId={roomId} />
 
-        {/* هدر سمت چپ: وضعیت اتصال، میانبرها و خروج */}
+        {/* هدر سمت چپ */}
         <header
             className="fixed top-4 left-6 z-30 flex items-center gap-2.5 pointer-events-auto"
             dir="ltr"
@@ -100,6 +176,7 @@ export const RoomPage = () => {
           </div>
 
           <button
+              type="button"
               onClick={() => setIsHelpOpen(true)}
               className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
               title="راهنمای کلیدها"
@@ -108,6 +185,7 @@ export const RoomPage = () => {
           </button>
 
           <button
+              type="button"
               onClick={toggleFullscreen}
               className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
               title="تمام صفحه"
@@ -115,8 +193,21 @@ export const RoomPage = () => {
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
+          {isGM && (
+              <button
+                  type="button"
+                  onClick={handleCloseRoom}
+                  className="px-2.5 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 flex items-center gap-1.5 shadow-xl backdrop-blur-xl transition-all cursor-pointer font-bold text-xs"
+                  title="بستن و غیرفعال‌سازی اتاق"
+              >
+                <PowerOff className="w-3.5 h-3.5" />
+                <span>بستن اتاق</span>
+              </button>
+          )}
+
           <button
-              onClick={() => navigate("/dashboard")}
+              type="button"
+              onClick={() => (window.location.href = "/dashboard")}
               className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
               title="خروج از اتاق"
           >
