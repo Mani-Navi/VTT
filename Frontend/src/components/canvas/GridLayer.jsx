@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Line, Shape, Group } from "react-konva";
+import { Line, Shape, Group, Circle } from "react-konva";
 import { GRID_TYPES } from "../../constants/tools";
 import { getHexPoints } from "../../utils/grid";
 
@@ -8,33 +8,64 @@ export const GridLayer = ({ grid, width, height }) => {
     return null;
   }
 
-  const { type = "square", size = 50, color = "#000000", opacity = 0.3 } = grid;
+  const {
+    type = "square",
+    size = 50,
+    color = "#000000",
+    opacity = 0.3,
+    lineType = "solid",
+    lineWidth = 1,
+  } = grid;
 
-  const squareLines = useMemo(() => {
-    if (type !== (GRID_TYPES?.SQUARE || "square")) return [];
+  const dashPattern = useMemo(() => {
+    if (lineType === "dotted") return [4, 4];
+    return undefined;
+  }, [lineType]);
+
+  // ۱. رندر گرید مربعی (Solid, Dotted, Dots)
+  if (type === "square" || type === (GRID_TYPES?.SQUARE || "square")) {
+    if (lineType === "dots") {
+      // رندر به صورت نقاط تقاطع
+      const dots = [];
+      for (let x = 0; x <= width; x += size) {
+        for (let y = 0; y <= height; y += size) {
+          dots.push({ x, y, key: `dot-${x}-${y}` });
+        }
+      }
+
+      return (
+          <Group listening={false} opacity={opacity}>
+            {dots.map((d) => (
+                <Circle
+                    key={d.key}
+                    x={d.x}
+                    y={d.y}
+                    radius={lineWidth * 1.5}
+                    fill={color}
+                    listening={false}
+                />
+            ))}
+          </Group>
+      );
+    }
+
     const lines = [];
-
-    // خطوط عمودی
     for (let x = 0; x <= width; x += size) {
       lines.push({ points: [x, 0, x, height], key: `v-${x}` });
     }
-    // خطوط افقی
     for (let y = 0; y <= height; y += size) {
       lines.push({ points: [0, y, width, y], key: `h-${y}` });
     }
 
-    return lines;
-  }, [type, width, height, size]);
-
-  if (type === (GRID_TYPES?.SQUARE || "square")) {
     return (
         <Group listening={false} opacity={opacity}>
-          {squareLines.map((line) => (
+          {lines.map((line) => (
               <Line
                   key={line.key}
                   points={line.points}
                   stroke={color}
-                  strokeWidth={1}
+                  strokeWidth={lineWidth}
+                  dash={dashPattern}
                   listening={false}
               />
           ))}
@@ -42,9 +73,33 @@ export const GridLayer = ({ grid, width, height }) => {
     );
   }
 
-  // گرید شش‌ضلعی (Hexagonal)
-  if (type === (GRID_TYPES?.HEX_H || "hex_h") || type === (GRID_TYPES?.HEX_V || "hex_v")) {
-    const isHorizontal = type === (GRID_TYPES?.HEX_H || "hex_h");
+  // ۲. رندر گرید ایزومتریک / لوزی
+  if (type === "isometric" || type === (GRID_TYPES?.DIMETRIC || "isometric")) {
+    return (
+        <Shape
+            listening={false}
+            opacity={opacity}
+            stroke={color}
+            strokeWidth={lineWidth}
+            dash={dashPattern}
+            sceneFunc={(context, shape) => {
+              context.beginPath();
+              const step = size;
+              for (let d = -height; d <= width; d += step) {
+                context.moveTo(d, 0);
+                context.lineTo(d + height, height);
+                context.moveTo(d + height, 0);
+                context.lineTo(d, height);
+              }
+              context.fillStrokeShape(shape);
+            }}
+        />
+    );
+  }
+
+  // ۳. رندر گرید شش‌ضلعی (Hexagonal H & V)
+  if (type === "hex_h" || type === "hex_v" || type === (GRID_TYPES?.HEX_H || "hex_h") || type === (GRID_TYPES?.HEX_V || "hex_v")) {
+    const isHorizontal = type === "hex_h" || type === (GRID_TYPES?.HEX_H || "hex_h");
     const radius = size / 2;
     const hexPoints = getHexPoints(radius, isHorizontal);
 
@@ -53,7 +108,8 @@ export const GridLayer = ({ grid, width, height }) => {
             listening={false}
             opacity={opacity}
             stroke={color}
-            strokeWidth={1}
+            strokeWidth={lineWidth}
+            dash={dashPattern}
             sceneFunc={(context, shape) => {
               context.beginPath();
               const colStep = isHorizontal ? size * 0.75 : size * 0.866;

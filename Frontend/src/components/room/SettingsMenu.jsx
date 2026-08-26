@@ -1,23 +1,152 @@
-import React, { useState } from "react";
-import { Settings, X, Grid, Eye, Copy, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import {
+  Settings,
+  X,
+  Grid,
+  Copy,
+  Check,
+  RefreshCw,
+  Share2,
+  Lock,
+  RotateCcw,
+  Sliders,
+  Palette,
+} from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
-import { usePermissions } from "../../hooks/usePermissions";
-import { GRID_TYPES } from "../../constants/tools";
+import { settingsApi } from "../../api/settings.api";
+import { MEASUREMENT_TYPES } from "../../constants/measurementTypes";
+import { wsService } from "../../services/websocket.service";
 import { Button } from "../ui/Button";
+import { cn } from "../../utils/cn";
 
-export const SettingsMenu = () => {
+export const SettingsMenu = ({ isGM = false }) => {
+  const { roomId } = useParams();
+
   const isSettingsOpen = useCanvasStore((state) => state.isSettingsMenuOpen);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
+  const zoom = useCanvasStore((state) => state.zoom);
+  const stageX = useCanvasStore((state) => state.stageX);
+  const stageY = useCanvasStore((state) => state.stageY);
+  const resetView = useCanvasStore((state) => state.resetView);
+
+  const rulerType = useCanvasStore((state) => state.rulerType);
+  const setRulerType = useCanvasStore((state) => state.setRulerType);
 
   const currentScene = useSceneStore((state) => state.currentScene);
-  const { isGM } = usePermissions();
 
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("grid"); // grid | room | camera
 
-  if (!isSettingsOpen || !currentScene) return null;
+  // استیت‌های تنظیمات اتاق
+  const [settings, setSettings] = useState({
+    zoomSensitivity: 1.0,
+    overlayEffect: "GLASS",
+    gmFogBlend: 0.5,
+    colorTheme: "DARK",
+    inputMode: "AUTO",
+    shapeSnapSensitivity: 0.5,
+    gridSnapSensitivity: 0.5,
+    gridType: "square",
+    lineType: "solid",
+    measurementType: "dnd5e_5105",
+    gridSize: 60,
+    gridOpacity: 0.35,
+    lineWidth: 1.5,
+    gridColor: "#000000",
+    isGridSnapping: true,
+  });
 
-  const grid = currentScene.grid || { enabled: true, size: 50, opacity: 0.3 };
+  useEffect(() => {
+    if (isSettingsOpen && roomId && isGM) {
+      settingsApi
+          .getSettings(roomId)
+          .then((data) => {
+            if (data) {
+              setSettings(data);
+              if (data.measurementType) setRulerType(data.measurementType);
+            }
+          })
+          .catch((err) => console.error("خطا در دریافت تنظیمات اتاق:", err));
+    }
+  }, [isSettingsOpen, roomId, isGM, setRulerType]);
+
+  if (!isSettingsOpen) return null;
+
+  // دسترسی منحصراً برای GM است
+  if (!isGM) {
+    return (
+        <div
+            className="fixed top-16 right-6 z-50 w-80 bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-5 text-zinc-100 font-fa select-none text-center"
+            dir="rtl"
+        >
+          <div className="w-10 h-10 mx-auto rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+            <Lock className="w-5 h-5" />
+          </div>
+          <h4 className="text-sm font-bold text-zinc-100">دسترسی غیرمجاز</h4>
+          <p className="text-xs text-zinc-400 mt-1">
+            تنها سازنده اتاق (GM) مجاز به مشاهده و تغییر تنظیمات است.
+          </p>
+          <Button
+              size="sm"
+              variant="secondary"
+              className="mt-4 w-full text-xs font-bold"
+              onClick={() => toggleMenu("settings")}
+          >
+            بستن
+          </Button>
+        </div>
+    );
+  }
+
+  const handleUpdate = async (patch) => {
+    const updated = { ...settings, ...patch };
+    setSettings(updated);
+
+    if (patch.measurementType) {
+      setRulerType(patch.measurementType);
+    }
+
+    if (roomId) {
+      try {
+        await settingsApi.updateSettings(roomId, updated);
+      } catch (err) {
+        console.error("خطا در ذخیره تنظیمات:", err);
+      }
+    }
+
+    // همگام‌سازی گرید با استور صحنه
+    if (currentScene) {
+      const updatedGrid = {
+        enabled: true,
+        type: updated.gridType,
+        lineType: updated.lineType,
+        size: updated.gridSize,
+        color: updated.gridColor,
+        opacity: updated.gridOpacity,
+        lineWidth: updated.lineWidth,
+        snapToGrid: updated.isGridSnapping,
+      };
+      useSceneStore.setState({ currentScene: { ...currentScene, grid: updatedGrid } });
+      wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: updatedGrid });
+    }
+  };
+
+  const handleResetToDefault = async () => {
+    if (!roomId) return;
+    setIsSaving(true);
+    try {
+      const defaults = await settingsApi.resetSettings(roomId);
+      setSettings(defaults);
+      if (defaults.measurementType) setRulerType(defaults.measurementType);
+    } catch (err) {
+      console.error("خطا در بازنشانی تنظیمات:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -25,59 +154,386 @@ export const SettingsMenu = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSyncView = () => {
+    wsService.send("VIEWPORT_SYNC", {
+      zoom,
+      stageX,
+      stageY,
+    });
+  };
+
   return (
-      <div className="fixed top-16 right-6 z-40 w-88 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-2xl shadow-2xl backdrop-blur-xl p-4 text-zinc-100 font-fa" dir="rtl">
+      <div
+          className="fixed top-16 right-6 z-50 w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-4 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-150"
+          dir="rtl"
+      >
+        {/* هدر */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-zinc-200 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
               <Settings className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold">تنظیمات اتاق و مپ</h4>
-              <p className="text-[11px] text-zinc-400">گرید و مه تاریکی</p>
+              <h4 className="text-sm font-bold">تنظیمات اتاق و گرید تاکتیکال</h4>
+              <p className="text-[11px] text-zinc-400">سفارشی‌سازی پایدار میز بازی Titipool</p>
             </div>
           </div>
           <button
               type="button"
               onClick={() => toggleMenu("settings")}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="py-3 space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
-            <span className="text-xs text-zinc-300">لینک اشتراک‌گذاری اتاق:</span>
-            <Button size="sm" variant="outline" className="w-full text-xs" onClick={handleCopyLink}>
-              {copied ? <Check className="w-3.5 h-3.5 ml-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 ml-1" />}
-              کپی لینک دعوت
-            </Button>
-          </div>
+        {/* تب‌ها */}
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
+          <button
+              type="button"
+              onClick={() => setActiveTab("grid")}
+              className={cn(
+                  "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  activeTab === "grid" ? "bg-amber-500 text-zinc-950 shadow-md" : "text-zinc-400 hover:text-zinc-200"
+              )}
+          >
+            تنظیمات Grid
+          </button>
+          <button
+              type="button"
+              onClick={() => setActiveTab("room")}
+              className={cn(
+                  "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  activeTab === "room" ? "bg-amber-500 text-zinc-950 shadow-md" : "text-zinc-400 hover:text-zinc-200"
+              )}
+          >
+            تنظیمات اتاق
+          </button>
+          <button
+              type="button"
+              onClick={() => setActiveTab("camera")}
+              className={cn(
+                  "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  activeTab === "camera" ? "bg-amber-500 text-zinc-950 shadow-md" : "text-zinc-400 hover:text-zinc-200"
+              )}
+          >
+            دوربین (Viewport)
+          </button>
+        </div>
 
-          {isGM && (
+        {/* محتوای تب‌ها */}
+        <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+          {/* ۱. تب تنظیمات گرید */}
+          {activeTab === "grid" && (
               <div className="space-y-3">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
-                  <Grid className="w-4 h-4" /> تنظیمات شبکه (Grid)
+                {/* نوع شبکه */}
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">نوع شبکه (Grid Type):</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: "square", label: "مربعی (Square)" },
+                      { id: "isometric", label: "لوزی (Isometric)" },
+                      { id: "hex_h", label: "شش‌ضلعی افقی" },
+                      { id: "hex_v", label: "شش‌ضلعی عمودی" },
+                    ].map((type) => (
+                        <button
+                            key={type.id}
+                            type="button"
+                            onClick={() => handleUpdate({ gridType: type.id })}
+                            className={cn(
+                                "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                                settings.gridType === type.id
+                                    ? "bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm"
+                                    : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                            )}
+                        >
+                          {type.label}
+                        </button>
+                    ))}
+                  </div>
                 </div>
 
+                {/* نوع خطوط */}
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">نوع خطوط (Line Type):</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: "solid", label: "ممتد (Line)" },
+                      { id: "dotted", label: "خط‌چین" },
+                      { id: "dots", label: "نقاط تقاطع" },
+                    ].map((lt) => (
+                        <button
+                            key={lt.id}
+                            type="button"
+                            onClick={() => handleUpdate({ lineType: lt.id })}
+                            className={cn(
+                                "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                                settings.lineType === lt.id
+                                    ? "bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm"
+                                    : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
+                            )}
+                        >
+                          {lt.label}
+                        </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* سیستم محاسبه فواصل */}
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">سیستم اندازه‌گیری فاصله (Measurement):</label>
+                  <select
+                      value={settings.measurementType}
+                      onChange={(e) => handleUpdate({ measurementType: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="dnd5e_5105">قانون Chessboard D&D 5e (۵، ۱۰، ۱۵، ۲۰ فوت)</option>
+                    <option value="dnd35_alternating">قانون Alternating Diagonal D&D 3.5e (۵، ۱۰، ۵، ۱۰)</option>
+                    <option value="euclidean">اقلیدسی (Euclidean - فرمول مستقیم فیثاغورس)</option>
+                    <option value="manhattan">منهتن (Manhattan - مجموع افقی و عمودی)</option>
+                  </select>
+                </div>
+
+                {/* اندازه هر خانه */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-zinc-400">
-                    <span>اندازه هر خانه:</span>
-                    <span className="font-mono text-zinc-200">{grid.size}px</span>
+                    <span>اندازه هر خانه (Grid Size):</span>
+                    <span className="font-mono text-amber-400">{settings.gridSize}px</span>
                   </div>
                   <input
                       type="range"
-                      min={30}
-                      max={120}
+                      min={25}
+                      max={150}
                       step={5}
-                      value={grid.size}
-                      onChange={() => {}}
-                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                      value={settings.gridSize}
+                      onChange={(e) => handleUpdate({ gridSize: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+
+                {/* شفافیت خطوط */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>شفافیت گرید (Opacity):</span>
+                    <span className="font-mono text-amber-400">{Math.round((settings.gridOpacity || 0.3) * 100)}%</span>
+                  </div>
+                  <input
+                      type="range"
+                      min={0.05}
+                      max={1}
+                      step={0.05}
+                      value={settings.gridOpacity}
+                      onChange={(e) => handleUpdate({ gridOpacity: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+
+                {/* ضخامت خطوط */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>ضخامت خطوط (Line Width):</span>
+                    <span className="font-mono text-amber-400">{settings.lineWidth}px</span>
+                  </div>
+                  <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      step={0.5}
+                      value={settings.lineWidth}
+                      onChange={(e) => handleUpdate({ lineWidth: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+
+                {/* چسبیدن به گرید (Snapping) */}
+                <div className="flex items-center justify-between p-3 bg-zinc-950 border border-zinc-800 rounded-xl">
+                  <span className="text-xs text-zinc-300 font-bold">چسبیدن خودکار به خانه‌ها (Snapping):</span>
+                  <button
+                      type="button"
+                      onClick={() => handleUpdate({ isGridSnapping: !settings.isGridSnapping })}
+                      className={cn(
+                          "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
+                          settings.isGridSnapping ? "bg-amber-500" : "bg-zinc-800"
+                      )}
+                  >
+                    <div
+                        className={cn(
+                            "w-4 h-4 rounded-full bg-white transition-transform absolute top-1",
+                            settings.isGridSnapping ? "right-1" : "right-6"
+                        )}
+                    />
+                  </button>
+                </div>
+              </div>
+          )}
+
+          {/* ۲. تب تنظیمات عمومی اتاق */}
+          {activeTab === "room" && (
+              <div className="space-y-3">
+                {/* اشتراک‌گذاری */}
+                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
+                  <span className="text-xs text-zinc-300 font-bold block">لینک دعوت به ماجراجویی:</span>
+                  <Button size="sm" variant="outline" className="w-full text-xs cursor-pointer" onClick={handleCopyLink}>
+                    {copied ? <Check className="w-3.5 h-3.5 ml-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 ml-1" />}
+                    کپی لینک مستقیم دعوت
+                  </Button>
+                </div>
+
+                {/* حالت ورودی ماوس */}
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">حالت کنترل ورودی (Input Mode):</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["AUTO", "MOUSE", "TRACKPAD"].map((mode) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            onClick={() => handleUpdate({ inputMode: mode })}
+                            className={cn(
+                                "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                                settings.inputMode === mode
+                                    ? "bg-amber-500/15 border-amber-500 text-amber-300"
+                                    : "bg-zinc-950 border-zinc-800 text-zinc-400"
+                            )}
+                        >
+                          {mode === "AUTO" ? "خودکار" : mode === "MOUSE" ? "ماوس" : "ترک‌پد"}
+                        </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* جلوه بصری Overlay Effect */}
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">استایل پنجره‌ها (Overlay Effect):</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: "GLASS", label: "شیشه‌ای (Glass)" },
+                      { id: "TRANSPARENT", label: "شفاف (Transparent)" },
+                    ].map((eff) => (
+                        <button
+                            key={eff.id}
+                            type="button"
+                            onClick={() => handleUpdate({ overlayEffect: eff.id })}
+                            className={cn(
+                                "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                                settings.overlayEffect === eff.id
+                                    ? "bg-amber-500/15 border-amber-500 text-amber-300"
+                                    : "bg-zinc-950 border-zinc-800 text-zinc-400"
+                            )}
+                        >
+                          {eff.label}
+                        </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* حساسیت زوم */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>حساسیت زوم (Zoom Sensitivity):</span>
+                    <span className="font-mono text-amber-400">{settings.zoomSensitivity}x</span>
+                  </div>
+                  <input
+                      type="range"
+                      min={0.5}
+                      max={2.0}
+                      step={0.1}
+                      value={settings.zoomSensitivity}
+                      onChange={(e) => handleUpdate({ zoomSensitivity: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+
+                {/* حساسیت اسنپ شکل‌ها */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>حساسیت اسنپ اشکال (Shape Snapping):</span>
+                    <span className="font-mono text-amber-400">{Math.round((settings.shapeSnapSensitivity || 0.5) * 100)}%</span>
+                  </div>
+                  <input
+                      type="range"
+                      min={0.1}
+                      max={1.0}
+                      step={0.1}
+                      value={settings.shapeSnapSensitivity}
+                      onChange={(e) => handleUpdate({ shapeSnapSensitivity: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+
+                {/* شفافیت دید GM از پشت مه */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>دید GM از پشت مه (GM Fog Blend):</span>
+                    <span className="font-mono text-amber-400">{Math.round(settings.gmFogBlend * 100)}%</span>
+                  </div>
+                  <input
+                      type="range"
+                      min={0.1}
+                      max={1.0}
+                      step={0.05}
+                      value={settings.gmFogBlend}
+                      onChange={(e) => handleUpdate({ gmFogBlend: Number(e.target.value) })}
+                      className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
               </div>
           )}
+
+          {/* ۳. تب کنترل‌های دوربین */}
+          {activeTab === "camera" && (
+              <div className="space-y-3">
+                <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">بزرگ‌نمایی کنونی (Zoom):</span>
+                    <span className="font-mono text-amber-400 font-bold">{Math.round(zoom * 100)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">موقعیت افقی (Position X):</span>
+                    <span className="font-mono text-zinc-300">{Math.round(stageX)}px</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">موقعیت عمودی (Position Y):</span>
+                    <span className="font-mono text-zinc-300">{Math.round(stageY)}px</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetView}
+                      className="text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Reset View (مرکز مپ)
+                  </Button>
+
+                  <Button
+                      variant="amber"
+                      size="sm"
+                      onClick={handleSyncView}
+                      className="text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Sync View (همگام با همه)
+                  </Button>
+                </div>
+              </div>
+          )}
+        </div>
+
+        {/* فوتر: دکمه بازگشت به پیش‌فرض (Reset to Default UCS-01) */}
+        <div className="pt-3 mt-3 border-t border-zinc-800 flex justify-end">
+          <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
+              isLoading={isSaving}
+              onClick={handleResetToDefault}
+          >
+            <RotateCcw className="w-3.5 h-3.5 ml-1" />
+            بازنشانی به حالت پیش‌فرض (Reset to Default)
+          </Button>
         </div>
       </div>
   );

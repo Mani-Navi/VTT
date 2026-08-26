@@ -1,90 +1,149 @@
 import { create } from "zustand";
 import { sceneApi } from "../api/scene.api";
+import { tokenApi } from "../api/token.api";
 import { snapToGrid } from "../utils/grid.js";
+import { wsService } from "../services/websocket.service";
 
 export const useSceneStore = create((set, get) => ({
   currentScene: null,
   scenes: [],
   pings: [],
-  initiatives: [],
-  currentTurnIndex: 0,
-  roundNumber: 1,
-  chatMessages: [
-    {
-      id: "msg-welcome",
-      senderId: "system",
-      senderName: "سیستم بازی",
-      senderColor: "#f59e0b",
-      isGM: true,
-      content: "به میز مجازی VTT خوش آمدید! مپ تاکتیکال، توکن‌ها و تاس آماده استفاده هستند.",
-      timestamp: new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
-    },
-  ],
   isLoading: false,
 
-  // بارگذاری سکانس‌های اتاق
+  // ۱. بارگذاری صحنه‌ها از دیتابیس
   loadScenes: async (roomId) => {
+    if (!roomId) return;
     set({ isLoading: true });
     try {
-      const scenes = await sceneApi.getScenes(roomId);
-      if (scenes && scenes.length > 0) {
-        const active = scenes.find((s) => s.isActive) || scenes[0];
+      let scenes = await sceneApi.getScenes(roomId);
 
-        // فچ وضعیت کامل سکانس فعال از سرور
-        const fullState = await sceneApi.getSceneState(active.id);
-        const sceneWithState = {
-          ...active,
-          tokens: fullState.tokens || [],
-          drawings: fullState.drawings || [],
-          fogShapes: fullState.fogRegions || [],
-          grid: {
-            enabled: true,
-            type: "square",
-            size: active.gridSize || 50,
-            color: active.gridColor || "#000000",
-            opacity: 0.4,
-            snapToGrid: true,
-          }
-        };
-
-        set({
-          scenes: scenes,
-          currentScene: sceneWithState,
-          isLoading: false,
+      // اگر صحنه‌ای نبود، صحنه پیش‌فرض در دیتابیس ساخته می‌شود
+      if (!scenes || scenes.length === 0) {
+        const defaultScene = await sceneApi.createScene({
+          roomId: roomId,
+          name: "صحنه اصلی",
+          isActive: true,
         });
-      } else {
-        set({ isLoading: false });
+        scenes = [defaultScene];
       }
-    } catch {
+
+      const active = scenes.find((s) => s.isActive) || scenes[0];
+      const fullState = await sceneApi.getSceneState(active.id);
+      const sceneData = fullState.scene || active;
+
+      const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
+
+      const sceneWithState = {
+        ...sceneData,
+        assetUrl: finalMapUrl,
+        mapUrl: finalMapUrl,
+        mapWidth: sceneData.mapWidth || 2000,
+        mapHeight: sceneData.mapHeight || 1500,
+        tokens: fullState.tokens || [],
+        drawings: fullState.drawings || [],
+        fogShapes: fullState.fogRegions || [],
+        fogEnabled: false, // پیش‌فرض مه غیرفعال است تا نقشه دیده شود
+        fogFilled: false,
+        grid: {
+          enabled: true,
+          type: "square",
+          size: sceneData.gridSize || 60,
+          color: sceneData.gridColor || "#000000",
+          opacity: 0.35,
+          snapToGrid: true,
+        },
+      };
+
+      set({
+        scenes: scenes,
+        currentScene: sceneWithState,
+        isLoading: false,
+      });
+    } catch (err) {
+      console.error("خطا در دریافت صحنه‌های اتاق:", err);
       set({ isLoading: false });
     }
   },
 
-  setScene: (scene) => set({ currentScene: scene }),
+  // ۲. تنظیم و ذخیره دائمی نقشه در پایگاه‌داده
+  setMapForCurrentScene: async (mapUrl, mapName = "نقشه اصلی", assetId = null) => {
+    const state = get();
+    let current = state.currentScene;
+    if (!current) return;
 
-  // مدیریت توکن‌ها
-  addToken: (tokenData) => {
-    set((state) => {
-      if (!state.currentScene) return state;
-      const grid = state.currentScene.grid || {};
-      let finalX = tokenData.x;
-      let finalY = tokenData.y;
-      if (grid.snapToGrid && grid.enabled && snapToGrid) {
-        const snapped = snapToGrid(tokenData.x, tokenData.y, grid.size, grid.type, tokenData.size);
-        finalX = snapped.x;
-        finalY = snapped.y;
-      }
+    // آپدیت سریع و خوش‌بینانه در فرانت
+    const updatedScene = {
+      ...current,
+      mapUrl: mapUrl,
+      assetUrl: mapUrl,
+      name: mapName,
+    };
 
-      const newToken = {
-        ...tokenData,
+    set({
+      currentScene: updatedScene,
+      scenes: state.scenes.map((s) => (s.id === current.id ? { ...s, mapUrl, name: mapName } : s)),
+    });
+
+    // ذخیره پایدار در بک‌اند
+    try {
+      await sceneApi.updateSceneMap(current.id, {
+        mapUrl,
+        name: mapName,
+        assetId,
+      });
+      wsService.send("SCENE_UPDATE", { sceneId: current.id, mapUrl, mapName });
+    } catch (err) {
+      console.error("خطا در ذخیره نقشه در سرور:", err);
+    }
+  },
+
+  // ۳. ایجاد و ذخیره دائمی توکن در سرور
+  addToken: async (tokenData) => {
+    const state = get();
+    if (!state.currentScene) return;
+
+    const grid = state.currentScene.grid || {};
+    let finalX = tokenData.x;
+    let finalY = tokenData.y;
+    if (grid.snapToGrid && grid.enabled && snapToGrid) {
+      const snapped = snapToGrid(tokenData.x, tokenData.y, grid.size, grid.type, tokenData.size);
+      finalX = snapped.x;
+      finalY = snapped.y;
+    }
+
+    const localId = tokenData.id || `token-${Date.now()}`;
+    const newToken = {
+      ...tokenData,
+      id: localId,
+      x: finalX,
+      y: finalY,
+    };
+
+    // آپدیت آنی لوکال
+    const updatedTokens = state.currentScene.tokens ? [...state.currentScene.tokens, newToken] : [newToken];
+    set({ currentScene: { ...state.currentScene, tokens: updatedTokens } });
+
+    // ذخیره پایدار در دیتابیس
+    try {
+      const savedToken = await tokenApi.createToken({
+        sceneId: state.currentScene.id,
+        assetId: tokenData.assetId || null,
+        label: tokenData.name || tokenData.label || "توکن",
         x: finalX,
         y: finalY,
-        id: tokenData.id || `token-${Date.now()}`,
-      };
+      });
 
-      const tokens = state.currentScene.tokens ? [...state.currentScene.tokens, newToken] : [newToken];
-      return { currentScene: { ...state.currentScene, tokens } };
-    });
+      if (savedToken && savedToken.id) {
+        set((s) => ({
+          currentScene: {
+            ...s.currentScene,
+            tokens: s.currentScene.tokens.map((t) => (t.id === localId ? { ...t, id: savedToken.id } : t)),
+          },
+        }));
+      }
+    } catch (err) {
+      console.warn("ذخیره آفلاین توکن انجام شد");
+    }
   },
 
   updateToken: (tokenId, updates) => {
@@ -131,7 +190,7 @@ export const useSceneStore = create((set, get) => ({
     });
   },
 
-  // مدیریت خطوط و نقاشی‌ها
+  // ۴. مدیریت خطوط و نقاشی‌ها
   addDrawing: (drawing) => {
     set((state) => {
       if (!state.currentScene) return state;
@@ -147,16 +206,16 @@ export const useSceneStore = create((set, get) => ({
     });
   },
 
-  // مدیریت مه جنگ (Fog of War)
+  // ۵. مدیریت مه جنگ
   addFogShape: (shapeData) => {
     set((state) => {
       if (!state.currentScene) return state;
       const fogShapes = state.currentScene.fogShapes ? [...state.currentScene.fogShapes, shapeData] : [shapeData];
-      return { currentScene: { ...state.currentScene, fogShapes } };
+      return { currentScene: { ...state.currentScene, fogShapes, fogEnabled: true } };
     });
   },
 
-  // پینگ راداری
+  // ۶. پینگ رادار
   addPing: (pingData) => {
     const newPing = {
       ...pingData,
@@ -169,26 +228,53 @@ export const useSceneStore = create((set, get) => ({
     }, 4000);
   },
 
-  // چت لاگ و پرتاب تاس
-  addChatMessage: (msg) => {
-    const newMsg = {
-      ...msg,
-      id: `msg-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
-    };
-    set((state) => ({ chatMessages: [...state.chatMessages, newMsg] }));
+  addDiceRoll: (roll) => {},
+
+  switchScene: async (sceneId, shouldBroadcast = true) => {
+    set({ isLoading: true });
+    try {
+      if (shouldBroadcast) {
+        await sceneApi.activateScene(sceneId);
+        wsService.send("SCENE_CHANGE", { sceneId });
+      }
+
+      const fullState = await sceneApi.getSceneState(sceneId);
+      const sceneData = fullState.scene || {};
+      const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
+
+      const sceneWithState = {
+        ...sceneData,
+        assetUrl: finalMapUrl,
+        mapUrl: finalMapUrl,
+        mapWidth: sceneData.mapWidth || 2000,
+        mapHeight: sceneData.mapHeight || 1500,
+        tokens: fullState.tokens || [],
+        drawings: fullState.drawings || [],
+        fogShapes: fullState.fogRegions || [],
+        fogEnabled: false,
+        grid: {
+          enabled: true,
+          type: "square",
+          size: sceneData.gridSize || 60,
+          color: sceneData.gridColor || "#000000",
+          opacity: 0.35,
+          snapToGrid: true,
+        },
+      };
+
+      set((state) => ({
+        currentScene: sceneWithState,
+        scenes: state.scenes.map((s) => ({
+          ...s,
+          isActive: s.id === sceneId,
+        })),
+        isLoading: false,
+      }));
+    } catch (err) {
+      console.error("خطا در تغییر صحنه:", err);
+      set({ isLoading: false });
+    }
   },
 
-  addDiceRoll: (roll) => {
-    const chatMsg = {
-      id: `msg-roll-${Date.now()}`,
-      senderId: roll.username || "کاربر",
-      senderName: roll.username || "کاربر",
-      senderColor: "#f59e0b",
-      content: `پرتاب تاس [${roll.formula || ""}] ➔ نتیجه کل: ${roll.total}`,
-      diceRoll: roll,
-      timestamp: new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }),
-    };
-    set((state) => ({ chatMessages: [...state.chatMessages, chatMsg] }));
-  },
+  setScene: (scene) => set({ currentScene: scene }),
 }));

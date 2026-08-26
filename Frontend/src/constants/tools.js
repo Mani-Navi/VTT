@@ -2,45 +2,62 @@ export const TOOLS = {
   SELECT: "select",
   PAN: "pan",
   DRAW: "draw",
+  TEXT: "text",
   FOG: "fog",
   RULER: "ruler",
   LASER: "laser",
-  TOKEN: "token",
+  ERASER: "eraser",
   DICE: "dice",
-  NOTE: "note",
 };
 
-export const DRAW_SHAPES = {
-  FREEHAND: "freehand",
+export const DRAW_MODES = {
+  GRAB: "grab",
+  MARKER: "marker",
+  BRUSH: "brush",
   LINE: "line",
-  ARROW: "arrow",
   RECTANGLE: "rectangle",
   CIRCLE: "circle",
-  TEXT: "text",
+  TRIANGLE: "triangle",
+  HEXAGON: "hexagon",
+  POLYGON: "polygon",
   ERASER: "eraser",
 };
 
-export const FOG_MODES = {
-  REVEAL_RECT: "reveal_rect",
-  REVEAL_CIRCLE: "reveal_circle",
-  REVEAL_BRUSH: "reveal_brush",
-  HIDE_RECT: "hide_rect",
-  HIDE_CIRCLE: "hide_circle",
-  HIDE_BRUSH: "hide_brush",
-  HIDE_ALL: "hide_all",
-  REVEAL_ALL: "reveal_all",
+export const DRAW_SHAPES = DRAW_MODES;
+
+export const TEXT_FONTS = [
+  { id: "Vazirmatn", label: "وزیرمتن (Vazirmatn)" },
+  { id: "Sahel", label: "ساحل (Sahel)" },
+  { id: "Shabnam", label: "شبنم (Shabnam)" },
+  { id: "Samim", label: "صمیم (Samim)" },
+  { id: "monospace", label: "تک‌فاصله (Monospace)" },
+];
+
+export const FOG_ACTIONS = {
+  REVEAL: "reveal",
+  HIDE: "hide",
+  SLICE: "slice",
 };
 
 export const FOG_BRUSH_SHAPES = {
   CIRCLE: "circle",
   RECTANGLE: "rect",
+  TRIANGLE: "triangle",
+  HEXAGON: "hexagon",
+  FREEHAND: "freehand",
 };
 
-export const FOG_ACTIONS = {
-  REVEAL: "reveal",
-  HIDE: "hide",
+export const FOG_MODES = {
+  REVEAL_RECT: "reveal_rect",
+  REVEAL_CIRCLE: "reveal_circle",
+  HIDE_RECT: "hide_rect",
+  HIDE_CIRCLE: "hide_circle",
+  SLICE: "slice",
+  FILL_ALL: "fill_all",
+  CLEAR_ALL: "clear_all",
 };
 
+// ثابت گرید مورد نیاز سیستم و رندرینگ تاکتیکال
 export const GRID_TYPES = {
   SQUARE: "square",
   HEX_H: "hex_h",

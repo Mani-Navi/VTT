@@ -11,7 +11,7 @@ export function useWebSocket(roomId) {
   const addDrawing = useSceneStore((state) => state.addDrawing);
   const addFogShape = useSceneStore((state) => state.addFogShape);
   const addDiceRoll = useSceneStore((state) => state.addDiceRoll);
-  const addChatMessage = useSceneStore((state) => state.addChatMessage);
+  const switchScene = useSceneStore((state) => state.switchScene);
 
   useEffect(() => {
     if (!roomId) return;
@@ -41,9 +41,12 @@ export function useWebSocket(roomId) {
       addDiceRoll(data);
     });
 
-    const unsubChat = wsService.on("CHAT_MESSAGE", (payload) => {
+    // سوئیچ همزمان تمام بازیکنان هنگام تغییر صحنه توسط GM
+    const unsubScene = wsService.on("SCENE_CHANGE", (payload) => {
       const data = payload.data || payload;
-      addChatMessage(data);
+      if (data.sceneId) {
+        switchScene(data.sceneId, false);
+      }
     });
 
     return () => {
@@ -51,10 +54,10 @@ export function useWebSocket(roomId) {
       unsubDraw();
       unsubFog();
       unsubDice();
-      unsubChat();
+      unsubScene();
       wsService.disconnect();
     };
-  }, [roomId, moveToken, addDrawing, addFogShape, addDiceRoll, addChatMessage]);
+  }, [roomId, moveToken, addDrawing, addFogShape, addDiceRoll, switchScene]);
 
   const sendEvent = (type, data) => {
     wsService.send(type, data);
