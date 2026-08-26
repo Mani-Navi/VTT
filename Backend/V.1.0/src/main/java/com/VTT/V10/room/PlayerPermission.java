@@ -4,25 +4,47 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.UUID;
 
-@Entity @Table(name = "player_permissions")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Entity
+@Table(name = "player_permissions")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PlayerPermission {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id")
+    @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", nullable = false)
     private RoomMember member;
 
+    @Builder.Default
+    @Column(name = "can_assets", nullable = false)
     private Boolean canAssets = false;
-    private Boolean canText = true;
+
+    @Builder.Default
+    @Column(name = "can_text", nullable = false)
+    private Boolean canText = false;
+
+    @Builder.Default
+    @Column(name = "can_fog", nullable = false)
     private Boolean canFog = false;
-    private Boolean canDrawing = true;
-    @Column(name = "can_scene") // هماهنگ با دیتابیس شما
+
+    @Builder.Default
+    @Column(name = "can_drawing", nullable = false)
+    private Boolean canDrawing = false;
+
+    @Builder.Default
+    @Column(name = "can_scene", nullable = false)
     private Boolean canScene = false;
+
+    @Builder.Default
+    @Column(name = "can_ruler", nullable = false)
     private Boolean canRuler = true;
 }

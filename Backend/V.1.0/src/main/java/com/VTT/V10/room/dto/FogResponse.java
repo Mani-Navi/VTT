@@ -1,14 +1,17 @@
 package com.VTT.V10.room.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import java.util.List;
-import java.util.Map;
+import lombok.NoArgsConstructor;
 import java.util.UUID;
 
-@Data @Builder
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class FogResponse {
     private UUID id;
     private String type;
-    private List<Map<String, Double>> points;
+    private Object points;
 }

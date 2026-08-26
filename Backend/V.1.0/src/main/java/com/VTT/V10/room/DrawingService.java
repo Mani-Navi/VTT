@@ -20,15 +20,36 @@ public class DrawingService {
 
     @Transactional
     public void saveDrawing(UUID sceneId, DrawingEvent event) {
+        if (sceneId == null && event.getSceneId() != null) {
+            sceneId = event.getSceneId();
+        }
+
+        if (sceneId == null) return;
+
         Scene scene = sceneRepository.findById(sceneId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "سکانس/صحنه یافت نشد"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        String finalType = event.getType() != null ? event.getType() : event.getTool();
+        String finalStroke = event.getStroke() != null ? event.getStroke() : event.getColor();
+        Double finalStrokeWidth = event.getStrokeWidth() != null ? event.getStrokeWidth() : event.getLineWidth();
 
         Drawing drawing = Drawing.builder()
                 .scene(scene)
-                .tool(event.getTool())
-                .color(event.getColor())
-                .lineWidth(event.getLineWidth())
+                .type(finalType)
+                .tool(finalType)
+                .stroke(finalStroke)
+                .color(finalStroke)
+                .strokeWidth(finalStrokeWidth != null ? finalStrokeWidth : 4.0)
+                .lineWidth(finalStrokeWidth != null ? finalStrokeWidth : 4.0)
+                .fill(event.getFill())
+                .x(event.getX())
+                .y(event.getY())
+                .width(event.getWidth())
+                .height(event.getHeight())
+                .radius(event.getRadius())
+                .text(event.getText())
                 .points(event.getPoints())
+                .isGMLayer(Boolean.TRUE.equals(event.getIsGMLayer()))
                 .isVisible(true)
                 .build();
 
@@ -42,15 +63,25 @@ public class DrawingService {
                 .collect(Collectors.toList());
     }
 
-    private DrawingResponse convertToResponse(Drawing drawing) {
+    private DrawingResponse convertToResponse(Drawing d) {
         return DrawingResponse.builder()
-                .id(drawing.getId())
-                .tool(drawing.getTool())
-                .color(drawing.getColor())
-                .lineWidth(drawing.getLineWidth())
-                .fill(drawing.getFill())
-                .points(drawing.getPoints())
-                .isVisible(drawing.getIsVisible())
+                .id(d.getId())
+                .type(d.getType())
+                .tool(d.getType())
+                .stroke(d.getStroke() != null ? d.getStroke() : d.getColor())
+                .color(d.getColor() != null ? d.getColor() : d.getStroke())
+                .strokeWidth(d.getStrokeWidth() != null ? d.getStrokeWidth() : d.getLineWidth())
+                .lineWidth(d.getLineWidth() != null ? d.getLineWidth() : d.getStrokeWidth())
+                .fill(d.getFill())
+                .x(d.getX())
+                .y(d.getY())
+                .width(d.getWidth())
+                .height(d.getHeight())
+                .radius(d.getRadius())
+                .text(d.getText())
+                .points(d.getPoints())
+                .isGMLayer(d.getIsGMLayer())
+                .isVisible(d.getIsVisible())
                 .build();
     }
 }

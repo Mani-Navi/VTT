@@ -2,19 +2,28 @@ package com.VTT.V10.room.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateSceneRequest {
-    @NotNull(message = "ID اتاق الزامی است")
+    @NotNull(message = "شناسه اتاق الزامی است")
     private UUID roomId;
 
-    @NotNull(message = "ID فایل نقشه الزامی است")
-    private UUID assetId;
-
-    @NotBlank(message = "نام سکانس نباید خالی باشد")
+    @NotBlank(message = "نام صحنه نباید خالی باشد")
     private String name;
 
-    private Boolean isActive = false;
+    // اختیاری بودن فایل نقشه و آدرس مستقیم تصویر
+    private UUID assetId;
+    private String mapUrl;
+
+    @Builder.Default
+    private Boolean isActive = true;
 }

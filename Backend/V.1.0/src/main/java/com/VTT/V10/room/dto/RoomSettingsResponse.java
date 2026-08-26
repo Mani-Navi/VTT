@@ -13,9 +13,20 @@ import java.util.UUID;
 public class RoomSettingsResponse {
     private UUID roomId;
     private Double zoomSensitivity;
-    private String colorTheme;
-    private Double gridSnapSensitivity;
-    private Double lineWidth;
-    private Double gmFogBlend;
     private String overlayEffect;
+    private Double gmFogBlend;
+    private String colorTheme;
+    private String inputMode;
+    private Double shapeSnapSensitivity;
+    private Double gridSnapSensitivity;
+
+    // Grid Settings
+    private String gridType;
+    private String lineType;
+    private String measurementType;
+    private Integer gridSize;
+    private Double gridOpacity;
+    private Double lineWidth;
+    private String gridColor;
+    private Boolean isGridSnapping;
 }

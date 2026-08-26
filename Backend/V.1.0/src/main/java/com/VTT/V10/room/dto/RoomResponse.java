@@ -23,6 +23,12 @@ public class RoomResponse {
     private String role; // "GM" یا "Player"
     private boolean isProtected;
 
+    @JsonProperty("is_owner")
+    private Boolean isOwner;
+
+    @JsonProperty("permissions")
+    private UserPermissionDto permissions;
+
     @JsonProperty("is_active")
     @Builder.Default
     private Boolean isActive = true;
@@ -40,5 +46,24 @@ public class RoomResponse {
     @JsonProperty("roomId")
     public UUID getRoomId() {
         return this.id;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserPermissionDto {
+        private Boolean canAssets;
+        private Boolean canText;
+        private Boolean canFog;
+        private Boolean canDrawing;
+        private Boolean canScene;
+
+        @JsonProperty("canMap")
+        public Boolean getCanMap() {
+            return this.canScene;
+        }
+
+        private Boolean canRuler;
     }
 }

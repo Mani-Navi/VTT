@@ -9,6 +9,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class RoomSettingsService {
+
     private final RoomSettingsRepository repository;
     private final RoomRepository roomRepository;
 
@@ -24,49 +25,101 @@ public class RoomSettingsService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("اتاق یافت نشد"));
 
-        RoomSettings settings = new RoomSettings();
-        settings.setRoom(room); // برای حل مشکل شناسه‌ی تهی (Null ID)
-        settings.setZoomSensitivity(1.0);
-        settings.setColorTheme("DARK");
-        settings.setLineWidth(2.0);
-        settings.setGridSnapSensitivity(0.5);
-        settings.setGmFogBlend(0.5);
-        settings.setOverlayEffect("GLASS");
+        RoomSettings settings = RoomSettings.builder()
+                .room(room)
+                .roomId(roomId)
+                .zoomSensitivity(1.0)
+                .overlayEffect("GLASS")
+                .gmFogBlend(0.5)
+                .colorTheme("DARK")
+                .inputMode("AUTO")
+                .shapeSnapSensitivity(0.5)
+                .gridSnapSensitivity(0.5)
+                .gridType("square")
+                .lineType("solid")
+                .measurementType("dnd5e_5105")
+                .gridSize(60)
+                .gridOpacity(0.35)
+                .lineWidth(1.5)
+                .gridColor("#000000")
+                .isGridSnapping(true)
+                .build();
 
         return repository.save(settings);
     }
 
-    // متدی که در کنترلر شما قرمز بود:
     @Transactional
     public RoomSettingsResponse updateSettings(UUID roomId, RoomSettingsResponse request) {
-        // ۱. پیدا کردن تنظیمات فعلی یا ساخت تنظیمات جدید اگر وجود نداشت
         RoomSettings settings = repository.findById(roomId)
                 .orElseGet(() -> createDefaultSettings(roomId));
 
-        // ۲. آپدیت فیلدها (فقط اگر در درخواست مقدار فرستاده شده باشد)
         if (request.getZoomSensitivity() != null) settings.setZoomSensitivity(request.getZoomSensitivity());
-        if (request.getColorTheme() != null) settings.setColorTheme(request.getColorTheme());
-        if (request.getLineWidth() != null) settings.setLineWidth(request.getLineWidth());
-        if (request.getGridSnapSensitivity() != null) settings.setGridSnapSensitivity(request.getGridSnapSensitivity());
-        if (request.getGmFogBlend() != null) settings.setGmFogBlend(request.getGmFogBlend());
         if (request.getOverlayEffect() != null) settings.setOverlayEffect(request.getOverlayEffect());
+        if (request.getGmFogBlend() != null) settings.setGmFogBlend(request.getGmFogBlend());
+        if (request.getColorTheme() != null) settings.setColorTheme(request.getColorTheme());
+        if (request.getInputMode() != null) settings.setInputMode(request.getInputMode());
+        if (request.getShapeSnapSensitivity() != null) settings.setShapeSnapSensitivity(request.getShapeSnapSensitivity());
+        if (request.getGridSnapSensitivity() != null) settings.setGridSnapSensitivity(request.getGridSnapSensitivity());
 
-        // ۳. ذخیره در دیتابیس
-        RoomSettings savedSettings = repository.save(settings);
+        if (request.getGridType() != null) settings.setGridType(request.getGridType());
+        if (request.getLineType() != null) settings.setLineType(request.getLineType());
+        if (request.getMeasurementType() != null) settings.setMeasurementType(request.getMeasurementType());
+        if (request.getGridSize() != null) settings.setGridSize(request.getGridSize());
+        if (request.getGridOpacity() != null) settings.setGridOpacity(request.getGridOpacity());
+        if (request.getLineWidth() != null) settings.setLineWidth(request.getLineWidth());
+        if (request.getGridColor() != null) settings.setGridColor(request.getGridColor());
+        if (request.getIsGridSnapping() != null) settings.setIsGridSnapping(request.getIsGridSnapping());
 
-        // ۴. برگرداندن پاسخ به صورت DTO
-        return convertToResponse(savedSettings);
+        RoomSettings saved = repository.save(settings);
+        return convertToResponse(saved);
+    }
+
+    @Transactional
+    public RoomSettingsResponse resetToDefault(UUID roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("اتاق یافت نشد"));
+
+        RoomSettings settings = RoomSettings.builder()
+                .room(room)
+                .roomId(roomId)
+                .zoomSensitivity(1.0)
+                .overlayEffect("GLASS")
+                .gmFogBlend(0.5)
+                .colorTheme("DARK")
+                .inputMode("AUTO")
+                .shapeSnapSensitivity(0.5)
+                .gridSnapSensitivity(0.5)
+                .gridType("square")
+                .lineType("solid")
+                .measurementType("dnd5e_5105")
+                .gridSize(60)
+                .gridOpacity(0.35)
+                .lineWidth(1.5)
+                .gridColor("#000000")
+                .isGridSnapping(true)
+                .build();
+
+        return convertToResponse(repository.save(settings));
     }
 
     private RoomSettingsResponse convertToResponse(RoomSettings s) {
         return RoomSettingsResponse.builder()
                 .roomId(s.getRoomId())
                 .zoomSensitivity(s.getZoomSensitivity())
-                .colorTheme(s.getColorTheme())
-                .gridSnapSensitivity(s.getGridSnapSensitivity())
-                .lineWidth(s.getLineWidth())
-                .gmFogBlend(s.getGmFogBlend())
                 .overlayEffect(s.getOverlayEffect())
+                .gmFogBlend(s.getGmFogBlend())
+                .colorTheme(s.getColorTheme())
+                .inputMode(s.getInputMode())
+                .shapeSnapSensitivity(s.getShapeSnapSensitivity())
+                .gridSnapSensitivity(s.getGridSnapSensitivity())
+                .gridType(s.getGridType())
+                .lineType(s.getLineType())
+                .measurementType(s.getMeasurementType())
+                .gridSize(s.getGridSize())
+                .gridOpacity(s.getGridOpacity())
+                .lineWidth(s.getLineWidth())
+                .gridColor(s.getGridColor())
+                .isGridSnapping(s.getIsGridSnapping())
                 .build();
     }
 }

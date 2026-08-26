@@ -14,6 +14,7 @@ import java.util.UUID;
 @RequestMapping("/api/rooms/{roomId}/settings")
 @RequiredArgsConstructor
 public class RoomSettingsController {
+
     private final RoomSettingsService settingsService;
     private final RoomMemberRepository roomMemberRepository;
 
@@ -28,7 +29,6 @@ public class RoomSettingsController {
             @RequestBody RoomSettingsResponse request,
             Authentication authentication
     ) {
-        // بررسی سطح دسترسی: فقط کاربر ADMIN (سازنده/GM) مجاز به ویرایش تنظیمات است
         RoomMember member = roomMemberRepository.findByRoomIdAndUserEmail(roomId, authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید"));
 
@@ -37,5 +37,20 @@ public class RoomSettingsController {
         }
 
         return ResponseEntity.ok(settingsService.updateSettings(roomId, request));
+    }
+
+    @PostMapping("/reset")
+    public ResponseEntity<RoomSettingsResponse> resetSettings(
+            @PathVariable UUID roomId,
+            Authentication authentication
+    ) {
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserEmail(roomId, authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید"));
+
+        if (member.getRole() != RoomMember.Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق (GM) اجازه بازنشانی تنظیمات را دارد");
+        }
+
+        return ResponseEntity.ok(settingsService.resetToDefault(roomId));
     }
 }

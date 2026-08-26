@@ -21,9 +21,9 @@ public class PlayerPermissionService {
                 .room(room)
                 .member(member)
                 .canAssets(false)
-                .canText(true)
+                .canText(false)
                 .canFog(false)
-                .canDrawing(true)
+                .canDrawing(false)
                 .canScene(false)
                 .canRuler(true)
                 .build();
@@ -56,7 +56,8 @@ public class PlayerPermissionService {
     private PermissionResponse convertToResponse(PlayerPermission p) {
         return PermissionResponse.builder()
                 .memberId(p.getMember().getId())
-                .username(p.getMember().getUser().getUsername())
+                .username(p.getMember().getUser() != null ? p.getMember().getUser().getUsername() : "")
+                .role(p.getMember().getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
                 .canAssets(p.getCanAssets())
                 .canDrawing(p.getCanDrawing())
                 .canFog(p.getCanFog())

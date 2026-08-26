@@ -29,6 +29,14 @@ public class RoomMember {
     @Column(nullable = false)
     private Role role;
 
+    @Builder.Default
+    @Column(name = "is_muted", columnDefinition = "boolean default false")
+    private Boolean isMuted = false;
+
+    @Builder.Default
+    @Column(name = "is_banned", columnDefinition = "boolean default false")
+    private Boolean isBanned = false;
+
     @Column(name = "joined_at", nullable = false)
     @Builder.Default
     private LocalDateTime joinedAt = LocalDateTime.now();
@@ -37,6 +45,12 @@ public class RoomMember {
     public void prePersist() {
         if (this.joinedAt == null) {
             this.joinedAt = LocalDateTime.now();
+        }
+        if (this.isMuted == null) {
+            this.isMuted = false;
+        }
+        if (this.isBanned == null) {
+            this.isBanned = false;
         }
     }
 

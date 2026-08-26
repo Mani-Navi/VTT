@@ -10,4 +10,5 @@ public interface PlayerPermissionRepository extends JpaRepository<PlayerPermissi
     Optional<PlayerPermission> findByMemberId(UUID memberId);
     Optional<PlayerPermission> findByRoomIdAndMemberId(UUID roomId, UUID memberId);
     void deleteByRoomId(UUID roomId);
+    void deleteByMemberId(UUID memberId);
 }

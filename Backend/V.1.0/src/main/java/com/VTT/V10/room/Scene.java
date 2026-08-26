@@ -28,21 +28,37 @@ public class Scene {
     private String name;
 
     @Column(name = "is_active")
-    private Boolean isActive = false;
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Column(name = "map_url", length = 1000)
+    private String mapUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id")
     private Asset backgroundAsset;
 
-    // تنظیمات پیش‌فرض گرید
-    @Column(name = "grid_size")
-    private Integer gridSize = 50;
+    // ابعاد نقشه
+    @Builder.Default
+    @Column(name = "map_width")
+    private Integer mapWidth = 2000;
 
+    @Builder.Default
+    @Column(name = "map_height")
+    private Integer mapHeight = 1500;
+
+    // تنظیمات پیش‌فرض گرید
+    @Builder.Default
+    @Column(name = "grid_size")
+    private Integer gridSize = 60;
+
+    @Builder.Default
     @Column(name = "grid_color")
     private String gridColor = "#000000";
 
+    @Builder.Default
     @Column(name = "grid_opacity")
-    private Double gridOpacity = 0.5;
+    private Double gridOpacity = 0.35;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -1,16 +1,32 @@
 package com.VTT.V10.websocket.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import java.util.List;
-import java.util.Map;
+import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DrawingEvent {
-    private UUID drawingId; // در صورت آپدیت یا حذف
+    private UUID drawingId;
     private UUID sceneId;
+    private String id;
+    private String type;
     private String tool;
+    private String stroke;
     private String color;
+    private Double strokeWidth;
     private Double lineWidth;
-    private List<Map<String, Double>> points;
+    private String fill;
+    private Double x;
+    private Double y;
+    private Double width;
+    private Double height;
+    private Double radius;
+    private String text;
+    private Object points;
+    private Boolean isGMLayer;
 }

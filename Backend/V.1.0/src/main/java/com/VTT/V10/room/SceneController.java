@@ -2,13 +2,14 @@ package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.CreateSceneRequest;
 import com.VTT.V10.room.dto.SceneResponse;
-import com.VTT.V10.room.dto.SceneStateResponse; // این را ایمپورت کنید
+import com.VTT.V10.room.dto.SceneStateResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -16,22 +17,39 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SceneController {
 
-    private final SceneService sceneService; // فقط این سرویس باید اینجا باشد
+    private final SceneService sceneService;
 
     @PostMapping
     public ResponseEntity<SceneResponse> createScene(@Valid @RequestBody CreateSceneRequest request) {
         return ResponseEntity.ok(sceneService.createScene(request));
     }
 
-    // متد جدید برای دریافت وضعیت کامل سکانس
+    @PutMapping("/{sceneId}/map")
+    public ResponseEntity<SceneResponse> updateSceneMap(
+            @PathVariable UUID sceneId,
+            @RequestBody Map<String, Object> payload
+    ) {
+        return ResponseEntity.ok(sceneService.updateSceneMap(sceneId, payload));
+    }
+
+    @PostMapping("/{sceneId}/activate")
+    public ResponseEntity<SceneResponse> activateScene(@PathVariable UUID sceneId) {
+        return ResponseEntity.ok(sceneService.activateScene(sceneId));
+    }
+
     @GetMapping("/{sceneId}/state")
     public ResponseEntity<SceneStateResponse> getSceneState(@PathVariable UUID sceneId) {
-        // دیتا از طریق سرویس ساخته و برگردانده می‌شود
         return ResponseEntity.ok(sceneService.getFullSceneState(sceneId));
     }
 
     @GetMapping("/room/{roomId}")
     public ResponseEntity<List<SceneResponse>> getRoomScenes(@PathVariable UUID roomId) {
         return ResponseEntity.ok(sceneService.getRoomScenes(roomId));
+    }
+
+    @DeleteMapping("/{sceneId}")
+    public ResponseEntity<Void> deleteScene(@PathVariable UUID sceneId) {
+        sceneService.deleteScene(sceneId);
+        return ResponseEntity.noContent().build();
     }
 }

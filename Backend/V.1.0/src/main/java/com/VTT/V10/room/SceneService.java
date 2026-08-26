@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,8 +23,11 @@ public class SceneService {
     private final RoomRepository roomRepository;
     private final AssetRepository assetRepository;
     private final TokenService tokenService;
+    private final TokenRepository tokenRepository;
     private final DrawingService drawingService;
+    private final DrawingRepository drawingRepository;
     private final FogService fogService;
+    private final FogRegionRepository fogRegionRepository;
 
     @Transactional
     public SceneResponse createScene(CreateSceneRequest request) {
@@ -32,26 +36,71 @@ public class SceneService {
 
         Asset asset = null;
         if (request.getAssetId() != null) {
-            asset = assetRepository.findById(request.getAssetId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "فایل نقشه یافت نشد"));
+            asset = assetRepository.findById(request.getAssetId()).orElse(null);
         }
 
-        // اگر سکانس جدید قرار است فعال باشد، بقیه را غیرفعال کن
-        if (Boolean.TRUE.equals(request.getIsActive())) {
+        String mapUrl = request.getMapUrl();
+        if ((mapUrl == null || mapUrl.isBlank()) && asset != null) {
+            mapUrl = asset.getFileUrl();
+        }
+
+        long sceneCount = sceneRepository.findByRoomId(room.getId()).size();
+        boolean shouldBeActive = sceneCount == 0 || Boolean.TRUE.equals(request.getIsActive());
+
+        if (shouldBeActive) {
             sceneRepository.deactivateAllScenesInRoom(room.getId());
         }
 
         Scene scene = Scene.builder()
                 .room(room)
                 .backgroundAsset(asset)
-                .name(request.getName())
-                .isActive(Boolean.TRUE.equals(request.getIsActive()))
-                .gridSize(50) // مقادیر پیش‌فرض
+                .mapUrl(mapUrl)
+                .name(request.getName().trim())
+                .isActive(shouldBeActive)
+                .mapWidth(2000)
+                .mapHeight(1500)
+                .gridSize(60)
                 .gridColor("#000000")
-                .gridOpacity(0.5)
+                .gridOpacity(0.35)
                 .build();
 
         sceneRepository.save(scene);
+        return convertToResponse(scene);
+    }
+
+    @Transactional
+    public SceneResponse updateSceneMap(UUID sceneId, Map<String, Object> payload) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        if (payload.containsKey("mapUrl") && payload.get("mapUrl") != null) {
+            scene.setMapUrl(payload.get("mapUrl").toString());
+        }
+
+        if (payload.containsKey("assetId") && payload.get("assetId") != null) {
+            try {
+                UUID assetId = UUID.fromString(payload.get("assetId").toString());
+                assetRepository.findById(assetId).ifPresent(scene::setBackgroundAsset);
+            } catch (Exception ignored) {}
+        }
+
+        if (payload.containsKey("name") && payload.get("name") != null) {
+            scene.setName(payload.get("name").toString().trim());
+        }
+
+        sceneRepository.save(scene);
+        return convertToResponse(scene);
+    }
+
+    @Transactional
+    public SceneResponse activateScene(UUID sceneId) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        sceneRepository.deactivateAllScenesInRoom(scene.getRoom().getId());
+        scene.setIsActive(true);
+        sceneRepository.save(scene);
+
         return convertToResponse(scene);
     }
 
@@ -65,7 +114,7 @@ public class SceneService {
     @Transactional(readOnly = true)
     public SceneStateResponse getFullSceneState(UUID sceneId) {
         Scene scene = sceneRepository.findById(sceneId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "سکانس یافت نشد"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
         return SceneStateResponse.builder()
                 .scene(convertToResponse(scene))
@@ -75,18 +124,47 @@ public class SceneService {
                 .build();
     }
 
+    @Transactional
+    public void deleteScene(UUID sceneId) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        UUID roomId = scene.getRoom().getId();
+
+        tokenRepository.deleteBySceneId(sceneId);
+        fogRegionRepository.deleteBySceneId(sceneId);
+        drawingRepository.findBySceneId(sceneId).forEach(drawingRepository::delete);
+
+        sceneRepository.delete(scene);
+
+        if (Boolean.TRUE.equals(scene.getIsActive())) {
+            List<Scene> remaining = sceneRepository.findByRoomId(roomId);
+            if (!remaining.isEmpty()) {
+                Scene newActive = remaining.get(0);
+                newActive.setIsActive(true);
+                sceneRepository.save(newActive);
+            }
+        }
+    }
+
     private SceneResponse convertToResponse(Scene scene) {
         UUID assetId = (scene.getBackgroundAsset() != null) ? scene.getBackgroundAsset().getId() : null;
-        String assetUrl = (scene.getBackgroundAsset() != null) ? scene.getBackgroundAsset().getFileUrl() : "";
+        String finalUrl = (scene.getMapUrl() != null && !scene.getMapUrl().isBlank())
+                ? scene.getMapUrl()
+                : (scene.getBackgroundAsset() != null ? scene.getBackgroundAsset().getFileUrl() : "");
 
         return SceneResponse.builder()
                 .id(scene.getId())
                 .name(scene.getName())
                 .isActive(scene.getIsActive())
                 .assetId(assetId)
-                .assetUrl(assetUrl)
+                .assetUrl(finalUrl)
+                .mapUrl(finalUrl)
+                .mapWidth(scene.getMapWidth() != null ? scene.getMapWidth() : 2000)
+                .mapHeight(scene.getMapHeight() != null ? scene.getMapHeight() : 1500)
                 .gridSize(scene.getGridSize())
                 .gridColor(scene.getGridColor())
+                .gridOpacity(scene.getGridOpacity())
                 .build();
     }
 }
