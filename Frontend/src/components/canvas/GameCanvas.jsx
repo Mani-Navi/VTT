@@ -117,7 +117,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const handleMouseDown = (e) => {
     if (!hasActiveMap) return;
 
-    const isClickedOnEmpty = e.target === e.target.getStage();
+    // اگر کلیک روی فضای خالی استیج بود سلکشن پاک شود
+    const isClickedOnEmpty = e.target === e.target.getStage() || e.target.name() === "map-background";
     if (isClickedOnEmpty && activeTool === TOOLS.SELECT) {
       clearSelection();
     }
@@ -415,13 +416,15 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onDblClick={handleDblClick}
+            onContextMenu={(e) => e.evt.preventDefault()}
             onDragEnd={(e) => {
               if (e.target === stageRef.current) {
                 setStagePos(e.target.x(), e.target.y());
               }
             }}
         >
-          <Layer id="layer-map">
+          {/* ۱. لایه پس‌زمینه نقشه */}
+          <Layer id="layer-map" listening={false}>
             <MapLayer
                 mapUrl={activeMapUrl}
                 width={currentScene?.mapWidth || 2000}
@@ -431,7 +434,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
           {hasActiveMap && (
               <>
-                <Layer id="layer-grid">
+                {/* ۲. لایه گرید تاکتیکال */}
+                <Layer id="layer-grid" listening={false}>
                   {currentScene?.grid && (
                       <GridLayer
                           grid={currentScene.grid}
@@ -441,26 +445,31 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                   )}
                 </Layer>
 
-                <Layer id="layer-drawings">
+                {/* ۳. لایه نقاشی و خطوط */}
+                <Layer id="layer-drawings" listening={activeTool === TOOLS.DRAW}>
                   <DrawingLayer liveDrawing={liveDrawing} />
                 </Layer>
 
-                <Layer id="layer-tokens">
-                  <TokenLayer gridSize={currentScene?.grid?.size || 60} />
-                </Layer>
-
-                <Layer id="layer-fog">
+                {/* ۴. لایه مه جنگ (غیر فعال برای لیسنینگ در حالت سلکت تا درگ توکن‌ها آزاد باشد) */}
+                <Layer id="layer-fog" listening={activeTool === TOOLS.FOG}>
                   <FogLayer
                       width={currentScene?.mapWidth || 2000}
                       height={currentScene?.mapHeight || 1500}
                   />
                 </Layer>
 
-                <Layer id="layer-ruler">
+                {/* ۵. لایه توکن‌ها (بالاترین اولویت تعاملی و شنیداری) */}
+                <Layer id="layer-tokens" listening={true}>
+                  <TokenLayer gridSize={currentScene?.grid?.size || 60} isGM={isGM} />
+                </Layer>
+
+                {/* ۶. لایه خط‌کش و اندازه‌گیری */}
+                <Layer id="layer-ruler" listening={activeTool === TOOLS.RULER}>
                   <RulerLayer />
                 </Layer>
 
-                <Layer id="layer-pings">
+                {/* ۷. لایه پینگ رادار */}
+                <Layer id="layer-pings" listening={false}>
                   <PingLayer />
                 </Layer>
               </>

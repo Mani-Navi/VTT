@@ -1,21 +1,25 @@
 import { useAuthStore } from "../store/auth.store";
+import { useRoomStore } from "../store/room.store";
 import { ROLES, PERMISSIONS } from "../constants/permissions.js";
 
 export function usePermissions(roomData) {
   const user = useAuthStore((state) => state.user);
+  const currentRoom = useRoomStore((state) => state.rooms?.find((r) => r.id === roomData?.id)) || roomData;
 
-  // تشخیص قطعی نقش GM بر اساس فیلدهای دریافتی از سرور
+  // تشخیص قطعی نقش GM بر اساس اطلاعات کاربر، دیتای اتاق یا نقش سیستمی
   const isGM = Boolean(
-      roomData?.is_owner === true ||
-      roomData?.isOwner === true ||
-      roomData?.role === "GM" ||
-      (user?.username && roomData?.ownerUsername && user.username === roomData.ownerUsername)
+      currentRoom?.is_owner === true ||
+      currentRoom?.isOwner === true ||
+      currentRoom?.role === "GM" ||
+      (user?.username && currentRoom?.ownerUsername && user.username === currentRoom.ownerUsername) ||
+      user?.role === "GM" ||
+      user?.role === "ADMIN"
   );
 
   const currentRole = isGM ? ROLES.GM : ROLES.PLAYER;
 
-  // دسترسی‌های فعال کاربر جاری
-  const rawPermissions = roomData?.permissions || {};
+  // دسترسی‌های فعال کاربر
+  const rawPermissions = currentRoom?.permissions || {};
 
   const permissions = {
     canAssets: isGM ? true : Boolean(rawPermissions.canAssets),
@@ -32,14 +36,12 @@ export function usePermissions(roomData) {
     return Boolean(permissions[permissionKey]);
   };
 
-  // کنترل جابجایی توکن: GM به همه توکن‌ها دسترسی دارد، بازیکن فقط به توکن منتسب به خودش
+  // کنترل جابجایی توکن: GM به همه توکن‌ها دسترسی دارد، بازیکن به توکنی که خودش ساخته
   const canMoveToken = (controlledBy) => {
     if (isGM) return true;
     if (!user) return false;
-    if (Array.isArray(controlledBy)) {
-      return controlledBy.includes(user.id) || controlledBy.includes(user.username);
-    }
-    return controlledBy === user.id || controlledBy === user.username;
+    if (!controlledBy) return true; // اگر کنترلی ست نشده باشد هر دو می‌توانند تکان دهند
+    return String(controlledBy) === String(user.id) || String(controlledBy) === String(user.username);
   };
 
   return {

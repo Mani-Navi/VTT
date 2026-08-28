@@ -12,9 +12,11 @@ import {
   ZoomIn,
   ZoomOut,
   Type,
+  User,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
+import { useAuthStore } from "../../store/auth.store";
 import { Tooltip } from "../ui/Tooltip";
 import { DrawSubToolbar } from "./DrawSubToolbar.jsx";
 import { TextSubToolbar } from "./TextSubToolbar.jsx";
@@ -36,17 +38,47 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   const isDiceOpen = useCanvasStore((state) => state.isDiceRollerOpen);
 
   const currentScene = useSceneStore((state) => state.currentScene);
-  const hasActiveMap = Boolean(currentScene?.assetUrl || currentScene?.mapUrl);
+  const addToken = useSceneStore((state) => state.addToken);
+  const currentUser = useAuthStore((state) => state.user);
 
+  const hasActiveMap = Boolean(currentScene?.assetUrl || currentScene?.mapUrl);
   const isGM = propIsGM ?? true;
 
-  // منطق رفتار کلیک دوگانه (Two-Click Toggle)
+  // بررسی اینکه آیا پلیر قبلاً کاراکتر خود را روی این صحنه قرار داده است یا خیر
+  const myExistingToken = currentScene?.tokens?.find(
+      (t) => t.controlledBy && String(t.controlledBy) === String(currentUser?.id)
+  );
+
   const handleToolClick = (toolId) => {
     if (activeTool === toolId) {
-      setActiveTool(TOOLS.SELECT); // بار دوم: دی‌سلکت و بازگشت به سلکت
+      setActiveTool(TOOLS.SELECT);
     } else {
-      setActiveTool(toolId); // بار اول: فعال‌سازی
+      setActiveTool(toolId);
     }
+  };
+
+  // افزودن توکن کاراکتر اختصاصی پلیر
+  const handleAddMyCharacter = () => {
+    if (!hasActiveMap || myExistingToken) return;
+
+    const charName = currentUser?.username || "قهرمان من";
+    const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+        charName
+    )}&backgroundColor=b6e3f4`;
+
+    addToken({
+      name: charName,
+      label: charName,
+      avatarUrl: avatar,
+      controlledBy: currentUser?.id,
+      x: (currentScene?.mapWidth || 2000) / 2,
+      y: (currentScene?.mapHeight || 1500) / 2,
+      size: 1,
+      hp: 25,
+      maxHp: 25,
+      ac: 14,
+      isProp: false,
+    });
   };
 
   const primaryTools = [
@@ -111,7 +143,7 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   return (
       <>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 pointer-events-auto">
-          {/* ساب‌تولبارها هنگام فعال بودن نقشه */}
+          {/* ساب‌تولبارها */}
           {hasActiveMap && (
               <>
                 <DrawSubToolbar />
@@ -155,6 +187,35 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
                 );
               })}
             </div>
+
+            {/* دکمه اختصاصی افزودن کاراکتر شخصی بازیکن */}
+            {!isGM && hasActiveMap && (
+                <>
+                  <div className="h-6 w-px bg-zinc-800 mx-1" />
+                  <Tooltip
+                      content="My Character"
+                      subContent={
+                        myExistingToken
+                            ? "کاراکتر شما روی نقشه قرار دارد"
+                            : "افزودن کاراکتر من به نقشه (۱ عدد)"
+                      }
+                  >
+                    <button
+                        type="button"
+                        disabled={Boolean(myExistingToken)}
+                        onClick={handleAddMyCharacter}
+                        className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
+                            myExistingToken
+                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 opacity-70"
+                                : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 animate-pulse"
+                        )}
+                    >
+                      <User className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+                </>
+            )}
 
             <div className="h-6 w-px bg-zinc-800 mx-1" />
 

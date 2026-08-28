@@ -10,6 +10,7 @@ import {
 import { useSceneStore } from "../../store/scene.store.js";
 import { useAuthStore } from "../../store/auth.store";
 import { useWebSocket } from "../../hooks/useWebSocket.js";
+import { usePermissions } from "../../hooks/usePermissions";
 import { roomApi } from "../../api/room.api";
 import { GameCanvas } from "../../components/canvas/GameCanvas.jsx";
 import { Toolbar } from "../../components/room/Toolbar.jsx";
@@ -34,11 +35,12 @@ export const RoomPage = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  const { isGM, permissions: userPermissions } = usePermissions(roomData);
+
   const handleSocketMessage = useCallback(
       (event) => {
         if (!event) return;
 
-        // دریافت زنده لیست کامل اعضای آنلاین
         if (Array.isArray(event)) {
           setOnlineMembers(event);
           return;
@@ -46,7 +48,6 @@ export const RoomPage = () => {
 
         const { action, data } = event;
 
-        // خروج آنی و تضمینی به داشبورد در صورت بسته شدن یا غیرفعال‌سازی خودکار اتاق
         if (action === "ROOM_CLOSED") {
           alert(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.");
           window.location.href = "/dashboard";
@@ -108,22 +109,6 @@ export const RoomPage = () => {
     loadScenes(roomId);
   }, [roomId, loadScenes]);
 
-  const isGM = Boolean(
-      roomData?.is_owner === true ||
-      roomData?.isOwner === true ||
-      roomData?.role === "GM" ||
-      (user?.username && roomData?.ownerUsername && user.username === roomData.ownerUsername)
-  );
-
-  const userPermissions = roomData?.permissions || {
-    canAssets: isGM,
-    canText: isGM,
-    canFog: isGM,
-    canDrawing: isGM,
-    canScene: isGM,
-    canRuler: true,
-  };
-
   const handleCloseRoom = async () => {
     if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
       return;
@@ -146,7 +131,6 @@ export const RoomPage = () => {
 
   return (
       <div className="relative w-screen h-screen overflow-hidden bg-[#090a0f] select-none font-fa">
-        {/* هدر سمت راست: مشخصات اتاق + منوی بازیکنان */}
         <PlayerMenu
             isGM={isGM}
             roomId={roomId}
@@ -154,10 +138,8 @@ export const RoomPage = () => {
             onlineMembers={onlineMembers}
         />
 
-        {/* نوار مدیریت صحنه‌ها در بالای وسط صفحه */}
         <SceneBar isGM={isGM} roomId={roomId} />
 
-        {/* هدر سمت چپ */}
         <header
             className="fixed top-4 left-6 z-30 flex items-center gap-2.5 pointer-events-auto"
             dir="ltr"
@@ -226,7 +208,7 @@ export const RoomPage = () => {
         <Dice3DStage />
         <SettingsMenu isGM={isGM} />
         <AssetMenu isGM={isGM} permissions={userPermissions} />
-        <TokenEditorModal isGM={isGM} />
+        <TokenEditorModal />
 
         {/* راهنما */}
         <Modal
@@ -278,7 +260,7 @@ export const RoomPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>ویرایش توکن:</span>
-                  <span className="text-zinc-400">دوبار کلیک روی توکن</span>
+                  <span className="text-zinc-400">راست کلیک روی توکن</span>
                 </div>
                 <div className="flex justify-between">
                   <span>پرتاب سریع تاس:</span>
