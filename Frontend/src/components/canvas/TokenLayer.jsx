@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Group, Circle, Text, Rect, Image as KonvaImage } from "react-konva";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -8,70 +8,97 @@ import { CONDITION_MAP } from "../../constants/conditions";
 import { getAssetUrl } from "../../api/asset.api";
 import { useAuthStore } from "../../store/auth.store";
 import { useRoomStore } from "../../store/room.store";
-import { TOOLS } from "../../constants/tools";
+
+const tokenImageCache = new Map();
+
+const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
+    const S = Number(gridSize) || 60;
+    const size = Number(tokenSize) || 1;
+
+    if (size % 2 === 1) {
+        const cellX = Math.floor(rawX / S);
+        const cellY = Math.floor(rawY / S);
+        return {
+            x: cellX * S + S / 2,
+            y: cellY * S + S / 2,
+        };
+    } else {
+        const snappedX = Math.round(rawX / S) * S;
+        const snappedY = Math.round(rawY / S) * S;
+        return {
+            x: snappedX,
+            y: snappedY,
+        };
+    }
+};
 
 const SingleToken = ({
                          token,
                          gridSize,
                          isSelected,
                          canControl,
+                         canEdit,
                          isGM,
+                         fallbackUsername = "",
                          onSelect,
                          onOpenEditor,
                      }) => {
     const [imageObj, setImageObj] = useState(null);
     const moveToken = useSceneStore((state) => state.moveToken);
-    const activeTool = useCanvasStore((state) => state.activeTool);
+    const groupRef = useRef(null);
 
+    const rawUrl = token.avatarUrl || token.assetUrl || "";
     const tokenPixelSize = (token.size || 1) * gridSize;
-    const radius = Math.max(14, tokenPixelSize / 2);
+    const radius = Math.max(16, tokenPixelSize / 2);
 
     useEffect(() => {
-        const rawUrl = token.avatarUrl || token.assetUrl;
-        if (!rawUrl) {
+        if (!rawUrl || rawUrl.trim() === "" || rawUrl.length < 4) {
             setImageObj(null);
+            return;
+        }
+
+        const fullUrl = getAssetUrl(rawUrl);
+
+        if (tokenImageCache.has(fullUrl)) {
+            setImageObj(tokenImageCache.get(fullUrl));
             return;
         }
 
         let isMounted = true;
         const img = new window.Image();
-        img.crossOrigin = "anonymous";
-        img.src = getAssetUrl(rawUrl);
+        if (!fullUrl.startsWith("data:") && !fullUrl.startsWith("blob:")) {
+            img.crossOrigin = "anonymous";
+        }
+        img.src = fullUrl;
 
         img.onload = () => {
+            tokenImageCache.set(fullUrl, img);
             if (isMounted) setImageObj(img);
         };
         img.onerror = () => {
-            const fallbackImg = new window.Image();
-            fallbackImg.src = getAssetUrl(rawUrl);
-            fallbackImg.onload = () => {
-                if (isMounted) setImageObj(fallbackImg);
-            };
-            fallbackImg.onerror = () => {
-                if (isMounted) setImageObj(null);
-            };
+            if (isMounted) setImageObj(null);
         };
 
         return () => {
             isMounted = false;
         };
-    }, [token.avatarUrl, token.assetUrl]);
+    }, [rawUrl]);
 
     if (token.isHidden && !isGM) return null;
 
     const isProp = Boolean(token.isProp);
     const showHp = token.showHp !== false && !isProp;
-    const showName = token.showName !== false;
-    const showAc = Boolean(token.showAc) && !isProp && token.ac;
+    const showAc = Boolean(token.showAc) && !isProp && Boolean(token.ac);
     const showConditions = token.showConditions !== false && !isProp;
     const showNotes = Boolean(token.showNotes) && Boolean(token.gmNotes);
 
-    const currentHp = token.hp ?? token.maxHp ?? 10;
-    const maxHp = token.maxHp ?? 10;
+    const currentHp = Number(token.hp !== undefined ? token.hp : (token.maxHp || 20));
+    const maxHp = Number(token.maxHp || 20);
     const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
     const hpBarColor = hpRatio > 0.5 ? "#10b981" : hpRatio > 0.25 ? "#f59e0b" : "#ef4444";
-    const barWidth = Math.max(radius * 2.2, 56);
-    const barHeight = 10;
+
+    const barWidth = Math.max(radius * 2, 54);
+    const barHeight = 12;
 
     const tokenConditions = token.conditions || [];
     const activeConditions = tokenConditions
@@ -79,50 +106,89 @@ const SingleToken = ({
         .filter(Boolean)
         .slice(0, 3);
 
-    const isDraggable = Boolean(canControl) && !token.isLocked && (activeTool === TOOLS.SELECT || !activeTool);
+    const isDraggable = Boolean(canControl) && !token.isLocked;
+
+    // استخراج قطعی نام کاراکتر با اولویت نام کاربری واقعی بازیکن
+    let rawName = token.label || token.name;
+    if (!rawName || rawName === "کاراکتر" || rawName === "توکن" || rawName === "توکن جدید") {
+        rawName = fallbackUsername || "قهرمان";
+    }
+
+    const displayName = rawName.trim();
+    const initials = displayName ? displayName.slice(0, 2).toUpperCase() : "TK";
+
+    const handleOpenEdit = (e) => {
+        if (e) {
+            if (e.evt) e.evt.preventDefault();
+            e.cancelBubble = true;
+        }
+        if (canEdit || canControl || isGM) {
+            onOpenEditor();
+        }
+    };
+
+    const handleDragEnd = (e) => {
+        e.cancelBubble = true;
+        const rawX = e.target.x();
+        const rawY = e.target.y();
+
+        const { x: snappedX, y: snappedY } = snapToCellCenter(rawX, rawY, gridSize, token.size || 1);
+
+        if (groupRef.current) {
+            groupRef.current.position({ x: snappedX, y: snappedY });
+        }
+
+        moveToken(token.id, snappedX, snappedY);
+
+        wsService.send("TOKEN_MOVE", {
+            tokenId: String(token.id),
+            id: String(token.id),
+            label: displayName,
+            name: displayName,
+            avatarUrl: rawUrl,
+            controlledBy: token.controlledBy,
+            x: snappedX,
+            y: snappedY,
+        });
+    };
 
     return (
         <Group
-            x={token.x || 0}
-            y={token.y || 0}
+            ref={groupRef}
+            x={Number(token.x || 0)}
+            y={Number(token.y || 0)}
             draggable={isDraggable}
             opacity={token.isHidden ? 0.55 : 1}
-            onClick={onSelect}
-            onTap={onSelect}
-            onContextMenu={(e) => {
-                e.evt.preventDefault();
+            onClick={(e) => {
                 e.cancelBubble = true;
-                if (canControl) {
-                    onOpenEditor();
-                }
+                onSelect(e);
             }}
-            onDblClick={(e) => {
+            onTap={(e) => {
                 e.cancelBubble = true;
-                if (canControl) onOpenEditor();
+                onSelect(e);
             }}
-            onDblTap={(e) => {
+            onContextMenu={handleOpenEdit}
+            onDblClick={handleOpenEdit}
+            onDblTap={handleOpenEdit}
+            onDragStart={(e) => {
                 e.cancelBubble = true;
-                if (canControl) onOpenEditor();
             }}
-            onDragEnd={(e) => {
-                const newX = e.target.x();
-                const newY = e.target.y();
-                moveToken(token.id, newX, newY);
-                wsService.send("TOKEN_MOVE", { tokenId: String(token.id), x: newX, y: newY });
-            }}
+            onDragEnd={handleDragEnd}
         >
+            {/* هاله انتخاب */}
             {isSelected && (
                 <Circle
-                    radius={radius + 6}
+                    radius={radius + 5}
                     stroke="#f59e0b"
                     strokeWidth={3}
                     dash={[6, 4]}
                     shadowColor="#f59e0b"
-                    shadowBlur={12}
+                    shadowBlur={10}
                     listening={false}
                 />
             )}
 
+            {/* وضعیت‌های کاندیشن */}
             {showConditions && activeConditions.length > 0 && (
                 <Group y={-radius - 14} listening={false}>
                     <Rect
@@ -148,6 +214,7 @@ const SingleToken = ({
                 </Group>
             )}
 
+            {/* بدنه و تصویر اصلی توکن */}
             {isProp ? (
                 <Group
                     clipFunc={(ctx) => {
@@ -181,7 +248,7 @@ const SingleToken = ({
                         ctx.closePath();
                     }}
                 >
-                    <Circle radius={radius} fill={token.tintColor || "#3f3f46"} />
+                    <Circle radius={radius} fill={token.tintColor || "#1e293b"} />
                     {imageObj && (
                         <KonvaImage
                             image={imageObj}
@@ -194,6 +261,7 @@ const SingleToken = ({
                 </Group>
             )}
 
+            {/* کادر دور توکن */}
             {isProp ? (
                 <Rect
                     x={-radius}
@@ -208,38 +276,34 @@ const SingleToken = ({
             ) : (
                 <Circle
                     radius={radius}
-                    stroke={isSelected ? "#f59e0b" : "#18181b"}
-                    strokeWidth={3}
+                    stroke={isSelected ? "#f59e0b" : "#f59e0b"}
+                    strokeWidth={isSelected ? 3 : 2}
                     shadowColor="#000000"
                     shadowBlur={6}
                     listening={false}
                 />
             )}
 
+            {/* حروف اول نام در صورت نبود عکس */}
             {!imageObj && (
                 <Text
-                    text={
-                        token.label || token.name
-                            ? (token.label || token.name).slice(0, 2).toUpperCase()
-                            : isProp
-                                ? "OBJ"
-                                : "??"
-                    }
-                    fontSize={radius * 0.65}
+                    text={initials}
+                    fontSize={Math.max(11, radius * 0.65)}
                     fontStyle="bold"
-                    fill="#ffffff"
+                    fill="#f8fafc"
                     align="center"
                     verticalAlign="middle"
                     x={-radius}
-                    y={-radius + 2}
+                    y={-radius + 1}
                     width={radius * 2}
                     height={radius * 2}
                     listening={false}
                 />
             )}
 
+            {/* نشان AC */}
             {showAc && (
-                <Group x={radius - 6} y={-radius + 6} listening={false}>
+                <Group x={radius - 4} y={-radius + 4} listening={false}>
                     <Circle radius={9} fill="#1e3a8a" stroke="#60a5fa" strokeWidth={1.5} />
                     <Text
                         text={String(token.ac)}
@@ -256,25 +320,26 @@ const SingleToken = ({
                 </Group>
             )}
 
+            {/* نوار سلامتی (HP Bar) */}
             {showHp && (
-                <Group y={radius + 6} listening={false}>
+                <Group y={radius + 4} listening={false}>
                     <Rect
                         x={-barWidth / 2}
                         y={0}
                         width={barWidth}
                         height={barHeight}
-                        fill="#09090b"
+                        fill="#090a0f"
                         cornerRadius={barHeight / 2}
                         stroke="#27272a"
-                        strokeWidth={1}
+                        strokeWidth={1.5}
                     />
                     <Rect
-                        x={-barWidth / 2 + 1}
-                        y={1}
-                        width={Math.max(0, (barWidth - 2) * hpRatio)}
-                        height={barHeight - 2}
+                        x={-barWidth / 2 + 1.5}
+                        y={1.5}
+                        width={Math.max(0, (barWidth - 3) * hpRatio)}
+                        height={barHeight - 3}
                         fill={hpBarColor}
-                        cornerRadius={(barHeight - 2) / 2}
+                        cornerRadius={(barHeight - 3) / 2}
                     />
                     <Text
                         text={`${currentHp}/${maxHp}`}
@@ -285,15 +350,16 @@ const SingleToken = ({
                         align="center"
                         verticalAlign="middle"
                         x={-barWidth / 2}
-                        y={0}
+                        y={1}
                         width={barWidth}
-                        height={barHeight}
+                        height={barHeight - 1}
                     />
                 </Group>
             )}
 
+            {/* پاداش شیء */}
             {isProp && (token.goldValue || token.xpValue) && (
-                <Group y={radius + 6} listening={false}>
+                <Group y={radius + 4} listening={false}>
                     <Rect
                         x={-radius * 1.3}
                         y={0}
@@ -322,40 +388,43 @@ const SingleToken = ({
                 </Group>
             )}
 
-            {showName && (
-                <Group
-                    y={
-                        showHp || (isProp && (token.goldValue || token.xpValue))
-                            ? radius + 6 + barHeight + 3
-                            : radius + 6
-                    }
-                    listening={false}
-                >
-                    <Rect
-                        x={-radius * 1.35}
-                        y={0}
-                        width={radius * 2.7}
-                        height={15}
-                        fill="rgba(9, 9, 11, 0.88)"
-                        cornerRadius={4}
-                        stroke="rgba(63, 63, 70, 0.65)"
-                        strokeWidth={1}
-                    />
-                    <Text
-                        text={token.label || token.name || ""}
-                        fontSize={10}
-                        fill="#f4f4f5"
-                        align="center"
-                        x={-radius * 1.35}
-                        y={1.5}
-                        width={radius * 2.7}
-                        ellipsis={true}
-                    />
-                </Group>
-            )}
+            {/* برچسب نام کاراکتر واقعی */}
+            <Group
+                y={
+                    showHp || (isProp && (token.goldValue || token.xpValue))
+                        ? radius + 4 + barHeight + 3
+                        : radius + 4
+                }
+                listening={false}
+            >
+                <Rect
+                    x={-Math.max(radius * 1.4, 42)}
+                    y={0}
+                    width={Math.max(radius * 2.8, 84)}
+                    height={16}
+                    fill="rgba(9, 10, 15, 0.95)"
+                    cornerRadius={5}
+                    stroke="rgba(245, 158, 11, 0.4)"
+                    strokeWidth={1}
+                />
+                <Text
+                    text={displayName}
+                    fontSize={10}
+                    fontStyle="bold"
+                    fill="#fef08a"
+                    align="center"
+                    verticalAlign="middle"
+                    x={-Math.max(radius * 1.4, 42)}
+                    y={1.5}
+                    width={Math.max(radius * 2.8, 84)}
+                    height={13}
+                    ellipsis={true}
+                />
+            </Group>
 
+            {/* یادداشت GM */}
             {showNotes && isGM && (
-                <Group y={radius + 6 + barHeight + 20} listening={false}>
+                <Group y={radius + 4 + barHeight + 22} listening={false}>
                     <Rect
                         x={-radius * 1.5}
                         y={0}
@@ -371,9 +440,11 @@ const SingleToken = ({
                         fontSize={8.5}
                         fill="#fef08a"
                         align="center"
+                        verticalAlign="middle"
                         x={-radius * 1.5}
-                        y={2}
+                        y={1.5}
                         width={radius * 3}
+                        height={13}
                         ellipsis={true}
                     />
                 </Group>
@@ -382,27 +453,51 @@ const SingleToken = ({
     );
 };
 
-export const TokenLayer = ({ gridSize = 50, isGM: propIsGM }) => {
+export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
     const currentScene = useSceneStore((state) => state.currentScene);
     const selectedTokenIds = useCanvasStore((state) => state.selectedTokenIds);
     const toggleTokenSelection = useCanvasStore((state) => state.toggleTokenSelection);
     const openTokenEditor = useCanvasStore((state) => state.openTokenEditor);
 
-    const { isGM: hookIsGM } = usePermissions();
+    const { isGM: hookIsGM, permissions } = usePermissions();
     const currentUser = useAuthStore((state) => state.user);
     const currentRoom = useRoomStore((state) => state.currentRoom);
 
-    const isRoomHost = currentRoom?.creatorId && currentUser?.id && String(currentRoom.creatorId) === String(currentUser.id);
-    const isGM = Boolean(propIsGM || hookIsGM || isRoomHost || currentUser?.role === "GM" || currentUser?.role === "ADMIN");
+    const isRoomHost =
+        currentRoom?.creatorId &&
+        currentUser?.id &&
+        String(currentRoom.creatorId) === String(currentUser.id);
+
+    const isGM = Boolean(
+        propIsGM ||
+        hookIsGM ||
+        isRoomHost ||
+        currentUser?.role === "GM" ||
+        currentUser?.role === "ADMIN"
+    );
 
     if (!currentScene || !currentScene.tokens) return null;
 
+    const userTokens = currentScene.tokens;
+
     return (
         <Group id="tokens-layer-group">
-            {currentScene.tokens.map((token) => {
-                // مقایسه رشته‌ای ایمن جهت جلوگیری از عدم تطابق نوع تایپ
-                const isOwner = token.controlledBy && String(token.controlledBy) === String(currentUser?.id);
-                const canControl = Boolean(isGM) || Boolean(isOwner);
+            {userTokens.map((token, index) => {
+                const tokenOwner = token.controlledBy ? String(token.controlledBy).toLowerCase() : "";
+                const userId = currentUser?.id ? String(currentUser.id).toLowerCase() : "";
+                const userName = currentUser?.username ? String(currentUser.username).toLowerCase() : "";
+                const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase() : "";
+
+                const isOwner = Boolean(
+                    !isGM
+                        ? (tokenOwner && (tokenOwner === userId || tokenOwner === userName || tokenOwner === userEmail)) ||
+                        userTokens.length === 1 ||
+                        index === 0
+                        : true
+                );
+
+                const canControl = Boolean(isGM || isOwner);
+                const canEdit = Boolean(isGM || isOwner || permissions?.canEditToken);
 
                 return (
                     <SingleToken
@@ -411,15 +506,14 @@ export const TokenLayer = ({ gridSize = 50, isGM: propIsGM }) => {
                         gridSize={gridSize}
                         isSelected={selectedTokenIds.includes(token.id)}
                         canControl={canControl}
+                        canEdit={canEdit}
                         isGM={isGM}
+                        fallbackUsername={currentUser?.username || "بازیکن"}
                         onSelect={(e) => {
-                            e.cancelBubble = true;
                             toggleTokenSelection(token.id, e.evt?.shiftKey || e.evt?.ctrlKey);
                         }}
                         onOpenEditor={() => {
-                            if (canControl) {
-                                openTokenEditor(token.id);
-                            }
+                            openTokenEditor(token.id);
                         }}
                     />
                 );

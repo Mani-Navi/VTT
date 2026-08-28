@@ -45,38 +45,41 @@ class WebSocketService {
         this.isConnected = true;
         useWebSocketStore.getState().setStatus("CONNECTED");
 
-        // ۱. سابسکرایب به کانال اصلی اتاق
-        this.client.subscribe(`/topic/room/${roomId}`, (message) => {
-          try {
-            const payload = JSON.parse(message.body);
-            this.handleIncomingMessage(payload);
-          } catch (e) {
-            console.error("STOMP parse error:", e);
-          }
-        });
+        try {
+          // ۱. سابسکرایب اصلی اتاق
+          this.client.subscribe(`/topic/room/${roomId}`, (message) => {
+            try {
+              const payload = JSON.parse(message.body);
+              this.handleIncomingMessage(payload);
+            } catch (e) {
+              console.error("STOMP parse error:", e);
+            }
+          });
 
-        // ۲. سابسکرایب به کانال اعضای آنلاین (Discord-like Live Presence)
-        this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
-          try {
-            const onlineMembers = JSON.parse(message.body);
-            this.trigger("USERS_UPDATE", onlineMembers);
-          } catch (e) {
-            console.error("Users parse error:", e);
-          }
-        });
+          // ۲. سابسکرایب اعضای آنلاین
+          this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
+            try {
+              const onlineMembers = JSON.parse(message.body);
+              this.trigger("USERS_UPDATE", onlineMembers);
+            } catch (e) {
+              console.error("Users parse error:", e);
+            }
+          });
 
-        // ۳. سابسکرایب به تنظیمات اتاق
-        this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
-          try {
-            const settings = JSON.parse(message.body);
-            this.trigger("SETTINGS_UPDATE", settings);
-          } catch (e) {
-            console.error("Settings parse error:", e);
-          }
-        });
+          // ۳. سابسکرایب تنظیمات
+          this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
+            try {
+              const settings = JSON.parse(message.body);
+              this.trigger("SETTINGS_UPDATE", settings);
+            } catch (e) {
+              console.error("Settings parse error:", e);
+            }
+          });
 
-        // ارسال سیگنال ورود برای دریافت آنی لیست همه حاضرین
-        this.sendPresenceJoin();
+          this.sendPresenceJoin();
+        } catch (subErr) {
+          console.warn("STOMP subscribe error:", subErr);
+        }
       };
 
       this.client.onWebSocketClose = () => {
@@ -85,7 +88,7 @@ class WebSocketService {
       };
 
       this.client.onStompError = (frame) => {
-        console.warn("STOMP Error:", frame.headers["message"]);
+        console.warn("STOMP Error:", frame.headers ? frame.headers["message"] : "Unknown");
       };
 
       this.client.activate();
@@ -199,14 +202,18 @@ class WebSocketService {
       this.trigger(payload.action, payload);
     }
 
-    if (payload.data) {
-      if (payload.data.tokenId !== undefined) {
-        this.trigger("TOKEN_MOVE", payload);
-      } else if (payload.data.tool !== undefined) {
-        this.trigger("DRAWING_ADD", payload);
-      } else if (payload.data.formula !== undefined) {
-        this.trigger("DICE_ROLL", payload);
-      }
+    const eventData = payload.data || payload;
+
+    if (
+        payload.action === "MOVE" ||
+        payload.action === "TOKEN_MOVE" ||
+        (eventData && (eventData.tokenId !== undefined || (eventData.id && eventData.x !== undefined)))
+    ) {
+      this.trigger("TOKEN_MOVE", eventData);
+    } else if (payload.action === "ADD" || (eventData && eventData.points !== undefined)) {
+      this.trigger("DRAWING_ADD", eventData);
+    } else if (payload.action === "ROLL" || (eventData && eventData.formula !== undefined)) {
+      this.trigger("DICE_ROLL", eventData);
     }
   }
 }

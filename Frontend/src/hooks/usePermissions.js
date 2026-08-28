@@ -1,12 +1,11 @@
 import { useAuthStore } from "../store/auth.store";
 import { useRoomStore } from "../store/room.store";
-import { ROLES, PERMISSIONS } from "../constants/permissions.js";
+import { ROLES } from "../constants/permissions.js";
 
 export function usePermissions(roomData) {
   const user = useAuthStore((state) => state.user);
   const currentRoom = useRoomStore((state) => state.rooms?.find((r) => r.id === roomData?.id)) || roomData;
 
-  // تشخیص قطعی نقش GM بر اساس اطلاعات کاربر، دیتای اتاق یا نقش سیستمی
   const isGM = Boolean(
       currentRoom?.is_owner === true ||
       currentRoom?.isOwner === true ||
@@ -18,7 +17,6 @@ export function usePermissions(roomData) {
 
   const currentRole = isGM ? ROLES.GM : ROLES.PLAYER;
 
-  // دسترسی‌های فعال کاربر
   const rawPermissions = currentRoom?.permissions || {};
 
   const permissions = {
@@ -29,6 +27,7 @@ export function usePermissions(roomData) {
     canScene: isGM ? true : Boolean(rawPermissions.canScene || rawPermissions.canMap),
     canMap: isGM ? true : Boolean(rawPermissions.canMap || rawPermissions.canScene),
     canRuler: isGM ? true : (rawPermissions.canRuler !== undefined ? Boolean(rawPermissions.canRuler) : true),
+    canEditToken: isGM ? true : Boolean(rawPermissions.canEditToken),
   };
 
   const hasPermission = (permissionKey) => {
@@ -36,11 +35,10 @@ export function usePermissions(roomData) {
     return Boolean(permissions[permissionKey]);
   };
 
-  // کنترل جابجایی توکن: GM به همه توکن‌ها دسترسی دارد، بازیکن به توکنی که خودش ساخته
+  // کنترل تکان دادن: GM به همه، بازیکن فقط به توکن خودش
   const canMoveToken = (controlledBy) => {
     if (isGM) return true;
-    if (!user) return false;
-    if (!controlledBy) return true; // اگر کنترلی ست نشده باشد هر دو می‌توانند تکان دهند
+    if (!user || !controlledBy) return false;
     return String(controlledBy) === String(user.id) || String(controlledBy) === String(user.username);
   };
 
@@ -57,5 +55,6 @@ export function usePermissions(roomData) {
     canUseText: isGM || permissions.canText,
     canUseAssets: isGM || permissions.canAssets,
     canUseRuler: isGM || permissions.canRuler,
+    canEditToken: isGM || permissions.canEditToken,
   };
 }

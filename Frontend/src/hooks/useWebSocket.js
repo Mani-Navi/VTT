@@ -24,23 +24,23 @@ export function useWebSocket(roomId, onMessage = null) {
     const token = localStorage.getItem("vtt_jwt");
     wsService.connect(roomId, token);
 
-    // ۱. رویداد حضور آنلاین اعضا
+    // ۱. رویداد آنلاین‌ها
     const unsubUsers = wsService.on("USERS_UPDATE", (payload) => {
       if (onMessageRef.current) {
         onMessageRef.current(payload.users || payload);
       }
     });
 
-    // ۲. رویداد توکن‌ها (MOVE / UPDATE / DELETE / ADD)
+    // ۲. رویداد توکن‌ها
     const unsubToken = wsService.on("TOKEN_MOVE", (payload) => {
-      const data = payload.data || payload;
-      if (data && (data.tokenId || data.id)) {
+      const data = payload?.data || payload;
+      if (data) {
         syncTokenFromSocket(data);
       }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
-    // ۳. پیام‌های عمومی تاپیک اتاق
+    // ۳. پیام‌های عمومی
     const unsubGeneral = wsService.on("MESSAGE", (payload) => {
       if (payload?.action === "MOVE" && payload.data) {
         syncTokenFromSocket(payload.data);
@@ -48,31 +48,31 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
-    // ۴. نقاشی بلادرنگ
+    // ۴. نقاشی
     const unsubDraw = wsService.on("DRAWING_ADD", (payload) => {
-      const data = payload.data || payload;
-      addDrawing(data);
+      const data = payload?.data || payload;
+      if (data) addDrawing(data);
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
     // ۵. مه جنگ
     const unsubFog = wsService.on("FOG_UPDATE", (payload) => {
-      const data = payload.data || payload;
-      addFogShape(data);
+      const data = payload?.data || payload;
+      if (data) addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
-    // ۶. پرتاب تاس
+    // ۶. تاس
     const unsubDice = wsService.on("DICE_ROLL", (payload) => {
-      const data = payload.data || payload;
-      addDiceRoll(data);
+      const data = payload?.data || payload;
+      if (data && addDiceRoll) addDiceRoll(data);
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
     // ۷. تغییر صحنه
     const unsubScene = wsService.on("SCENE_CHANGE", (payload) => {
-      const data = payload.data || payload;
-      if (data.sceneId) {
+      const data = payload?.data || payload;
+      if (data && data.sceneId) {
         switchScene(data.sceneId, false);
       }
       if (onMessageRef.current) onMessageRef.current(payload);

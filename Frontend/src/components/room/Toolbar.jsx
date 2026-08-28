@@ -44,10 +44,15 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   const hasActiveMap = Boolean(currentScene?.assetUrl || currentScene?.mapUrl);
   const isGM = propIsGM ?? true;
 
-  // بررسی اینکه آیا پلیر قبلاً کاراکتر خود را روی این صحنه قرار داده است یا خیر
-  const myExistingToken = currentScene?.tokens?.find(
-      (t) => t.controlledBy && String(t.controlledBy) === String(currentUser?.id)
-  );
+  const currentUserId = String(currentUser?.id || currentUser?.userId || "").toLowerCase();
+  const currentUsername = String(currentUser?.username || "").toLowerCase();
+
+  // بررسی دقیق وجود توکن کاراکتر بازیکن
+  const myExistingToken = currentScene?.tokens?.find((t) => {
+    const cb = String(t.controlledBy || "").toLowerCase();
+    const lbl = String(t.label || t.name || "").toLowerCase();
+    return (cb && (cb === currentUserId || cb === currentUsername)) || (lbl && lbl === currentUsername);
+  });
 
   const handleToolClick = (toolId) => {
     if (activeTool === toolId) {
@@ -57,7 +62,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     }
   };
 
-  // افزودن توکن کاراکتر اختصاصی پلیر
   const handleAddMyCharacter = () => {
     if (!hasActiveMap || myExistingToken) return;
 
@@ -70,7 +74,7 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
       name: charName,
       label: charName,
       avatarUrl: avatar,
-      controlledBy: currentUser?.id,
+      controlledBy: currentUserId,
       x: (currentScene?.mapWidth || 2000) / 2,
       y: (currentScene?.mapHeight || 1500) / 2,
       size: 1,
@@ -143,7 +147,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   return (
       <>
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 pointer-events-auto">
-          {/* ساب‌تولبارها */}
           {hasActiveMap && (
               <>
                 <DrawSubToolbar />
@@ -152,7 +155,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
               </>
           )}
 
-          {/* نوار ابزار اصلی */}
           <div className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl shadow-2xl backdrop-blur-xl text-zinc-200">
             <div className="flex items-center gap-1">
               {primaryTools.map((t) => {
@@ -188,7 +190,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
               })}
             </div>
 
-            {/* دکمه اختصاصی افزودن کاراکتر شخصی بازیکن */}
             {!isGM && hasActiveMap && (
                 <>
                   <div className="h-6 w-px bg-zinc-800 mx-1" />
@@ -219,7 +220,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
 
             <div className="h-6 w-px bg-zinc-800 mx-1" />
 
-            {/* سینی تاس */}
             <Tooltip content="Dice Tray" subContent="سینی پرتاب تاس سه‌بعدی" shortcut="Space">
               <button
                   type="button"
@@ -235,7 +235,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
               </button>
             </Tooltip>
 
-            {/* کتابخانه منابع (Asset Library) */}
             {(isGM || permissions?.canAssets) && (
                 <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها">
                   <button
@@ -255,7 +254,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
                 </Tooltip>
             )}
 
-            {/* تنظیمات (فقط برای GM) */}
             {isGM && (
                 <Tooltip content="Room Settings" subContent="تنظیمات اتاق و گرید">
                   <button
@@ -275,7 +273,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
           </div>
         </div>
 
-        {/* ویجت کنترل زوم شناور */}
         <div className="fixed bottom-6 right-6 z-30 flex items-center gap-1.5 p-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-md text-xs text-zinc-300">
           <button
               type="button"

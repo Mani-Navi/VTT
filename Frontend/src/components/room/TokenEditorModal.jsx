@@ -10,7 +10,6 @@ import {
   Coins,
   X,
   Check,
-  ImageIcon,
   User,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
@@ -24,7 +23,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { getAssetUrl } from "../../api/asset.api";
 
-// کاتالوگ جامع وضعیت‌های D&D 5e
+// کاتالوگ وضعیت‌های D&D 5e
 const ALL_DND_CONDITIONS = [
   { id: "blinded", nameFa: "کور شده (Blinded)", icon: "🙈" },
   { id: "charmed", nameFa: "افسون شده (Charmed)", icon: "💖" },
@@ -60,14 +59,32 @@ export const TokenEditorModal = () => {
   const currentUser = useAuthStore((state) => state.user);
   const currentRoom = useRoomStore((state) => state.currentRoom);
 
-  const isRoomHost = currentRoom?.creatorId && currentUser?.id && String(currentRoom.creatorId) === String(currentUser.id);
-  const isGM = Boolean(hookIsGM || isRoomHost || currentUser?.role === "GM" || currentUser?.role === "ADMIN");
+  const isRoomHost =
+      currentRoom?.creatorId &&
+      currentUser?.id &&
+      String(currentRoom.creatorId) === String(currentUser.id);
 
-  const token = currentScene?.tokens?.find((t) => t.id === editingTokenId);
-  const isOwner = token?.controlledBy && String(token.controlledBy) === String(currentUser?.id);
+  const isGM = Boolean(
+      hookIsGM ||
+      isRoomHost ||
+      currentUser?.role === "GM" ||
+      currentUser?.role === "ADMIN"
+  );
 
-  // پلیر در صورتی می‌تواند ویرایش کند که مالک باشد یا GM باشد
-  const canEditStats = isGM || Boolean(permissions?.canEditStats);
+  const token = currentScene?.tokens?.find((t) => String(t.id) === String(editingTokenId));
+
+  const tokenOwner = token?.controlledBy ? String(token.controlledBy).toLowerCase() : "";
+  const userId = currentUser?.id ? String(currentUser.id).toLowerCase() : "";
+  const userName = currentUser?.username ? String(currentUser.username).toLowerCase() : "";
+  const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase() : "";
+
+  const isOwner = Boolean(
+      tokenOwner &&
+      (tokenOwner === userId || tokenOwner === userName || tokenOwner === userEmail)
+  );
+
+  // دسترسی ادیت
+  const canEdit = isGM || (isOwner && Boolean(permissions?.canEditToken));
 
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -80,19 +97,16 @@ export const TokenEditorModal = () => {
   const [gmNotes, setGmNotes] = useState("");
   const [calcInput, setCalcInput] = useState("");
 
-  // فیلدهای اشیاء (Props)
   const isProp = Boolean(token?.isProp);
   const [goldValue, setGoldValue] = useState(0);
   const [xpValue, setXpValue] = useState(0);
 
-  // تاگل‌های نمایش روی بوم
   const [showHp, setShowHp] = useState(true);
   const [showName, setShowName] = useState(true);
   const [showAc, setShowAc] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
   const [showNotes, setShowNotes] = useState(false);
 
-  // وضعیت‌های فعال روی این توکن
   const [selectedConditions, setSelectedConditions] = useState([]);
   const [showAddConditionPicker, setShowAddConditionPicker] = useState(false);
 
@@ -100,7 +114,7 @@ export const TokenEditorModal = () => {
     if (token) {
       setName(token.label || token.name || "");
       setAvatarUrl(token.avatarUrl || token.assetUrl || "");
-      setHp(token.hp !== undefined ? token.hp : 20);
+      setHp(token.hp !== undefined ? token.hp : (token.maxHp || 20));
       setMaxHp(token.maxHp !== undefined ? token.maxHp : 20);
       setAc(token.ac || 14);
       setSize(token.size || 1);
@@ -145,14 +159,14 @@ export const TokenEditorModal = () => {
     };
 
     updateToken(token.id, updated);
-    // انتشار بلادرنگ و ذخیره در دیتابیس
-    wsService.send("TOKEN_MOVE", { tokenId: token.id, ...updated });
+    wsService.send("TOKEN_MOVE", { tokenId: String(token.id), ...updated });
     closeEditor();
   };
 
   const handleDelete = () => {
+    if (!isGM && !isOwner) return;
     removeToken(token.id);
-    wsService.send("TOKEN_MOVE", { tokenId: token.id, isDeleted: true });
+    wsService.send("TOKEN_MOVE", { tokenId: String(token.id), isDeleted: true });
     closeEditor();
   };
 
@@ -206,7 +220,7 @@ export const TokenEditorModal = () => {
           maxWidth="md"
       >
         <div className="space-y-4 max-h-[78vh] overflow-y-auto pr-1 font-fa text-zinc-200 select-none" dir="rtl">
-          {/* نام و آواتار کاراکتر (قابل تغییر توسط پلیر و GM) */}
+          {/* نام و آواتار کاراکتر */}
           <div className="flex items-center gap-3 p-3 bg-zinc-950 rounded-2xl border border-zinc-800">
             <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-amber-500/50 bg-zinc-900 shrink-0">
               {avatarUrl ? (
@@ -251,7 +265,7 @@ export const TokenEditorModal = () => {
                     <label className="text-[11px] text-zinc-400 block mb-1">HP فعلی:</label>
                     <input
                         type="number"
-                        disabled={!canEditStats}
+                        disabled={!canEdit}
                         value={hp}
                         onChange={(e) => setHp(Number(e.target.value))}
                         className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 disabled:opacity-60"
@@ -261,7 +275,7 @@ export const TokenEditorModal = () => {
                     <label className="text-[11px] text-zinc-400 block mb-1">حداکثر Max HP:</label>
                     <input
                         type="number"
-                        disabled={!canEditStats}
+                        disabled={!canEdit}
                         value={maxHp}
                         onChange={(e) => setMaxHp(Math.max(1, Number(e.target.value)))}
                         className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-60"
@@ -269,7 +283,7 @@ export const TokenEditorModal = () => {
                   </div>
                 </div>
 
-                {canEditStats && (
+                {canEdit && (
                     <div className="flex gap-2 pt-1">
                       <input
                           type="number"
@@ -297,7 +311,7 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* بخش ارزش و پاداش برای اشیاء (Props) */}
+          {/* اشیاء (Props) */}
           {isProp && (
               <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
@@ -329,13 +343,13 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* بخش شرایط و وضعیت‌ها (Conditions) */}
+          {/* وضعیت‌ها (Conditions) */}
           {!isProp && (
               <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-zinc-100">
                     <Activity className="w-4 h-4 text-amber-400" />
-                    <span>فهرست شرایط و وضعیت‌ها (انتخاب حداکثر ۳ مورد)</span>
+                    <span>فهرست شرایط و وضعیت‌ها (حداکثر ۳ مورد)</span>
                   </div>
 
                   {isGM && (
@@ -349,7 +363,6 @@ export const TokenEditorModal = () => {
                   )}
                 </div>
 
-                {/* پاپ‌آپ انتخاب وضعیت‌های D&D */}
                 {showAddConditionPicker && isGM && (
                     <div className="p-3 bg-zinc-900 rounded-2xl border border-amber-500/50 space-y-2 animate-in fade-in zoom-in-95">
                       <div className="flex items-center justify-between text-xs font-bold text-amber-400 pb-1.5 border-b border-zinc-800">
@@ -389,7 +402,6 @@ export const TokenEditorModal = () => {
                     </div>
                 )}
 
-                {/* فهرست کاندیشن‌ها */}
                 <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
                   {availableConditions.length === 0 ? (
                       <div className="col-span-2 text-center py-4 text-xs text-zinc-500">
@@ -450,7 +462,7 @@ export const TokenEditorModal = () => {
                   <label className="text-[11px] text-zinc-400 block mb-1">زره (AC):</label>
                   <input
                       type="number"
-                      disabled={!canEditStats}
+                      disabled={!canEdit}
                       value={ac}
                       onChange={(e) => setAc(Number(e.target.value))}
                       className="w-full h-9 px-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-blue-400 focus:outline-none focus:border-blue-500 disabled:opacity-60"
@@ -474,7 +486,7 @@ export const TokenEditorModal = () => {
             </div>
           </div>
 
-          {/* شرح و یادداشت (فقط GM) */}
+          {/* شرح و یادداشت GM */}
           {isGM && (
               <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-1.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-400/90">
@@ -491,7 +503,7 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* تاگل‌های نمایش روی بوم (فقط GM) */}
+          {/* تاگل‌های نمایش */}
           {isGM && (
               <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
                 <div className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5 mb-1">

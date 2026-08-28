@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Stage, Layer } from "react-konva";
+import { Stage, Layer, Group } from "react-konva";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
 import { useAuthStore } from "../../store/auth.store";
@@ -117,15 +117,15 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const handleMouseDown = (e) => {
     if (!hasActiveMap) return;
 
-    // اگر کلیک روی فضای خالی استیج بود سلکشن پاک شود
     const isClickedOnEmpty = e.target === e.target.getStage() || e.target.name() === "map-background";
-    if (isClickedOnEmpty && activeTool === TOOLS.SELECT) {
+    if (isClickedOnEmpty) {
       clearSelection();
     }
 
+    if (!isClickedOnEmpty) return;
+
     const pos = getPointerCanvasPos();
 
-    // ۱. ابزار نقاشی (Draw)
     if (activeTool === TOOLS.DRAW) {
       isInteracting.current = true;
       setShapeStart(pos);
@@ -143,7 +143,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    // ۲. ابزار نوشت‌افزار (Text)
     if (activeTool === TOOLS.TEXT) {
       const textContent = prompt("متن مورد نظر را وارد کنید:");
       if (textContent && textContent.trim()) {
@@ -167,7 +166,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    // ۳. ابزار خط‌کش (Ruler)
     if (activeTool === TOOLS.RULER) {
       if (e.evt.button === 0) {
         if (!isInteracting.current) {
@@ -182,7 +180,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    // ۴. ابزار مه جنگ (Fog of War)
     if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
       isInteracting.current = true;
       setShapeStart(pos);
@@ -350,8 +347,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
   };
 
-  const handleDblClick = () => {
+  const handleDblClick = (e) => {
     if (!hasActiveMap) return;
+    if (e.target.findAncestor?.("#tokens-layer-group")) return;
+
     const pos = getPointerCanvasPos();
     const pingData = {
       userId: user?.id || "user-1",
@@ -371,7 +370,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           className="relative w-full h-full bg-[#090a0f] overflow-hidden select-none"
           onContextMenu={(e) => e.preventDefault()}
       >
-        {/* گیت عدم انتخاب نقشه */}
         {!hasActiveMap && (
             <div
                 className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#090a0f]/90 backdrop-blur-md p-6 text-center"
@@ -423,54 +421,38 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
               }
             }}
         >
-          {/* ۱. لایه پس‌زمینه نقشه */}
-          <Layer id="layer-map" listening={false}>
+          {/* لایه ۱: پس‌زمینه نقشه و گرید (بدون لیسنر ماوس) */}
+          <Layer id="layer-background" listening={false}>
             <MapLayer
                 mapUrl={activeMapUrl}
                 width={currentScene?.mapWidth || 2000}
                 height={currentScene?.mapHeight || 1500}
             />
+            {currentScene?.grid && (
+                <GridLayer
+                    grid={currentScene.grid}
+                    width={currentScene.mapWidth || 2000}
+                    height={currentScene.mapHeight || 1500}
+                />
+            )}
           </Layer>
 
           {hasActiveMap && (
               <>
-                {/* ۲. لایه گرید تاکتیکال */}
-                <Layer id="layer-grid" listening={false}>
-                  {currentScene?.grid && (
-                      <GridLayer
-                          grid={currentScene.grid}
-                          width={currentScene.mapWidth || 2000}
-                          height={currentScene.mapHeight || 1500}
-                      />
-                  )}
-                </Layer>
-
-                {/* ۳. لایه نقاشی و خطوط */}
-                <Layer id="layer-drawings" listening={activeTool === TOOLS.DRAW}>
+                {/* لایه ۲: ترسیمات، مه جنگ و خط‌کش (گروه‌بندی بهینه) */}
+                <Layer id="layer-canvas-features" listening={activeTool === TOOLS.DRAW || activeTool === TOOLS.FOG || activeTool === TOOLS.RULER}>
                   <DrawingLayer liveDrawing={liveDrawing} />
-                </Layer>
-
-                {/* ۴. لایه مه جنگ (غیر فعال برای لیسنینگ در حالت سلکت تا درگ توکن‌ها آزاد باشد) */}
-                <Layer id="layer-fog" listening={activeTool === TOOLS.FOG}>
                   <FogLayer
                       width={currentScene?.mapWidth || 2000}
                       height={currentScene?.mapHeight || 1500}
                   />
+                  <RulerLayer />
+                  <PingLayer />
                 </Layer>
 
-                {/* ۵. لایه توکن‌ها (بالاترین اولویت تعاملی و شنیداری) */}
+                {/* لایه ۳: توکن‌ها (بالاترین لایه با دسترسی کامل به رویدادهای درگ و کلیک) */}
                 <Layer id="layer-tokens" listening={true}>
                   <TokenLayer gridSize={currentScene?.grid?.size || 60} isGM={isGM} />
-                </Layer>
-
-                {/* ۶. لایه خط‌کش و اندازه‌گیری */}
-                <Layer id="layer-ruler" listening={activeTool === TOOLS.RULER}>
-                  <RulerLayer />
-                </Layer>
-
-                {/* ۷. لایه پینگ رادار */}
-                <Layer id="layer-pings" listening={false}>
-                  <PingLayer />
                 </Layer>
               </>
           )}

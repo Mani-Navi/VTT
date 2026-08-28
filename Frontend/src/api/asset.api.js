@@ -3,10 +3,14 @@ import { MAP_PRESETS } from "../constants/mapPresets";
 import { TOKEN_PRESETS } from "../constants/tokenPresets";
 
 export const getAssetUrl = (url) => {
-  if (!url) return "";
+  if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
 
-  // در صورتی که لینک اینترنتی کامل، تصویر base64 یا blob باشد
+  // اگر مقدار صرفاً یک کلمه نامعتبر باشد
+  if (!trimmed.includes("/") && !trimmed.startsWith("data:")) {
+    return "";
+  }
+
   if (
       trimmed.startsWith("http://") ||
       trimmed.startsWith("https://") ||
@@ -16,7 +20,6 @@ export const getAssetUrl = (url) => {
     return trimmed;
   }
 
-  // در صورتی که مسیر آپلود لوکال باشد
   const rawBase = api.defaults.baseURL || "http://localhost:8080/api";
   const backendHost = rawBase.replace(/\/api\/?$/, "");
   const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;

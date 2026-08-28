@@ -1,162 +1,120 @@
 import { create } from "zustand";
-import {
-    TOOLS,
-    DRAW_SHAPES,
-    FOG_MODES,
-    FOG_BRUSH_SHAPES,
-    FOG_ACTIONS,
-} from "../constants/tools.js";
-import { MEASUREMENT_TYPES, MEASUREMENT_UNITS } from "../constants/measurementTypes.js";
+import { TOOLS, DRAW_MODES, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../constants/tools";
 
 export const useCanvasStore = create((set) => ({
-    // ابزارهای فعال
-    activeTool: TOOLS.SELECT || "SELECT",
-    activeDrawShape: DRAW_SHAPES.FREEHAND || "FREEHAND",
-    activeFogMode: FOG_MODES.REVEAL_RECT || "REVEAL_RECT",
-
-    // موقعیت بوم و بزرگ‌نمایی (Viewport & Zoom)
-    zoom: 1,
-    stageX: 0,
-    stageY: 0,
-    stageWidth: typeof window !== "undefined" ? window.innerWidth : 1920,
-    stageHeight: typeof window !== "undefined" ? window.innerHeight : 1080,
-
-    // توکن‌های انتخاب‌شده
-    selectedTokenIds: [],
-
-    // تنظیمات نقاشی و قلم
+    // ابزار پیش‌فرض انتخاب و حرکت توکن
+    activeTool: TOOLS.SELECT,
+    activeDrawShape: DRAW_MODES.MARKER,
     drawStrokeColor: "#f59e0b",
     drawStrokeWidth: 4,
-    drawFillColor: "transparent",
+    drawFillColor: "rgba(245, 158, 11, 0.2)",
     isDrawGMLayer: false,
 
-    // تنظیمات براش مه جنگ
-    fogBrushRadius: 70,
-    fogBrushShape: FOG_BRUSH_SHAPES.CIRCLE || "CIRCLE",
-    fogAction: FOG_ACTIONS.REVEAL || "REVEAL",
+    fogBrushShape: FOG_BRUSH_SHAPES.CIRCLE,
+    fogAction: FOG_ACTIONS.REVEAL,
+    fogBrushRadius: 75,
 
-    // تاس سه‌بعدی
-    is3DDiceEnabled: true,
-    active3DRoll: null,
+    zoom: 1.0,
+    stageX: 0,
+    stageY: 0,
 
-    // ابزار خط‌کش و اندازه‌گیری
-    rulerType: MEASUREMENT_TYPES.EUCLIDEAN || "EUCLIDEAN",
-    rulerUnit: MEASUREMENT_UNITS.FEET || "FEET",
-    isMeasuring: false,
-    measureStart: null,
-    measureCurrent: null,
-    measureWaypoints: [],
-
-    // پوینتر لیزری
-    isLaserActive: false,
-    laserPosition: null,
-
-    // وضعیت پنل‌های شناور (Extensions حذف شد)
-    isAssetMenuOpen: false,
-    isPlayerMenuOpen: false,
-    isSettingsMenuOpen: false,
-    isDiceRollerOpen: false,
+    selectedTokenIds: [],
     isTokenEditorOpen: false,
     editingTokenId: null,
 
-    // اکشن‌ها
-    setActiveTool: (tool) =>
-        set({
-            activeTool: tool,
-            isMeasuring: false,
-            measureStart: null,
-            measureCurrent: null,
-            measureWaypoints: [],
-            isLaserActive: tool === (TOOLS.LASER || "LASER"),
-        }),
+    isAssetMenuOpen: false,
+    isSettingsOpen: false,
 
+    setActiveTool: (tool) => set({ activeTool: tool }),
     setActiveDrawShape: (shape) => set({ activeDrawShape: shape }),
-    setActiveFogMode: (mode) => set({ activeFogMode: mode }),
-
-    setZoom: (zoomOrFn) =>
-        set((state) => {
-            const nextZoom =
-                typeof zoomOrFn === "function" ? zoomOrFn(state.zoom) : zoomOrFn;
-            const clamped = Math.min(Math.max(nextZoom, 0.15), 3.5);
-            return { zoom: clamped };
-        }),
-
-    setStagePos: (x, y) => set({ stageX: x, stageY: y }),
-    setStageSize: (width, height) => set({ stageWidth: width, stageHeight: height }),
-    resetView: () => set({ zoom: 1, stageX: 100, stageY: 100 }),
-
-    setSelectedTokenIds: (ids) => set({ selectedTokenIds: ids }),
-    toggleTokenSelection: (id, multiSelect = false) =>
-        set((state) => {
-            if (multiSelect) {
-                const isSelected = state.selectedTokenIds.includes(id);
-                const updated = isSelected
-                    ? state.selectedTokenIds.filter((item) => item !== id)
-                    : [...state.selectedTokenIds, id];
-                return { selectedTokenIds: updated };
-            }
-            return { selectedTokenIds: [id] };
-        }),
-    clearSelection: () => set({ selectedTokenIds: [] }),
-
     setDrawStrokeColor: (color) => set({ drawStrokeColor: color }),
     setDrawStrokeWidth: (width) => set({ drawStrokeWidth: width }),
     setDrawFillColor: (color) => set({ drawFillColor: color }),
     setIsDrawGMLayer: (isGM) => set({ isDrawGMLayer: isGM }),
 
-    setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
     setFogBrushShape: (shape) => set({ fogBrushShape: shape }),
     setFogAction: (action) => set({ fogAction: action }),
+    setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
 
-    setIs3DDiceEnabled: (enabled) => set({ is3DDiceEnabled: enabled }),
-    trigger3DRoll: (roll) => set({ active3DRoll: roll }),
-    clear3DRoll: () => set({ active3DRoll: null }),
+    setZoom: (zoom) => set({ zoom }),
+    setStagePos: (stageX, stageY) => set({ stageX, stageY }),
 
-    setRulerType: (type) => set({ rulerType: type }),
-    setRulerUnit: (unit) => set({ rulerUnit: unit }),
-    startMeasurement: (x, y) =>
+    toggleTokenSelection: (tokenId, isMulti = false) => {
+        set((state) => {
+            if (isMulti) {
+                return {
+                    selectedTokenIds: state.selectedTokenIds.includes(tokenId)
+                        ? state.selectedTokenIds.filter((id) => id !== tokenId)
+                        : [...state.selectedTokenIds, tokenId],
+                };
+            }
+            return { selectedTokenIds: [tokenId] };
+        });
+    },
+
+    clearSelection: () => set({ selectedTokenIds: [] }),
+
+    openTokenEditor: (tokenId) => {
+        set({ isTokenEditorOpen: true, editingTokenId: tokenId });
+    },
+
+    closeTokenEditor: () => {
+        set({ isTokenEditorOpen: false, editingTokenId: null });
+    },
+
+    toggleMenu: (menuName) => {
+        set((state) => {
+            if (menuName === "asset") {
+                return { isAssetMenuOpen: !state.isAssetMenuOpen, isSettingsOpen: false };
+            }
+            if (menuName === "settings") {
+                return { isSettingsOpen: !state.isSettingsOpen, isAssetMenuOpen: false };
+            }
+            return {};
+        });
+    },
+
+    // متر و لیزر
+    measurement: null,
+    laserPosition: null,
+
+    startMeasurement: (x, y) => {
         set({
-            isMeasuring: true,
-            measureStart: { x, y },
-            measureCurrent: { x, y },
-            measureWaypoints: [],
-        }),
-    updateMeasurement: (x, y) =>
-        set((state) => (state.isMeasuring ? { measureCurrent: { x, y } } : state)),
-    addMeasurementWaypoint: (x, y) =>
-        set((state) => ({
-            measureWaypoints: [...state.measureWaypoints, { x, y }],
-        })),
-    endMeasurement: () =>
-        set({
-            isMeasuring: false,
-            measureStart: null,
-            measureCurrent: null,
-            measureWaypoints: [],
-        }),
+            measurement: {
+                startX: x,
+                startY: y,
+                currentX: x,
+                currentY: y,
+                waypoints: [],
+            },
+        });
+    },
 
+    updateMeasurement: (x, y) => {
+        set((state) => {
+            if (!state.measurement) return state;
+            return {
+                measurement: {
+                    ...state.measurement,
+                    currentX: x,
+                    currentY: y,
+                },
+            };
+        });
+    },
+
+    addMeasurementWaypoint: (x, y) => {
+        set((state) => {
+            if (!state.measurement) return state;
+            return {
+                measurement: {
+                    ...state.measurement,
+                    waypoints: [...state.measurement.waypoints, { x, y }],
+                },
+            };
+        });
+    },
+
+    endMeasurement: () => set({ measurement: null }),
     setLaserPosition: (pos) => set({ laserPosition: pos }),
-    setLaserActive: (active) => set({ isLaserActive: active }),
-
-    toggleMenu: (menu) =>
-        set((state) => ({
-            isAssetMenuOpen: menu === "asset" ? !state.isAssetMenuOpen : false,
-            isPlayerMenuOpen: menu === "player" ? !state.isPlayerMenuOpen : false,
-            isSettingsMenuOpen: menu === "settings" ? !state.isSettingsMenuOpen : false,
-            isDiceRollerOpen: menu === "dice" ? !state.isDiceRollerOpen : false,
-        })),
-
-    closeAllMenus: () =>
-        set({
-            isAssetMenuOpen: false,
-            isPlayerMenuOpen: false,
-            isSettingsMenuOpen: false,
-            isDiceRollerOpen: false,
-            isTokenEditorOpen: false,
-        }),
-
-    openTokenEditor: (tokenId) =>
-        set({ isTokenEditorOpen: true, editingTokenId: tokenId }),
-    closeTokenEditor: () =>
-        set({ isTokenEditorOpen: false, editingTokenId: null }),
 }));
