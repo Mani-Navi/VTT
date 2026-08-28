@@ -1,6 +1,7 @@
 package com.VTT.V10.asset;
 
 import com.VTT.V10.asset.dto.AssetResponse;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -41,6 +42,23 @@ public class AssetController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/from-url")
+    public ResponseEntity<AssetResponse> createFromUrl(
+            @RequestBody UrlAssetRequest request,
+            Authentication authentication
+    ) {
+        AssetResponse response = assetService.createAssetFromUrl(
+                request.getUrl(),
+                request.getName(),
+                request.getType(),
+                request.getDpi(),
+                request.getColumns(),
+                request.getRows(),
+                authentication.getName()
+        );
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping
     public ResponseEntity<List<AssetResponse>> getAssets(
             @RequestParam(value = "type", required = false) String type,
@@ -67,5 +85,15 @@ public class AssetController {
     ) {
         assetService.deleteAsset(assetId, authentication.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    @Data
+    public static class UrlAssetRequest {
+        private String url;
+        private String name;
+        private String type;
+        private Integer dpi;
+        private Integer columns;
+        private Integer rows;
     }
 }

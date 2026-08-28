@@ -34,9 +34,6 @@ public class RoomWebSocketController {
     private final RoomSessionManager sessionManager;
     private final UserRepository userRepository;
 
-    /**
-     * اعلام پیوستن فعال به اتاق و درخواست وضعیت زنده حضور اعضا (Presence Join)
-     */
     @MessageMapping("/room/{roomId}/presence/join")
     public void handlePresenceJoin(
             @DestinationVariable UUID roomId,
@@ -52,9 +49,6 @@ public class RoomWebSocketController {
         });
     }
 
-    /**
-     * اعلام خروج فعال از اتاق (Presence Leave)
-     */
     @MessageMapping("/room/{roomId}/presence/leave")
     public void handlePresenceLeave(
             @DestinationVariable UUID roomId,
@@ -77,12 +71,10 @@ public class RoomWebSocketController {
             roomService.updateLastActive(roomId, principal.getName());
         }
 
-        tokenService.updateTokenPosition(
-                event.getData().getTokenId(),
-                event.getData().getX(),
-                event.getData().getY(),
-                event.getData().getRotation()
-        );
+        // ۱. ذخیره دائمی تمامی مشخصات توکن در PostgreSQL
+        tokenService.updateTokenFromEvent(event.getData());
+
+        // ۲. برادکست بلادرنگ به تمام کلاینت‌های متصل به اتاق
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 

@@ -33,7 +33,7 @@ public class Asset {
     @Column(nullable = false)
     private AssetType type; // MAP, TOKEN, PROP, ATTACHMENT, TEXT
 
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
 
     private Long fileSize;
