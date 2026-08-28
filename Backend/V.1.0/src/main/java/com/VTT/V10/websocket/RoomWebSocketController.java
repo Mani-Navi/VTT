@@ -65,16 +65,14 @@ public class RoomWebSocketController {
             @Payload SocketEvent<TokenMoveEvent> event,
             Principal principal
     ) {
-        if (event == null || event.getData() == null) return;
+        if (event == null || event.getData() == null || principal == null) return;
 
-        if (principal != null) {
-            roomService.updateLastActive(roomId, principal.getName());
-        }
+        roomService.updateLastActive(roomId, principal.getName());
 
-        // ۱. ذخیره دائمی تمامی مشخصات توکن در PostgreSQL
-        tokenService.updateTokenFromEvent(event.getData());
+        // ذخیره امن با بررسی احراز هویت و دسترسی مالکیت
+        tokenService.updateTokenFromEvent(event.getData(), principal.getName(), roomId);
 
-        // ۲. برادکست بلادرنگ به تمام کلاینت‌های متصل به اتاق
+        // برادکست بلادرنگ تغییرات
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
@@ -157,6 +155,7 @@ public class RoomWebSocketController {
                 case "FOG" -> Boolean.TRUE.equals(perm.getCanFog());
                 case "SCENE" -> Boolean.TRUE.equals(perm.getCanScene());
                 case "ASSETS" -> Boolean.TRUE.equals(perm.getCanAssets());
+                case "EDIT_TOKEN" -> Boolean.TRUE.equals(perm.getCanEditToken());
                 default -> false;
             };
         } catch (Exception e) {

@@ -47,4 +47,9 @@ public class PlayerPermission {
     @Builder.Default
     @Column(name = "can_ruler", nullable = false)
     private Boolean canRuler = true;
+
+    // ستون به صورت nullable تعریف شد تا برای سطرهای قبلی خطای Not Null رخ ندهد
+    @Builder.Default
+    @Column(name = "can_edit_token", nullable = true)
+    private Boolean canEditToken = false;
 }

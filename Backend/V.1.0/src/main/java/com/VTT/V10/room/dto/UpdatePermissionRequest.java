@@ -26,4 +26,7 @@ public class UpdatePermissionRequest {
     private Boolean canScene;
 
     private Boolean canRuler;
+
+    @JsonAlias({"canEditToken", "canToken"})
+    private Boolean canEditToken;
 }

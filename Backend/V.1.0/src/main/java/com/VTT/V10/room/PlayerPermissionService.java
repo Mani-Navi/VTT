@@ -26,6 +26,7 @@ public class PlayerPermissionService {
                 .canDrawing(false)
                 .canScene(false)
                 .canRuler(true)
+                .canEditToken(false)
                 .build();
         permissionRepository.save(permission);
     }
@@ -41,6 +42,7 @@ public class PlayerPermissionService {
         if (request.getCanScene() != null) perm.setCanScene(request.getCanScene());
         if (request.getCanText() != null) perm.setCanText(request.getCanText());
         if (request.getCanRuler() != null) perm.setCanRuler(request.getCanRuler());
+        if (request.getCanEditToken() != null) perm.setCanEditToken(request.getCanEditToken());
 
         permissionRepository.save(perm);
         return convertToResponse(perm);
@@ -58,12 +60,13 @@ public class PlayerPermissionService {
                 .memberId(p.getMember().getId())
                 .username(p.getMember().getUser() != null ? p.getMember().getUser().getUsername() : "")
                 .role(p.getMember().getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
-                .canAssets(p.getCanAssets())
-                .canDrawing(p.getCanDrawing())
-                .canFog(p.getCanFog())
-                .canScene(p.getCanScene())
-                .canText(p.getCanText())
-                .canRuler(p.getCanRuler())
+                .canAssets(Boolean.TRUE.equals(p.getCanAssets()))
+                .canDrawing(Boolean.TRUE.equals(p.getCanDrawing()))
+                .canFog(Boolean.TRUE.equals(p.getCanFog()))
+                .canScene(Boolean.TRUE.equals(p.getCanScene()))
+                .canText(Boolean.TRUE.equals(p.getCanText()))
+                .canRuler(p.getCanRuler() == null || Boolean.TRUE.equals(p.getCanRuler()))
+                .canEditToken(Boolean.TRUE.equals(p.getCanEditToken()))
                 .build();
     }
 }

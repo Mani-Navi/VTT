@@ -28,4 +28,5 @@ public class PermissionResponse {
     }
 
     private Boolean canRuler;
+    private Boolean canEditToken;
 }

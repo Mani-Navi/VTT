@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -22,11 +23,38 @@ public class TokenService {
     private final TokenRepository tokenRepository;
     private final SceneRepository sceneRepository;
     private final AssetRepository assetRepository;
+    private final RoomMemberRepository roomMemberRepository;
 
     @Transactional
-    public TokenResponse addToken(AddTokenRequest request) {
+    public TokenResponse addToken(AddTokenRequest request, String userEmail) {
         Scene scene = sceneRepository.findById(request.getSceneId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        Room room = scene.getRoom();
+
+        RoomMember requester = null;
+        if (userEmail != null) {
+            requester = roomMemberRepository.findByRoomIdAndUserEmail(room.getId(), userEmail).orElse(null);
+        }
+
+        boolean isGM = requester != null && requester.getRole() == RoomMember.Role.ADMIN;
+        String finalControlledBy = "";
+
+        if (requester != null) {
+            finalControlledBy = requester.getUser().getId().toString();
+            if (!isGM) {
+                final String uid = finalControlledBy;
+                List<Token> existing = tokenRepository.findBySceneId(scene.getId());
+                boolean alreadyHasToken = existing.stream().anyMatch(t -> uid.equals(t.getControlledBy()));
+                if (alreadyHasToken) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "هر بازیکن تنها مجاز به داشتن یک توکن اختصاصی است");
+                }
+            }
+        }
+
+        if (isGM && request.getControlledBy() != null && !request.getControlledBy().isBlank()) {
+            finalControlledBy = request.getControlledBy();
+        }
 
         Asset asset = null;
         if (request.getAssetId() != null) {
@@ -38,23 +66,28 @@ public class TokenService {
             finalAvatar = asset.getFileUrl();
         }
 
+        String label = request.getLabel();
+        if (label == null || label.isBlank()) {
+            label = (requester != null && requester.getUser() != null) ? requester.getUser().getUsername() : "توکن کاراکتر";
+        }
+
         Token token = Token.builder()
                 .scene(scene)
                 .asset(asset)
-                .label(request.getLabel() != null ? request.getLabel() : "توکن")
+                .label(label)
                 .avatarUrl(finalAvatar)
-                .x(request.getX() != null ? request.getX() : 0.0)
-                .y(request.getY() != null ? request.getY() : 0.0)
+                .x(request.getX() != null ? request.getX() : 1000.0)
+                .y(request.getY() != null ? request.getY() : 750.0)
                 .size(request.getSize() != null ? request.getSize() : 1.0)
                 .rotation(0.0)
                 .hp(request.getHp() != null ? request.getHp() : 20)
                 .maxHp(request.getMaxHp() != null ? request.getMaxHp() : 20)
                 .ac(request.getAc() != null ? request.getAc() : 12)
-                .controlledBy(request.getControlledBy())
-                .gmNotes(request.getGmNotes())
-                .isProp(Boolean.TRUE.equals(request.getIsProp()))
-                .goldValue(request.getGoldValue())
-                .xpValue(request.getXpValue())
+                .controlledBy(finalControlledBy)
+                .gmNotes(isGM ? request.getGmNotes() : null)
+                .isProp(isGM && Boolean.TRUE.equals(request.getIsProp()))
+                .goldValue(isGM ? request.getGoldValue() : 0)
+                .xpValue(isGM ? request.getXpValue() : 0)
                 .isLooted(false)
                 .showHp(request.getShowHp() != null ? request.getShowHp() : true)
                 .showName(request.getShowName() != null ? request.getShowName() : true)
@@ -69,28 +102,61 @@ public class TokenService {
     }
 
     @Transactional
-    public void updateTokenFromEvent(TokenMoveEvent data) {
+    public void updateTokenFromEvent(TokenMoveEvent data, String userEmail, UUID roomId) {
         if (data == null || data.getTokenId() == null) return;
 
         try {
             UUID tokenId = UUID.fromString(data.getTokenId());
+            Optional<Token> tokenOpt = tokenRepository.findById(tokenId);
+            if (tokenOpt.isEmpty()) return;
+
+            Token token = tokenOpt.get();
+
+            boolean isGM = false;
+            boolean isOwner = false;
+
+            if (userEmail != null) {
+                var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, userEmail);
+                if (memberOpt.isPresent()) {
+                    RoomMember member = memberOpt.get();
+                    isGM = member.getRole() == RoomMember.Role.ADMIN;
+                    String uid = member.getUser().getId().toString();
+                    String uName = member.getUser().getUsername();
+                    isOwner = token.getControlledBy() != null &&
+                            (token.getControlledBy().equalsIgnoreCase(uid) || token.getControlledBy().equalsIgnoreCase(uName));
+                }
+            }
+
+            if (!isGM && !isOwner) {
+                return;
+            }
 
             if (Boolean.TRUE.equals(data.getIsDeleted())) {
                 tokenRepository.deleteById(tokenId);
                 return;
             }
 
-            tokenRepository.findById(tokenId).ifPresent(token -> {
-                if (data.getX() != null) token.setX(data.getX());
-                if (data.getY() != null) token.setY(data.getY());
-                if (data.getRotation() != null) token.setRotation(data.getRotation());
+            if (data.getX() != null) token.setX(data.getX());
+            if (data.getY() != null) token.setY(data.getY());
+            if (data.getRotation() != null) token.setRotation(data.getRotation());
+
+            // فقط در صورتی نام تغییر کند که نام جدید معتبر و غیرخالی باشد
+            if (data.getName() != null && !data.getName().isBlank()) {
+                token.setLabel(data.getName());
+            } else if (data.getLabel() != null && !data.getLabel().isBlank()) {
+                token.setLabel(data.getLabel());
+            }
+
+            if (data.getAvatarUrl() != null && !data.getAvatarUrl().isBlank()) {
+                token.setAvatarUrl(data.getAvatarUrl());
+            }
+            if (data.getHp() != null) token.setHp(data.getHp());
+            if (data.getMaxHp() != null) token.setMaxHp(data.getMaxHp());
+            if (data.getAc() != null) token.setAc(data.getAc());
+            if (data.getConditions() != null) token.setConditions(data.getConditions());
+
+            if (isGM) {
                 if (data.getSize() != null) token.setSize(data.getSize());
-                if (data.getName() != null) token.setLabel(data.getName());
-                if (data.getLabel() != null) token.setLabel(data.getLabel());
-                if (data.getAvatarUrl() != null) token.setAvatarUrl(data.getAvatarUrl());
-                if (data.getHp() != null) token.setHp(data.getHp());
-                if (data.getMaxHp() != null) token.setMaxHp(data.getMaxHp());
-                if (data.getAc() != null) token.setAc(data.getAc());
                 if (data.getGmNotes() != null) token.setGmNotes(data.getGmNotes());
                 if (data.getGoldValue() != null) token.setGoldValue(data.getGoldValue());
                 if (data.getXpValue() != null) token.setXpValue(data.getXpValue());
@@ -101,10 +167,9 @@ public class TokenService {
                 if (data.getShowAc() != null) token.setShowAc(data.getShowAc());
                 if (data.getShowConditions() != null) token.setShowConditions(data.getShowConditions());
                 if (data.getShowNotes() != null) token.setShowNotes(data.getShowNotes());
-                if (data.getConditions() != null) token.setConditions(data.getConditions());
+            }
 
-                tokenRepository.save(token);
-            });
+            tokenRepository.save(token);
         } catch (IllegalArgumentException ignored) {
         }
     }
