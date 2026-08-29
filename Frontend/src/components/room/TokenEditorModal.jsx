@@ -61,15 +61,34 @@ const ALL_DND_CONDITIONS = [
 
 const MAX_TOKEN_FILE_SIZE = 3 * 1024 * 1024; // 3MB
 
-const safeAssetUrl = (url) => {
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
-    return url;
-  }
-  return getAssetUrl ? getAssetUrl(url) : url;
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  return (
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("/uploads/") ||
+      trimmed.startsWith("blob:")
+  );
 };
 
-export const TokenEditorModal = () => {
+const safeAssetUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("/uploads/") ||
+      trimmed.startsWith("blob:")
+  ) {
+    return trimmed;
+  }
+  return getAssetUrl ? getAssetUrl(trimmed) : trimmed;
+};
+
+export const TokenEditorModal = ({ roomData }) => {
   const isEditing = useCanvasStore((state) => state.isTokenEditorOpen);
   const editingTokenId = useCanvasStore((state) => state.editingTokenId);
   const closeEditor = useCanvasStore((state) => state.closeTokenEditor);
@@ -81,7 +100,8 @@ export const TokenEditorModal = () => {
   const addAvailableCondition = useSceneStore((state) => state.addAvailableCondition);
   const removeAvailableCondition = useSceneStore((state) => state.removeAvailableCondition);
 
-  const currentRoom = useRoomStore((state) => state.currentRoom || state.room || state.activeRoom);
+  const storeRoom = useRoomStore((state) => state.currentRoom || state.room || state.activeRoom);
+  const currentRoom = roomData || storeRoom;
   const { isGM, canMoveToken } = usePermissions(currentRoom);
   const currentUser = useAuthStore((state) => state.user);
 
@@ -124,12 +144,12 @@ export const TokenEditorModal = () => {
 
   const isProp = Boolean(token?.isProp);
 
-  // ۱. تاگل‌های نمایش روی بوم (Canvas Token Display)
+  // ۱. تاگل‌های نمایش روی بوم (Canvas Display)
   const [showHp, setShowHp] = useState(true);
   const [showConditions, setShowConditions] = useState(true);
   const [showAc, setShowAc] = useState(true);
 
-  // ۲. تاگل‌های پرمیشن دسترسی پلیر (Player Access Permission)
+  // ۲. تاگل‌های پرمیشن دسترسی پلیر (Player Modal Access)
   const [allowPlayerHp, setAllowPlayerHp] = useState(true);
   const [allowPlayerConditions, setAllowPlayerConditions] = useState(true);
   const [allowPlayerAc, setAllowPlayerAc] = useState(true);
@@ -141,7 +161,11 @@ export const TokenEditorModal = () => {
   useEffect(() => {
     if (token) {
       setName(token.label || token.name || "");
-      setAvatarUrl(token.avatarUrl || token.assetUrl || "");
+
+      // فقط در صورتی که آدرس یک URL معتبر باشد پر می‌شود، در غیر این صورت خالی است
+      const rawAvatar = token.avatarUrl || token.assetUrl || "";
+      setAvatarUrl(isValidImageUrl(rawAvatar) ? rawAvatar : "");
+
       setHp(token.hp !== undefined ? token.hp : (token.maxHp || 20));
       setMaxHp(token.maxHp !== undefined ? token.maxHp : 20);
       setAc(token.ac !== undefined ? token.ac : 14);
@@ -150,12 +174,10 @@ export const TokenEditorModal = () => {
       setIsLocked(Boolean(token.isLocked));
       setGmNotes(token.gmNotes || "");
 
-      // بارگذاری تاگل‌های نمایش روی بوم
       setShowHp(token.showHp === false ? false : true);
       setShowConditions(token.showConditions === false ? false : true);
       setShowAc(token.showAc === false ? false : true);
 
-      // بارگذاری تاگل‌های دسترسی پلیر
       setAllowPlayerHp(token.allowPlayerHp === false ? false : true);
       setAllowPlayerConditions(token.allowPlayerConditions === false ? false : true);
       setAllowPlayerAc(token.allowPlayerAc === false ? false : true);
@@ -218,7 +240,7 @@ export const TokenEditorModal = () => {
     if (!canEditBasic) return;
 
     const finalName = name.trim() || token.label || token.name || "توکن کاراکتر";
-    const finalAvatar = avatarUrl || token.avatarUrl || token.assetUrl || "";
+    const finalAvatar = avatarUrl.trim() || "";
 
     const updated = {
       name: finalName,
@@ -297,6 +319,8 @@ export const TokenEditorModal = () => {
     setSelectedConditions((prev) => prev.filter((c) => c !== condId));
   };
 
+  const hasValidAvatar = isValidImageUrl(avatarUrl);
+
   return (
       <Modal
           isOpen={isEditing}
@@ -311,14 +335,12 @@ export const TokenEditorModal = () => {
           <div className="p-3.5 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
             <div className="flex items-center gap-3">
               <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-amber-500/50 bg-zinc-900 shrink-0 shadow-inner flex items-center justify-center">
-                {avatarUrl ? (
+                {hasValidAvatar ? (
                     <img
                         src={safeAssetUrl(avatarUrl)}
                         alt="Avatar"
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = PRESET_TOKEN_ICONS[0].url;
-                        }}
+                        onError={() => setAvatarUrl("")}
                     />
                 ) : (
                     <User className="w-8 h-8 text-zinc-600" />
@@ -445,7 +467,6 @@ export const TokenEditorModal = () => {
 
                   {isGM && (
                       <div className="flex items-center gap-1.5">
-                        {/* تریگر ۱: دسترسی پلیر به این بخش */}
                         <button
                             type="button"
                             onClick={() => setAllowPlayerHp(!allowPlayerHp)}
@@ -458,7 +479,6 @@ export const TokenEditorModal = () => {
                           <span>{allowPlayerHp ? "دسترسی پلیر: فعال" : "دسترسی پلیر: قفل"}</span>
                         </button>
 
-                        {/* تریگر ۲: نمایش روی توکن در بوم */}
                         <button
                             type="button"
                             onClick={() => setShowHp(!showHp)}
@@ -521,7 +541,7 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* ۳. وضعیت‌ها (Conditions) با دو تاگل تفکیک‌شده برای GM */}
+          {/* ۳. وضعیت‌ها (Conditions) */}
           {!isProp && (isGM || allowPlayerConditions) && (
               <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
@@ -533,7 +553,6 @@ export const TokenEditorModal = () => {
                   <div className="flex items-center gap-1.5">
                     {isGM && (
                         <>
-                          {/* تریگر ۱: دسترسی پلیر */}
                           <button
                               type="button"
                               onClick={() => setAllowPlayerConditions(!allowPlayerConditions)}
@@ -546,7 +565,6 @@ export const TokenEditorModal = () => {
                             <span>{allowPlayerConditions ? "دسترسی: فعال" : "دسترسی: قفل"}</span>
                           </button>
 
-                          {/* تریگر ۲: نمایش روی توکن در بوم */}
                           <button
                               type="button"
                               onClick={() => setShowConditions(!showConditions)}

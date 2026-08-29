@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useSceneStore } from "../../store/scene.store.js";
 import { useAuthStore } from "../../store/auth.store";
+import { useRoomStore } from "../../store/room.store";
 import { useWebSocket } from "../../hooks/useWebSocket.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { roomApi } from "../../api/room.api";
@@ -28,6 +29,7 @@ export const RoomPage = () => {
   const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
+  const setCurrentRoom = useRoomStore((state) => state.setCurrentRoom);
   const loadScenes = useSceneStore((state) => state.loadScenes);
 
   const [roomData, setRoomData] = useState(null);
@@ -72,21 +74,23 @@ export const RoomPage = () => {
 
         if (action === "PERMISSION_UPDATED") {
           if (data?.username === user?.username || data?.memberId === user?.id) {
+            const updatedPerms = {
+              canAssets: data.canAssets,
+              canText: data.canText,
+              canFog: data.canFog,
+              canDrawing: data.canDrawing,
+              canScene: data.canScene,
+              canRuler: data.canRuler,
+            };
             setRoomData((prev) => ({
               ...prev,
-              permissions: {
-                canAssets: data.canAssets,
-                canText: data.canText,
-                canFog: data.canFog,
-                canDrawing: data.canDrawing,
-                canScene: data.canScene,
-                canRuler: data.canRuler,
-              },
+              permissions: updatedPerms,
             }));
+            setCurrentRoom((prev) => (prev ? { ...prev, permissions: updatedPerms } : prev));
           }
         }
       },
-      [user]
+      [user, setCurrentRoom]
   );
 
   const { isConnected } = useWebSocket(roomId, handleSocketMessage);
@@ -98,6 +102,7 @@ export const RoomPage = () => {
         .getRoom(roomId)
         .then((data) => {
           setRoomData(data);
+          setCurrentRoom(data); // تزریق پایدار به استور اتاق
         })
         .catch((err) => {
           console.error("خطا در دریافت اطلاعات اتاق:", err);
@@ -107,7 +112,7 @@ export const RoomPage = () => {
         });
 
     loadScenes(roomId);
-  }, [roomId, loadScenes]);
+  }, [roomId, loadScenes, setCurrentRoom]);
 
   const handleCloseRoom = async () => {
     if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
@@ -208,7 +213,7 @@ export const RoomPage = () => {
         <Dice3DStage />
         <SettingsMenu isGM={isGM} />
         <AssetMenu isGM={isGM} permissions={userPermissions} />
-        <TokenEditorModal />
+        <TokenEditorModal roomData={roomData} />
 
         {/* راهنما */}
         <Modal
