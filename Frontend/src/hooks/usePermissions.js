@@ -4,17 +4,47 @@ import { ROLES } from "../constants/permissions.js";
 
 export function usePermissions(roomData) {
   const user = useAuthStore((state) => state.user);
-  const currentRoom = useRoomStore((state) => state.rooms?.find((r) => r.id === roomData?.id)) || roomData;
+  const storeRoom = useRoomStore((state) => state.currentRoom || state.room || state.activeRoom);
+  const roomsList = useRoomStore((state) => state.rooms || []);
 
-  const isGM = Boolean(
-      currentRoom?.is_owner === true ||
-      currentRoom?.isOwner === true ||
-      currentRoom?.role === "GM" ||
-      (user?.username && currentRoom?.ownerUsername && user.username === currentRoom.ownerUsername) ||
-      user?.role === "GM" ||
-      user?.role === "ADMIN"
+  // پیدا کردن اتاق از تمام منابع ممکن استور
+  const currentRoom =
+      roomData ||
+      storeRoom ||
+      (roomData?.id ? roomsList.find((r) => r.id === roomData.id) : null) ||
+      roomsList[0] ||
+      null;
+
+  const currentUserId = String(user?.id || user?.userId || "").toLowerCase();
+  const currentUsername = String(user?.username || "").toLowerCase();
+  const currentUserEmail = String(user?.email || "").toLowerCase();
+
+  // بررسی جامع نقش GM از روی انواع متغیرهای ارسالی بک‌اند
+  const isOwnerByRoom = Boolean(
+      currentRoom &&
+      (currentRoom.is_owner === true ||
+          currentRoom.isOwner === true ||
+          (currentRoom.ownerUsername && String(currentRoom.ownerUsername).toLowerCase() === currentUsername) ||
+          (currentRoom.ownerId && String(currentRoom.ownerId).toLowerCase() === currentUserId) ||
+          (currentRoom.creatorId && String(currentRoom.creatorId).toLowerCase() === currentUserId))
   );
 
+  const isRoleGM = Boolean(
+      (currentRoom?.role && (currentRoom.role === "GM" || currentRoom.role === "ADMIN")) ||
+      (user?.role && (user.role === "GM" || user.role === "ADMIN"))
+  );
+
+  // بررسی در لیست ممبرهای اتاق
+  const isMemberGM = Boolean(
+      currentRoom?.members?.some((m) => {
+        const mUid = String(m.user?.id || m.userId || m.id || "").toLowerCase();
+        const mUname = String(m.user?.username || m.username || "").toLowerCase();
+        const isMe = (mUid && mUid === currentUserId) || (mUname && mUname === currentUsername);
+        return isMe && (m.role === "ADMIN" || m.role === "GM");
+      })
+  );
+
+  const isGM = Boolean(isOwnerByRoom || isRoleGM || isMemberGM);
   const currentRole = isGM ? ROLES.GM : ROLES.PLAYER;
 
   const rawPermissions = currentRoom?.permissions || {};
@@ -39,7 +69,8 @@ export function usePermissions(roomData) {
   const canMoveToken = (controlledBy) => {
     if (isGM) return true;
     if (!user || !controlledBy) return false;
-    return String(controlledBy) === String(user.id) || String(controlledBy) === String(user.username);
+    const cb = String(controlledBy).toLowerCase();
+    return cb === currentUserId || cb === currentUsername || cb === currentUserEmail;
   };
 
   return {

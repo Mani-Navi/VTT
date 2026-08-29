@@ -1,29 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Heart,
   Trash2,
   Plus,
   Minus,
   Activity,
-  Eye,
-  FileText,
-  Coins,
+  User,
+  Upload,
+  Image as ImageIcon,
+  Shield,
+  Maximize2,
   X,
   Check,
-  User,
+  ToggleLeft,
+  ToggleRight,
+  Eye,
+  Key,
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
 import { useAuthStore } from "../../store/auth.store";
 import { useRoomStore } from "../../store/room.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
-import { getAssetUrl } from "../../api/asset.api";
+import { getAssetUrl, assetApi } from "../../api/asset.api";
 
-// کاتالوگ وضعیت‌های D&D 5e
+const PRESET_TOKEN_ICONS = [
+  { id: "knight", label: "شوالیه / جنگجو", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
+  { id: "mage", label: "جادوگر / ویچ", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aria&backgroundColor=ffdfbf" },
+  { id: "rogue", label: "روگ / قاتل", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow&backgroundColor=c0aede" },
+  { id: "cleric", label: "کشیش / پالادین", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Thorin&backgroundColor=d1d4f9" },
+  { id: "ranger", label: "کماندار / رنجر", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna&backgroundColor=ffd5dc" },
+  { id: "barbarian", label: "بربرین / وحشی", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Garen&backgroundColor=ffdfbf" },
+  { id: "warlock", label: "وارلاک / شیاطین", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Morgath&backgroundColor=c0aede" },
+  { id: "elf", label: "الف / دروید", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Valkyrie&backgroundColor=b6e3f4" },
+  { id: "monster", label: "هیولا / اورک", url: "https://api.dicebear.com/7.x/bottts/svg?seed=Golem&backgroundColor=ffd5dc" },
+  { id: "dragon", label: "دراگون / تایتان", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon&backgroundColor=ffdfbf" },
+];
+
 const ALL_DND_CONDITIONS = [
   { id: "blinded", nameFa: "کور شده (Blinded)", icon: "🙈" },
   { id: "charmed", nameFa: "افسون شده (Charmed)", icon: "💖" },
@@ -43,6 +59,16 @@ const ALL_DND_CONDITIONS = [
   { id: "bleeding", nameFa: "خونریزی (Bleeding)", icon: "🩸" },
 ];
 
+const MAX_TOKEN_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+
+const safeAssetUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  return getAssetUrl ? getAssetUrl(url) : url;
+};
+
 export const TokenEditorModal = () => {
   const isEditing = useCanvasStore((state) => state.isTokenEditorOpen);
   const editingTokenId = useCanvasStore((state) => state.editingTokenId);
@@ -55,36 +81,35 @@ export const TokenEditorModal = () => {
   const addAvailableCondition = useSceneStore((state) => state.addAvailableCondition);
   const removeAvailableCondition = useSceneStore((state) => state.removeAvailableCondition);
 
-  const { isGM: hookIsGM, permissions } = usePermissions();
+  const currentRoom = useRoomStore((state) => state.currentRoom || state.room || state.activeRoom);
+  const { isGM, canMoveToken } = usePermissions(currentRoom);
   const currentUser = useAuthStore((state) => state.user);
-  const currentRoom = useRoomStore((state) => state.currentRoom);
 
-  const isRoomHost =
-      currentRoom?.creatorId &&
-      currentUser?.id &&
-      String(currentRoom.creatorId) === String(currentUser.id);
-
-  const isGM = Boolean(
-      hookIsGM ||
-      isRoomHost ||
-      currentUser?.role === "GM" ||
-      currentUser?.role === "ADMIN"
-  );
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
 
   const token = currentScene?.tokens?.find((t) => String(t.id) === String(editingTokenId));
 
-  const tokenOwner = token?.controlledBy ? String(token.controlledBy).toLowerCase() : "";
-  const userId = currentUser?.id ? String(currentUser.id).toLowerCase() : "";
-  const userName = currentUser?.username ? String(currentUser.username).toLowerCase() : "";
-  const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase() : "";
+  const tokenOwner = token?.controlledBy ? String(token.controlledBy).toLowerCase().trim() : "";
+  const userId = currentUser?.id ? String(currentUser.id).toLowerCase().trim() : "";
+  const userAltId = currentUser?.userId ? String(currentUser.userId).toLowerCase().trim() : "";
+  const userName = currentUser?.username ? String(currentUser.username).toLowerCase().trim() : "";
+  const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase().trim() : "";
+  const tokenLabel = String(token?.label || token?.name || "").toLowerCase().trim();
 
   const isOwner = Boolean(
-      tokenOwner &&
-      (tokenOwner === userId || tokenOwner === userName || tokenOwner === userEmail)
+      !tokenOwner ||
+      tokenOwner === userId ||
+      (userAltId && tokenOwner === userAltId) ||
+      (userName && tokenOwner === userName) ||
+      (userEmail && tokenOwner === userEmail) ||
+      (userName && tokenLabel === userName) ||
+      canMoveToken(token?.controlledBy)
   );
 
-  // دسترسی ادیت
-  const canEdit = isGM || (isOwner && Boolean(permissions?.canEditToken));
+  const canEditBasic = Boolean(isGM || isOwner);
 
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -98,14 +123,17 @@ export const TokenEditorModal = () => {
   const [calcInput, setCalcInput] = useState("");
 
   const isProp = Boolean(token?.isProp);
-  const [goldValue, setGoldValue] = useState(0);
-  const [xpValue, setXpValue] = useState(0);
 
+  // ۱. تاگل‌های نمایش روی بوم (Canvas Token Display)
   const [showHp, setShowHp] = useState(true);
-  const [showName, setShowName] = useState(true);
-  const [showAc, setShowAc] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
-  const [showNotes, setShowNotes] = useState(false);
+  const [showAc, setShowAc] = useState(true);
+
+  // ۲. تاگل‌های پرمیشن دسترسی پلیر (Player Access Permission)
+  const [allowPlayerHp, setAllowPlayerHp] = useState(true);
+  const [allowPlayerConditions, setAllowPlayerConditions] = useState(true);
+  const [allowPlayerAc, setAllowPlayerAc] = useState(true);
+  const [allowPlayerSize, setAllowPlayerSize] = useState(true);
 
   const [selectedConditions, setSelectedConditions] = useState([]);
   const [showAddConditionPicker, setShowAddConditionPicker] = useState(false);
@@ -116,46 +144,103 @@ export const TokenEditorModal = () => {
       setAvatarUrl(token.avatarUrl || token.assetUrl || "");
       setHp(token.hp !== undefined ? token.hp : (token.maxHp || 20));
       setMaxHp(token.maxHp !== undefined ? token.maxHp : 20);
-      setAc(token.ac || 14);
+      setAc(token.ac !== undefined ? token.ac : 14);
       setSize(token.size || 1);
-      setIsHidden(token.isHidden || false);
-      setIsLocked(token.isLocked || false);
+      setIsHidden(Boolean(token.isHidden));
+      setIsLocked(Boolean(token.isLocked));
       setGmNotes(token.gmNotes || "");
-      setGoldValue(token.goldValue || 0);
-      setXpValue(token.xpValue || 0);
 
-      setShowHp(token.showHp !== false);
-      setShowName(token.showName !== false);
-      setShowAc(Boolean(token.showAc));
-      setShowConditions(token.showConditions !== false);
-      setShowNotes(Boolean(token.showNotes));
+      // بارگذاری تاگل‌های نمایش روی بوم
+      setShowHp(token.showHp === false ? false : true);
+      setShowConditions(token.showConditions === false ? false : true);
+      setShowAc(token.showAc === false ? false : true);
+
+      // بارگذاری تاگل‌های دسترسی پلیر
+      setAllowPlayerHp(token.allowPlayerHp === false ? false : true);
+      setAllowPlayerConditions(token.allowPlayerConditions === false ? false : true);
+      setAllowPlayerAc(token.allowPlayerAc === false ? false : true);
+      setAllowPlayerSize(token.allowPlayerSize === false ? false : true);
+
       setSelectedConditions(token.conditions || []);
       setShowAddConditionPicker(false);
+      setShowPresetPicker(false);
+      setUploadError("");
     }
   }, [token, isEditing]);
 
   if (!isEditing || !token) return null;
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_TOKEN_FILE_SIZE) {
+      setUploadError("حجم تصویر توکن نمی‌تواند بیشتر از ۳ مگابایت باشد.");
+      return;
+    }
+
+    setUploadError("");
+    setIsUploading(true);
+
+    try {
+      let uploadedUrl = "";
+      if (assetApi && typeof assetApi.uploadAsset === "function") {
+        const res = await assetApi.uploadAsset(file, "TOKEN");
+        uploadedUrl = res.fileUrl || res.url || res.data?.fileUrl || "";
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", "TOKEN");
+        const jwt = localStorage.getItem("vtt_jwt") || localStorage.getItem("token");
+        const res = await fetch("/api/assets/upload", {
+          method: "POST",
+          headers: {
+            Authorization: jwt ? `Bearer ${jwt}` : "",
+          },
+          body: formData,
+        });
+        const data = await res.json();
+        uploadedUrl = data.fileUrl || data.url || "";
+      }
+
+      if (uploadedUrl) {
+        setAvatarUrl(uploadedUrl);
+      }
+    } catch (err) {
+      console.error("خطا در آپلود تصویر توکن:", err);
+      setUploadError("آپلود تصویر با خطا مواجه شد.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = () => {
+    if (!canEditBasic) return;
+
+    const finalName = name.trim() || token.label || token.name || "توکن کاراکتر";
+    const finalAvatar = avatarUrl || token.avatarUrl || token.assetUrl || "";
+
     const updated = {
-      name,
-      label: name,
-      avatarUrl,
-      hp,
-      maxHp,
-      ac,
-      size,
-      isHidden,
-      isLocked,
-      gmNotes,
-      goldValue,
-      xpValue,
-      showHp,
-      showName,
-      showAc,
-      showConditions,
-      showNotes,
-      conditions: selectedConditions,
+      name: finalName,
+      label: finalName,
+      avatarUrl: finalAvatar,
+      assetUrl: finalAvatar,
+      ...(isGM || allowPlayerHp ? { hp, maxHp } : {}),
+      ...(isGM || allowPlayerAc ? { ac } : {}),
+      ...(isGM || allowPlayerSize ? { size } : {}),
+      ...(isGM || allowPlayerConditions ? { conditions: selectedConditions } : {}),
+      showHp: isGM ? showHp : token.showHp,
+      showConditions: isGM ? showConditions : token.showConditions,
+      showAc: isGM ? showAc : token.showAc,
+      allowPlayerHp: isGM ? allowPlayerHp : token.allowPlayerHp,
+      allowPlayerConditions: isGM ? allowPlayerConditions : token.allowPlayerConditions,
+      allowPlayerAc: isGM ? allowPlayerAc : token.allowPlayerAc,
+      allowPlayerSize: isGM ? allowPlayerSize : token.allowPlayerSize,
+      ...(isGM ? {
+        isHidden,
+        isLocked,
+        gmNotes,
+      } : {}),
     };
 
     updateToken(token.id, updated);
@@ -164,7 +249,7 @@ export const TokenEditorModal = () => {
   };
 
   const handleDelete = () => {
-    if (!isGM && !isOwner) return;
+    if (!isGM) return;
     removeToken(token.id);
     wsService.send("TOKEN_MOVE", { tokenId: String(token.id), isDeleted: true });
     closeEditor();
@@ -205,6 +290,7 @@ export const TokenEditorModal = () => {
 
   const handleRemoveConditionFromPool = (e, condId) => {
     e.stopPropagation();
+    if (!isGM) return;
     if (removeAvailableCondition) {
       removeAvailableCondition(condId);
     }
@@ -220,44 +306,172 @@ export const TokenEditorModal = () => {
           maxWidth="md"
       >
         <div className="space-y-4 max-h-[78vh] overflow-y-auto pr-1 font-fa text-zinc-200 select-none" dir="rtl">
-          {/* نام و آواتار کاراکتر */}
-          <div className="flex items-center gap-3 p-3 bg-zinc-950 rounded-2xl border border-zinc-800">
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-amber-500/50 bg-zinc-900 shrink-0">
-              {avatarUrl ? (
-                  <img src={getAssetUrl(avatarUrl)} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                  <User className="w-8 h-8 m-auto text-zinc-600 mt-2.5" />
-              )}
-            </div>
-            <div className="flex-1 space-y-1.5">
-              <Input
-                  label={isProp ? "نام شیء" : "نام کاراکتر"}
-                  value={name}
-                  disabled={!isGM && !isOwner}
-                  onChange={(e) => setName(e.target.value)}
-              />
-              <div>
-                <label className="text-[10px] text-zinc-400 block mb-0.5">آدرس لینک تصویر / آیکون:</label>
-                <input
-                    type="text"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://... یا /uploads/..."
-                    className="w-full h-7 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] text-zinc-300 focus:outline-none focus:border-amber-500 font-mono"
-                    dir="ltr"
-                />
+
+          {/* ۱. نام و آواتار کاراکتر */}
+          <div className="p-3.5 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-amber-500/50 bg-zinc-900 shrink-0 shadow-inner flex items-center justify-center">
+                {avatarUrl ? (
+                    <img
+                        src={safeAssetUrl(avatarUrl)}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = PRESET_TOKEN_ICONS[0].url;
+                        }}
+                    />
+                ) : (
+                    <User className="w-8 h-8 text-zinc-600" />
+                )}
+                {isUploading && (
+                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-[10px] text-amber-400 font-bold">
+                      ...
+                    </div>
+                )}
               </div>
+
+              <div className="flex-1 space-y-2">
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">
+                    {isProp ? "نام شیء:" : "نام کاراکتر:"}
+                  </label>
+                  <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="نام توکن را وارد کنید..."
+                      className="w-full h-9 px-3 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      className="hidden"
+                  />
+                  <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isUploading ? "در حال آپلود..." : "آپلود عکس (تا ۳MB)"}</span>
+                  </button>
+
+                  <button
+                      type="button"
+                      onClick={() => setShowPresetPicker(!showPresetPicker)}
+                      className="py-1.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>آیکون‌های آماده</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {uploadError && (
+                <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2 rounded-lg">
+                  {uploadError}
+                </div>
+            )}
+
+            {/* گالری آیکون‌های آماده */}
+            {showPresetPicker && (
+                <div className="p-3 bg-zinc-900 rounded-xl border border-amber-500/40 space-y-2 animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between text-xs text-amber-400 font-bold border-b border-zinc-800 pb-1.5">
+                    <span>انتخاب آیکون آماده فانتزی:</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowPresetPicker(false)}
+                        className="text-zinc-400 hover:text-zinc-200 cursor-pointer p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-2 max-h-44 overflow-y-auto pr-1 custom-scrollbar">
+                    {PRESET_TOKEN_ICONS.map((preset) => (
+                        <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              setAvatarUrl(preset.url);
+                              setShowPresetPicker(false);
+                            }}
+                            className={`p-1.5 rounded-lg border flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                                avatarUrl === preset.url
+                                    ? "border-amber-500 bg-amber-500/20"
+                                    : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
+                            }`}
+                        >
+                          <img
+                              src={preset.url}
+                              alt={preset.label}
+                              className="w-10 h-10 rounded-full object-cover bg-zinc-800"
+                              loading="lazy"
+                          />
+                          <span className="text-[9px] text-zinc-300 truncate w-full text-center">{preset.label}</span>
+                        </button>
+                    ))}
+                  </div>
+                </div>
+            )}
+
+            <div>
+              <label className="text-[10px] text-zinc-400 block mb-1">یا آدرس مستقیم لینک اینترنتی تصویر:</label>
+              <input
+                  type="text"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  placeholder="https://... یا /uploads/..."
+                  className="w-full h-7 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] text-zinc-300 focus:outline-none focus:border-amber-500 font-mono"
+                  dir="ltr"
+              />
             </div>
           </div>
 
-          {/* بخش HP و نوار جان */}
-          {!isProp && (
+          {/* ۲. بخش نوار سلامتی (HP) با دو تاگل تفکیک‌شده برای GM */}
+          {!isProp && (isGM || allowPlayerHp) && (
               <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-zinc-100">
                     <Heart className="w-4 h-4 text-emerald-400" />
                     <span>نوار سلامتی (HP)</span>
                   </div>
+
+                  {isGM && (
+                      <div className="flex items-center gap-1.5">
+                        {/* تریگر ۱: دسترسی پلیر به این بخش */}
+                        <button
+                            type="button"
+                            onClick={() => setAllowPlayerHp(!allowPlayerHp)}
+                            className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                                allowPlayerHp ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                            }`}
+                            title="اعطای پرمیشن مشاهده و ویرایش این بخش در مودال به پلیر"
+                        >
+                          <Key className="w-3 h-3 text-amber-400" />
+                          <span>{allowPlayerHp ? "دسترسی پلیر: فعال" : "دسترسی پلیر: قفل"}</span>
+                        </button>
+
+                        {/* تریگر ۲: نمایش روی توکن در بوم */}
+                        <button
+                            type="button"
+                            onClick={() => setShowHp(!showHp)}
+                            className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                                showHp ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                            }`}
+                            title="نمایش نوار سلامتی روی توکن در صفحه بازی"
+                        >
+                          <Eye className="w-3 h-3 text-emerald-400" />
+                          <span>{showHp ? "نمایش روی توکن" : "مخفی از توکن"}</span>
+                        </button>
+                      </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -265,86 +479,50 @@ export const TokenEditorModal = () => {
                     <label className="text-[11px] text-zinc-400 block mb-1">HP فعلی:</label>
                     <input
                         type="number"
-                        disabled={!canEdit}
                         value={hp}
                         onChange={(e) => setHp(Number(e.target.value))}
-                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 disabled:opacity-60"
+                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] text-zinc-400 block mb-1">حداکثر Max HP:</label>
                     <input
                         type="number"
-                        disabled={!canEdit}
                         value={maxHp}
                         onChange={(e) => setMaxHp(Math.max(1, Number(e.target.value)))}
-                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-60"
+                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500"
                     />
                   </div>
                 </div>
 
-                {canEdit && (
-                    <div className="flex gap-2 pt-1">
-                      <input
-                          type="number"
-                          placeholder="مقدار..."
-                          value={calcInput}
-                          onChange={(e) => setCalcInput(e.target.value)}
-                          className="w-24 h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-100 focus:outline-none"
-                      />
-                      <button
-                          type="button"
-                          onClick={handleApplyDamage}
-                          className="flex-1 py-1 text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg hover:bg-rose-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Minus className="w-3.5 h-3.5" /> آسیب
-                      </button>
-                      <button
-                          type="button"
-                          onClick={handleApplyHeal}
-                          className="flex-1 py-1 text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> شفا
-                      </button>
-                    </div>
-                )}
-              </div>
-          )}
-
-          {/* اشیاء (Props) */}
-          {isProp && (
-              <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                  <Coins className="w-4 h-4" />
-                  <span>ارزش و پاداش تعاملی شیء</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-zinc-400 block mb-1">ارزش سکه طلا (Gold GP):</label>
-                    <input
-                        type="number"
-                        disabled={!isGM}
-                        value={goldValue}
-                        onChange={(e) => setGoldValue(Number(e.target.value))}
-                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-amber-400 focus:outline-none focus:border-amber-500 disabled:opacity-60"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-zinc-400 block mb-1">امتیاز تجربه (XP Value):</label>
-                    <input
-                        type="number"
-                        disabled={!isGM}
-                        value={xpValue}
-                        onChange={(e) => setXpValue(Number(e.target.value))}
-                        className="w-full h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-purple-400 focus:outline-none focus:border-purple-500 disabled:opacity-60"
-                    />
-                  </div>
+                <div className="flex gap-2 pt-1">
+                  <input
+                      type="number"
+                      placeholder="مقدار..."
+                      value={calcInput}
+                      onChange={(e) => setCalcInput(e.target.value)}
+                      className="w-24 h-8 px-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-100 focus:outline-none"
+                  />
+                  <button
+                      type="button"
+                      onClick={handleApplyDamage}
+                      className="flex-1 py-1 text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-lg hover:bg-rose-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" /> آسیب
+                  </button>
+                  <button
+                      type="button"
+                      onClick={handleApplyHeal}
+                      className="flex-1 py-1 text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> شفا
+                  </button>
                 </div>
               </div>
           )}
 
-          {/* وضعیت‌ها (Conditions) */}
-          {!isProp && (
+          {/* ۳. وضعیت‌ها (Conditions) با دو تاگل تفکیک‌شده برای GM */}
+          {!isProp && (isGM || allowPlayerConditions) && (
               <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-zinc-100">
@@ -352,21 +530,51 @@ export const TokenEditorModal = () => {
                     <span>فهرست شرایط و وضعیت‌ها (حداکثر ۳ مورد)</span>
                   </div>
 
-                  {isGM && (
-                      <button
-                          type="button"
-                          onClick={() => setShowAddConditionPicker(!showAddConditionPicker)}
-                          className="text-xs bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1.5 rounded-xl flex items-center gap-1 font-bold cursor-pointer transition-all shadow-md shadow-amber-500/20"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> افزودن به فهرست
-                      </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {isGM && (
+                        <>
+                          {/* تریگر ۱: دسترسی پلیر */}
+                          <button
+                              type="button"
+                              onClick={() => setAllowPlayerConditions(!allowPlayerConditions)}
+                              className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                                  allowPlayerConditions ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                              }`}
+                              title="اعطای پرمیشن انتخاب وضعیت‌ها به پلیر"
+                          >
+                            <Key className="w-3 h-3 text-amber-400" />
+                            <span>{allowPlayerConditions ? "دسترسی: فعال" : "دسترسی: قفل"}</span>
+                          </button>
+
+                          {/* تریگر ۲: نمایش روی توکن در بوم */}
+                          <button
+                              type="button"
+                              onClick={() => setShowConditions(!showConditions)}
+                              className={`text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                                  showConditions ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                              }`}
+                              title="نمایش آیکون کاندیشن‌ها روی توکن در بوم"
+                          >
+                            <Eye className="w-3 h-3 text-amber-400" />
+                            <span>{showConditions ? "نمایش روی توکن" : "مخفی از توکن"}</span>
+                          </button>
+
+                          <button
+                              type="button"
+                              onClick={() => setShowAddConditionPicker(!showAddConditionPicker)}
+                              className="text-xs bg-amber-500 hover:bg-amber-400 text-zinc-950 px-2 py-1 rounded-lg flex items-center gap-1 font-bold cursor-pointer transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> افزودن
+                          </button>
+                        </>
+                    )}
+                  </div>
                 </div>
 
                 {showAddConditionPicker && isGM && (
                     <div className="p-3 bg-zinc-900 rounded-2xl border border-amber-500/50 space-y-2 animate-in fade-in zoom-in-95">
                       <div className="flex items-center justify-between text-xs font-bold text-amber-400 pb-1.5 border-b border-zinc-800">
-                        <span>انتخاب وضعیت برای افزودن به فهرست پیش‌فرض همه توکن‌ها:</span>
+                        <span>انتخاب وضعیت برای افزودن به فهرست پیش‌فرض:</span>
                         <button
                             type="button"
                             onClick={() => setShowAddConditionPicker(false)}
@@ -404,8 +612,8 @@ export const TokenEditorModal = () => {
 
                 <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
                   {availableConditions.length === 0 ? (
-                      <div className="col-span-2 text-center py-4 text-xs text-zinc-500">
-                        فهرست خالی است. از دکمه «افزودن به فهرست» استفاده کنید.
+                      <div className="col-span-2 text-center py-3 text-xs text-zinc-500">
+                        هیچ وضعیتی انتخاب نشده است.
                       </div>
                   ) : (
                       availableConditions.map((condId) => {
@@ -455,43 +663,92 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* زره و ابعاد */}
+          {/* ۴. زره و اندازه در گرید */}
           <div className="grid grid-cols-2 gap-2">
-            {!isProp && (
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">زره (AC):</label>
+            {!isProp && (isGM || allowPlayerAc) && (
+                <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-blue-400" />
+                      <span>زره (AC):</span>
+                    </label>
+                    {isGM && (
+                        <div className="flex items-center gap-1">
+                          <button
+                              type="button"
+                              onClick={() => setAllowPlayerAc(!allowPlayerAc)}
+                              className={`text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 font-medium transition-all cursor-pointer ${
+                                  allowPlayerAc ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                              }`}
+                              title="پرمیشن پلیر"
+                          >
+                            <Key className="w-2.5 h-2.5 text-amber-400" />
+                            <span>{allowPlayerAc ? "دسترسی" : "قفل"}</span>
+                          </button>
+                          <button
+                              type="button"
+                              onClick={() => setShowAc(!showAc)}
+                              className={`text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 font-medium transition-all cursor-pointer ${
+                                  showAc ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                              }`}
+                              title="نمایش نشان روی توکن"
+                          >
+                            <Eye className="w-2.5 h-2.5 text-blue-400" />
+                            <span>{showAc ? "نمایش" : "مخفی"}</span>
+                          </button>
+                        </div>
+                    )}
+                  </div>
                   <input
                       type="number"
-                      disabled={!canEdit}
                       value={ac}
                       onChange={(e) => setAc(Number(e.target.value))}
-                      className="w-full h-9 px-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-blue-400 focus:outline-none focus:border-blue-500 disabled:opacity-60"
+                      className="w-full h-8 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-blue-400 focus:outline-none focus:border-blue-500"
                   />
                 </div>
             )}
-            <div className={isProp ? "col-span-2" : ""}>
-              <label className="text-[11px] text-zinc-400 block mb-1">اندازه در گرید:</label>
-              <select
-                  value={size}
-                  disabled={!isGM}
-                  onChange={(e) => setSize(Number(e.target.value))}
-                  className="w-full h-9 px-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-amber-500 disabled:opacity-60"
-              >
-                <option value={0.5}>0.5x0.5 (Tiny / Prop)</option>
-                <option value={1}>1x1 (Medium)</option>
-                <option value={2}>2x2 (Large)</option>
-                <option value={3}>3x3 (Huge)</option>
-                <option value={4}>4x4 (Gargantuan)</option>
-              </select>
-            </div>
+
+            {(isGM || allowPlayerSize) && (
+                <div className={`p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2 ${isProp || (!allowPlayerAc && !isGM) ? "col-span-2" : ""}`}>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-zinc-400 flex items-center gap-1">
+                      <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>اندازه در گرید:</span>
+                    </label>
+                    {isGM && (
+                        <button
+                            type="button"
+                            onClick={() => setAllowPlayerSize(!allowPlayerSize)}
+                            className={`text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                                allowPlayerSize ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                            }`}
+                            title="پرمیشن تغییر اندازه توسط پلیر"
+                        >
+                          <Key className="w-2.5 h-2.5 text-amber-400" />
+                          <span>{allowPlayerSize ? "دسترسی پلیر: فعال" : "دسترسی پلیر: قفل"}</span>
+                        </button>
+                    )}
+                  </div>
+                  <select
+                      value={size}
+                      onChange={(e) => setSize(Number(e.target.value))}
+                      className="w-full h-8 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    <option value={0.5}>0.5x0.5 (Tiny / Prop)</option>
+                    <option value={1}>1x1 (Medium)</option>
+                    <option value={2}>2x2 (Large)</option>
+                    <option value={3}>3x3 (Huge)</option>
+                    <option value={4}>4x4 (Gargantuan)</option>
+                  </select>
+                </div>
+            )}
           </div>
 
-          {/* شرح و یادداشت GM */}
+          {/* ۵. شرح و یادداشت GM */}
           {isGM && (
               <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400/90">
-                  <FileText className="w-4 h-4" />
-                  <span>یادداشت و شرح GM (اختیاری):</span>
+                <div className="text-xs font-bold text-amber-400/90">
+                  <span>یادداشت GM (مخفی از همه بازیکنان):</span>
                 </div>
                 <textarea
                     rows={2}
@@ -503,74 +760,9 @@ export const TokenEditorModal = () => {
               </div>
           )}
 
-          {/* تاگل‌های نمایش */}
-          {isGM && (
-              <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
-                <div className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5 mb-1">
-                  <Eye className="w-3.5 h-3.5 text-amber-400" />
-                  <span>تنظیمات نمایش جزئیات روی بوم:</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                    <input
-                        type="checkbox"
-                        checked={showName}
-                        onChange={(e) => setShowName(e.target.checked)}
-                        className="accent-amber-500 rounded"
-                    />
-                    <span>نمایش نام</span>
-                  </label>
-
-                  {!isProp && (
-                      <>
-                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                          <input
-                              type="checkbox"
-                              checked={showHp}
-                              onChange={(e) => setShowHp(e.target.checked)}
-                              className="accent-amber-500 rounded"
-                          />
-                          <span>نمایش نوار جان (HP)</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                          <input
-                              type="checkbox"
-                              checked={showAc}
-                              onChange={(e) => setShowAc(e.target.checked)}
-                              className="accent-amber-500 rounded"
-                          />
-                          <span>نمایش نشان زره (AC)</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                          <input
-                              type="checkbox"
-                              checked={showConditions}
-                              onChange={(e) => setShowConditions(e.target.checked)}
-                              className="accent-amber-500 rounded"
-                          />
-                          <span>نمایش کاندیشن‌ها (حداکثر ۳)</span>
-                        </label>
-                      </>
-                  )}
-
-                  <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
-                    <input
-                        type="checkbox"
-                        checked={showNotes}
-                        onChange={(e) => setShowNotes(e.target.checked)}
-                        className="accent-amber-500 rounded"
-                    />
-                    <span>نمایش نوت GM</span>
-                  </label>
-                </div>
-              </div>
-          )}
-
           {/* فوتر */}
           <div className="pt-3 flex items-center justify-between border-t border-zinc-800">
-            {(isGM || isOwner) && (
+            {isGM && (
                 <button
                     type="button"
                     onClick={handleDelete}

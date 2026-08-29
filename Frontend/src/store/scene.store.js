@@ -75,6 +75,10 @@ export const useSceneStore = create((set, get) => ({
             name: t.label || t.name || "",
             label: t.label || t.name || "",
             controlledBy: t.controlledBy ? String(t.controlledBy) : null,
+            showHp: t.showHp !== undefined ? Boolean(t.showHp) : true,
+            showConditions: t.showConditions !== undefined ? Boolean(t.showConditions) : true,
+            showAc: t.showAc !== undefined ? Boolean(t.showAc) : true,
+            showSize: t.showSize !== undefined ? Boolean(t.showSize) : true,
           });
         }
       }
@@ -117,7 +121,6 @@ export const useSceneStore = create((set, get) => ({
           );
         });
 
-        // فقط در صورتی که مطلقاً هیچ توکنی وجود نداشته باشد، ۱ توکن ساخته می‌شود
         if (!hasExistingToken && loadedTokens.length === 0) {
           const gridSize = sceneData.gridSize || 60;
           const initialCenter = snapToCellCenter(
@@ -138,6 +141,10 @@ export const useSceneStore = create((set, get) => ({
             hp: 20,
             maxHp: 20,
             ac: 12,
+            showHp: true,
+            showConditions: true,
+            showAc: true,
+            showSize: true,
           });
         }
       }
@@ -170,37 +177,54 @@ export const useSceneStore = create((set, get) => ({
           (t) => String(t.id).toLowerCase() === targetId
       );
 
-      const incomingAvatar = socketData.avatarUrl || socketData.assetUrl;
-      const incomingName = socketData.label || socketData.name;
+      // پاک‌سازی فیلدهای null یا undefined ارسالی تا تنظیمات قبلی GM بازنویسی و نابود نشوند
+      const cleanSocketData = {};
+      Object.keys(socketData).forEach((key) => {
+        if (socketData[key] !== null && socketData[key] !== undefined) {
+          cleanSocketData[key] = socketData[key];
+        }
+      });
+
+      const incomingAvatar = cleanSocketData.avatarUrl || cleanSocketData.assetUrl;
+      const incomingName = cleanSocketData.label || cleanSocketData.name;
 
       let updatedTokens;
       if (existsIndex !== -1) {
+        const oldToken = currentTokens[existsIndex];
         updatedTokens = currentTokens.map((t, idx) =>
             idx === existsIndex
                 ? {
-                  ...t,
-                  ...socketData,
-                  id: String(t.id),
-                  name: incomingName || t.name || t.label,
-                  label: incomingName || t.label || t.name,
-                  x: socketData.x !== undefined ? Number(socketData.x) : t.x,
-                  y: socketData.y !== undefined ? Number(socketData.y) : t.y,
-                  avatarUrl: incomingAvatar || t.avatarUrl,
-                  assetUrl: incomingAvatar || t.assetUrl,
+                  ...oldToken,
+                  ...cleanSocketData,
+                  id: String(oldToken.id),
+                  name: incomingName || oldToken.name || oldToken.label,
+                  label: incomingName || oldToken.label || oldToken.name,
+                  x: cleanSocketData.x !== undefined ? Number(cleanSocketData.x) : oldToken.x,
+                  y: cleanSocketData.y !== undefined ? Number(cleanSocketData.y) : oldToken.y,
+                  avatarUrl: incomingAvatar || oldToken.avatarUrl,
+                  assetUrl: incomingAvatar || oldToken.assetUrl,
+                  showHp: cleanSocketData.showHp !== undefined ? Boolean(cleanSocketData.showHp) : oldToken.showHp,
+                  showConditions: cleanSocketData.showConditions !== undefined ? Boolean(cleanSocketData.showConditions) : oldToken.showConditions,
+                  showAc: cleanSocketData.showAc !== undefined ? Boolean(cleanSocketData.showAc) : oldToken.showAc,
+                  showSize: cleanSocketData.showSize !== undefined ? Boolean(cleanSocketData.showSize) : oldToken.showSize,
                 }
                 : t
         );
       } else {
         const newToken = {
-          ...socketData,
+          ...cleanSocketData,
           id: String(rawId),
           name: incomingName || "توکن",
           label: incomingName || "توکن",
           avatarUrl: incomingAvatar || "",
           assetUrl: incomingAvatar || "",
-          x: Number(socketData.x || 0),
-          y: Number(socketData.y || 0),
-          controlledBy: socketData.controlledBy ? String(socketData.controlledBy) : null,
+          x: Number(cleanSocketData.x || 0),
+          y: Number(cleanSocketData.y || 0),
+          controlledBy: cleanSocketData.controlledBy ? String(cleanSocketData.controlledBy) : null,
+          showHp: cleanSocketData.showHp !== undefined ? Boolean(cleanSocketData.showHp) : true,
+          showConditions: cleanSocketData.showConditions !== undefined ? Boolean(cleanSocketData.showConditions) : true,
+          showAc: cleanSocketData.showAc !== undefined ? Boolean(cleanSocketData.showAc) : true,
+          showSize: cleanSocketData.showSize !== undefined ? Boolean(cleanSocketData.showSize) : true,
         };
         updatedTokens = [...currentTokens, newToken];
       }
@@ -408,6 +432,10 @@ export const useSceneStore = create((set, get) => ({
         name: t.label || t.name || "",
         label: t.label || t.name || "",
         controlledBy: t.controlledBy ? String(t.controlledBy) : null,
+        showHp: t.showHp !== undefined ? Boolean(t.showHp) : true,
+        showConditions: t.showConditions !== undefined ? Boolean(t.showConditions) : true,
+        showAc: t.showAc !== undefined ? Boolean(t.showAc) : true,
+        showSize: t.showSize !== undefined ? Boolean(t.showSize) : true,
       }));
 
       const sceneWithState = {
