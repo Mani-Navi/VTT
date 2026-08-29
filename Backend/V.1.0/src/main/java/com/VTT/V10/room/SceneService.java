@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,6 +63,7 @@ public class SceneService {
                 .gridSize(60)
                 .gridColor("#000000")
                 .gridOpacity(0.35)
+                .availableConditions(new ArrayList<>())
                 .build();
 
         sceneRepository.save(scene);
@@ -165,6 +167,7 @@ public class SceneService {
                 .gridSize(scene.getGridSize())
                 .gridColor(scene.getGridColor())
                 .gridOpacity(scene.getGridOpacity())
+                .availableConditions(scene.getAvailableConditions() != null ? scene.getAvailableConditions() : new ArrayList<>())
                 .build();
     }
 }

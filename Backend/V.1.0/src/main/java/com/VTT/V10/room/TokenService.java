@@ -39,6 +39,7 @@ public class TokenService {
         }
 
         boolean isGM = requester != null && requester.getRole() == RoomMember.Role.ADMIN;
+        boolean hasEditTokenPerm = false;
         String finalControlledBy = "";
 
         if (requester != null) {
@@ -50,6 +51,10 @@ public class TokenService {
                 if (alreadyHasToken) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "هر بازیکن تنها مجاز به داشتن یک توکن اختصاصی است");
                 }
+
+                // دریافت پرمیشن پایدار ثبت‌شده توسط GM برای این بازیکن
+                var permOpt = playerPermissionRepository.findByMemberId(requester.getId());
+                hasEditTokenPerm = permOpt.isPresent() && Boolean.TRUE.equals(permOpt.get().getCanEditToken());
             }
         }
 
@@ -71,6 +76,9 @@ public class TokenService {
         if (label == null || label.isBlank()) {
             label = (requester != null && requester.getUser() != null) ? requester.getUser().getUsername() : "توکن کاراکتر";
         }
+
+        // حفظ وضعیت پرمیشن‌های GM هنگام ساخت مجدد توکن
+        boolean defaultPlayerAccess = isGM || hasEditTokenPerm;
 
         Token token = Token.builder()
                 .scene(scene)
@@ -95,10 +103,10 @@ public class TokenService {
                 .showAc(request.getShowAc() != null ? request.getShowAc() : true)
                 .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
                 .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
-                .allowPlayerHp(request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true)
-                .allowPlayerConditions(request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true)
-                .allowPlayerAc(request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true)
-                .allowPlayerSize(request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true)
+                .allowPlayerHp(isGM ? (request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true) : defaultPlayerAccess)
+                .allowPlayerConditions(isGM ? (request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true) : defaultPlayerAccess)
+                .allowPlayerAc(isGM ? (request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true) : defaultPlayerAccess)
+                .allowPlayerSize(isGM ? (request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true) : defaultPlayerAccess)
                 .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
                 .build();
 
@@ -147,7 +155,6 @@ public class TokenService {
                 return;
             }
 
-            // حذف توکن فقط توسط GM
             if (Boolean.TRUE.equals(data.getIsDeleted())) {
                 if (isGM) {
                     tokenRepository.deleteById(tokenId);
@@ -155,12 +162,10 @@ public class TokenService {
                 return;
             }
 
-            // مختصات و چرخش
             if (data.getX() != null) token.setX(data.getX());
             if (data.getY() != null) token.setY(data.getY());
             if (data.getRotation() != null) token.setRotation(data.getRotation());
 
-            // نام و آواتار
             if (data.getName() != null && !data.getName().isBlank()) {
                 token.setLabel(data.getName());
             } else if (data.getLabel() != null && !data.getLabel().isBlank()) {
@@ -171,7 +176,6 @@ public class TokenService {
                 token.setAvatarUrl(data.getAvatarUrl());
             }
 
-            // بررسی دسترسی ویرایش مقادیر توسط پلیر (اگر مجاز باشد یا GM باشد)
             if (isGM || Boolean.TRUE.equals(token.getAllowPlayerHp()) || hasEditTokenPermission) {
                 if (data.getHp() != null) token.setHp(data.getHp());
                 if (data.getMaxHp() != null) token.setMaxHp(data.getMaxHp());
@@ -189,7 +193,6 @@ public class TokenService {
                 if (data.getSize() != null) token.setSize(data.getSize());
             }
 
-            // تنظیمات و تاگل‌های دسترسی فقط توسط GM قابل تغییر است
             if (isGM) {
                 if (data.getGmNotes() != null) token.setGmNotes(data.getGmNotes());
                 if (data.getGoldValue() != null) token.setGoldValue(data.getGoldValue());
@@ -197,14 +200,12 @@ public class TokenService {
                 if (data.getIsHidden() != null) token.setIsHidden(data.getIsHidden());
                 if (data.getIsLocked() != null) token.setIsLocked(data.getIsLocked());
 
-                // تاگل‌های نمایش روی بوم
                 if (data.getShowHp() != null) token.setShowHp(data.getShowHp());
                 if (data.getShowName() != null) token.setShowName(data.getShowName());
                 if (data.getShowAc() != null) token.setShowAc(data.getShowAc());
                 if (data.getShowConditions() != null) token.setShowConditions(data.getShowConditions());
                 if (data.getShowNotes() != null) token.setShowNotes(data.getShowNotes());
 
-                // تاگل‌های پرمیشن دسترسی پلیر
                 if (data.getAllowPlayerHp() != null) token.setAllowPlayerHp(data.getAllowPlayerHp());
                 if (data.getAllowPlayerConditions() != null) token.setAllowPlayerConditions(data.getAllowPlayerConditions());
                 if (data.getAllowPlayerAc() != null) token.setAllowPlayerAc(data.getAllowPlayerAc());

@@ -73,7 +73,6 @@ public class RoomWebSocketController {
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
-    // برودکست و همگام‌سازی بلادرنگ فهرست وضعیت‌های GM
     @MessageMapping("/room/{roomId}/conditions")
     public void handleConditionPoolUpdate(
             @DestinationVariable UUID roomId,
@@ -86,15 +85,20 @@ public class RoomWebSocketController {
 
         var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
         if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
-            // ذخیره پایدار وضعیت‌ها روی صحنه فعال
+            // پیدا کردن صحنه فعال یا اولین صحنه اتاق برای ذخیره پایدار در دیتابیس
             var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
-            if (activeSceneOpt.isPresent()) {
-                Scene scene = activeSceneOpt.get();
-                scene.setAvailableConditions(event.getData().getAvailableConditions());
-                sceneRepository.save(scene);
+            if (activeSceneOpt.isEmpty()) {
+                var scenes = sceneRepository.findByRoomId(roomId);
+                if (!scenes.isEmpty()) {
+                    activeSceneOpt = Optional.of(scenes.get(0));
+                }
             }
 
-            // ارسال آنی برای همه بازیکنان
+            activeSceneOpt.ifPresent(scene -> {
+                scene.setAvailableConditions(event.getData().getAvailableConditions());
+                sceneRepository.save(scene);
+            });
+
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
         }
     }
