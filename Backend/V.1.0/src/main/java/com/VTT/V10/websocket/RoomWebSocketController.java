@@ -33,6 +33,7 @@ public class RoomWebSocketController {
     private final PlayerPermissionRepository permissionRepository;
     private final RoomSessionManager sessionManager;
     private final UserRepository userRepository;
+    private final SceneRepository sceneRepository;
 
     @MessageMapping("/room/{roomId}/presence/join")
     public void handlePresenceJoin(
@@ -68,12 +69,34 @@ public class RoomWebSocketController {
         if (event == null || event.getData() == null || principal == null) return;
 
         roomService.updateLastActive(roomId, principal.getName());
-
-        // ذخیره امن با بررسی احراز هویت و دسترسی مالکیت
         tokenService.updateTokenFromEvent(event.getData(), principal.getName(), roomId);
-
-        // برادکست بلادرنگ تغییرات
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+    }
+
+    // برودکست و همگام‌سازی بلادرنگ فهرست وضعیت‌های GM
+    @MessageMapping("/room/{roomId}/conditions")
+    public void handleConditionPoolUpdate(
+            @DestinationVariable UUID roomId,
+            @Payload SocketEvent<ConditionPoolEvent> event,
+            Principal principal
+    ) {
+        if (event == null || principal == null || event.getData() == null) return;
+
+        roomService.updateLastActive(roomId, principal.getName());
+
+        var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
+        if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
+            // ذخیره پایدار وضعیت‌ها روی صحنه فعال
+            var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+            if (activeSceneOpt.isPresent()) {
+                Scene scene = activeSceneOpt.get();
+                scene.setAvailableConditions(event.getData().getAvailableConditions());
+                sceneRepository.save(scene);
+            }
+
+            // ارسال آنی برای همه بازیکنان
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+        }
     }
 
     @MessageMapping("/room/{roomId}/drawing")

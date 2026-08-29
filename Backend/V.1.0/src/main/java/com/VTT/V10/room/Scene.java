@@ -4,9 +4,13 @@ import com.VTT.V10.asset.Asset;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -59,6 +63,12 @@ public class Scene {
     @Builder.Default
     @Column(name = "grid_opacity")
     private Double gridOpacity = 0.35;
+
+    // لیست وضعیت‌های فعال‌شده توسط GM برای این صحنه (JSONB)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    @Builder.Default
+    private List<String> availableConditions = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
