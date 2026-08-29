@@ -11,6 +11,26 @@ import { useRoomStore } from "../../store/room.store";
 
 const tokenImageCache = new Map();
 
+// نگاشت سریع ایموجی‌های D&D 5e
+const DND_CONDITION_EMOJIS = {
+    blinded: "🙈",
+    charmed: "💖",
+    deafened: "🙉",
+    frightened: "😨",
+    grappled: "🤼",
+    incapacitated: "💫",
+    invisible: "👻",
+    paralyzed: "⚡",
+    petrified: "🗿",
+    poisoned: "🤢",
+    prone: "🛌",
+    restrained: "⛓️",
+    stunned: "😵",
+    unconscious: "💤",
+    exhaustion: "😫",
+    bleeding: "🩸",
+};
+
 const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
     const S = Number(gridSize) || 60;
     const size = Number(tokenSize) || 1;
@@ -102,13 +122,16 @@ const SingleToken = ({
 
     const tokenConditions = token.conditions || [];
     const activeConditions = tokenConditions
-        .map((cId) => (typeof cId === "object" ? cId : CONDITION_MAP?.[cId]))
+        .map((c) => {
+            if (typeof c === "object" && c.icon) return c.icon;
+            if (typeof c === "string") return DND_CONDITION_EMOJIS[c] || CONDITION_MAP?.[c]?.icon || "⚡";
+            return "⚡";
+        })
         .filter(Boolean)
         .slice(0, 3);
 
     const isDraggable = Boolean(canControl) && !token.isLocked;
 
-    // استخراج قطعی نام کاراکتر با اولویت نام کاربری واقعی بازیکن
     let rawName = token.label || token.name;
     if (!rawName || rawName === "کاراکتر" || rawName === "توکن" || rawName === "توکن جدید") {
         rawName = fallbackUsername || "قهرمان";
@@ -152,6 +175,12 @@ const SingleToken = ({
         });
     };
 
+    // محاسبه فواصل دایره‌های وضعیت
+    const conditionBadgeRadius = 10;
+    const conditionSpacing = 22;
+    const totalConditionsWidth = (activeConditions.length - 1) * conditionSpacing;
+    const startConditionX = -totalConditionsWidth / 2;
+
     return (
         <Group
             ref={groupRef}
@@ -188,29 +217,34 @@ const SingleToken = ({
                 />
             )}
 
-            {/* وضعیت‌های کاندیشن */}
+            {/* وضعیت‌های کاندیشن (دایره‌های مستقل مشابه نشان AC) */}
             {showConditions && activeConditions.length > 0 && (
-                <Group y={-radius - 14} listening={false}>
-                    <Rect
-                        x={-(activeConditions.length * 18 + 8) / 2}
-                        y={0}
-                        width={activeConditions.length * 18 + 8}
-                        height={18}
-                        fill="rgba(9, 10, 15, 0.9)"
-                        cornerRadius={9}
-                        stroke="rgba(245, 158, 11, 0.4)"
-                        strokeWidth={1}
-                    />
-                    <Text
-                        text={activeConditions.map((c) => c.icon || "⚡").join(" ")}
-                        fontSize={11}
-                        align="center"
-                        verticalAlign="middle"
-                        x={-(activeConditions.length * 18 + 8) / 2}
-                        y={2}
-                        width={activeConditions.length * 18 + 8}
-                        height={16}
-                    />
+                <Group y={-radius - 12} listening={false}>
+                    {activeConditions.map((emoji, idx) => {
+                        const posX = startConditionX + idx * conditionSpacing;
+                        return (
+                            <Group key={`cond-${idx}`} x={posX} y={0}>
+                                <Circle
+                                    radius={conditionBadgeRadius}
+                                    fill="#090a0f"
+                                    stroke="#f59e0b"
+                                    strokeWidth={1.5}
+                                    shadowColor="#000000"
+                                    shadowBlur={4}
+                                />
+                                <Text
+                                    text={emoji}
+                                    fontSize={11}
+                                    align="center"
+                                    verticalAlign="middle"
+                                    x={-conditionBadgeRadius}
+                                    y={-conditionBadgeRadius + 0.5}
+                                    width={conditionBadgeRadius * 2}
+                                    height={conditionBadgeRadius * 2}
+                                />
+                            </Group>
+                        );
+                    })}
                 </Group>
             )}
 
@@ -304,18 +338,18 @@ const SingleToken = ({
             {/* نشان AC */}
             {showAc && (
                 <Group x={radius - 4} y={-radius + 4} listening={false}>
-                    <Circle radius={9} fill="#1e3a8a" stroke="#60a5fa" strokeWidth={1.5} />
+                    <Circle radius={9.5} fill="#1e3a8a" stroke="#60a5fa" strokeWidth={1.5} shadowColor="#000000" shadowBlur={4} />
                     <Text
                         text={String(token.ac)}
-                        fontSize={9}
+                        fontSize={9.5}
                         fontStyle="bold"
                         fill="#ffffff"
                         align="center"
                         verticalAlign="middle"
-                        x={-9}
-                        y={-8}
-                        width={18}
-                        height={18}
+                        x={-9.5}
+                        y={-8.5}
+                        width={19}
+                        height={19}
                     />
                 </Group>
             )}
@@ -388,7 +422,7 @@ const SingleToken = ({
                 </Group>
             )}
 
-            {/* برچسب نام کاراکتر واقعی */}
+            {/* برچسب نام کاراکتر */}
             <Group
                 y={
                     showHp || (isProp && (token.goldValue || token.xpValue))

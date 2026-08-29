@@ -31,6 +31,8 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   const setActiveTool = useCanvasStore((state) => state.setActiveTool);
   const setZoom = useCanvasStore((state) => state.setZoom);
   const resetView = useCanvasStore((state) => state.resetView);
+  const focusOnCoordinates = useCanvasStore((state) => state.focusOnCoordinates);
+  const toggleTokenSelection = useCanvasStore((state) => state.toggleTokenSelection);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
 
   const isAssetOpen = useCanvasStore((state) => state.isAssetMenuOpen);
@@ -44,14 +46,18 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   const hasActiveMap = Boolean(currentScene?.assetUrl || currentScene?.mapUrl);
   const isGM = propIsGM ?? true;
 
-  const currentUserId = String(currentUser?.id || currentUser?.userId || "").toLowerCase();
-  const currentUsername = String(currentUser?.username || "").toLowerCase();
+  const currentUserId = String(currentUser?.id || currentUser?.userId || "").toLowerCase().trim();
+  const currentUsername = String(currentUser?.username || "").toLowerCase().trim();
+  const currentUserEmail = String(currentUser?.email || "").toLowerCase().trim();
 
-  // بررسی دقیق وجود توکن کاراکتر بازیکن
+  // بررسی وجود توکن فعال بازیکن
   const myExistingToken = currentScene?.tokens?.find((t) => {
-    const cb = String(t.controlledBy || "").toLowerCase();
-    const lbl = String(t.label || t.name || "").toLowerCase();
-    return (cb && (cb === currentUserId || cb === currentUsername)) || (lbl && lbl === currentUsername);
+    const cb = String(t.controlledBy || "").toLowerCase().trim();
+    const lbl = String(t.label || t.name || "").toLowerCase().trim();
+    return (
+        (cb && (cb === currentUserId || cb === currentUsername || cb === currentUserEmail)) ||
+        (lbl && lbl === currentUsername)
+    );
   });
 
   const handleToolClick = (toolId) => {
@@ -62,26 +68,39 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     }
   };
 
-  const handleAddMyCharacter = () => {
-    if (!hasActiveMap || myExistingToken) return;
+  const handleMyCharacterClick = () => {
+    if (!hasActiveMap) return;
+
+    if (myExistingToken) {
+      toggleTokenSelection(myExistingToken.id);
+      setActiveTool(TOOLS.SELECT);
+      if (myExistingToken.x !== undefined && myExistingToken.y !== undefined) {
+        focusOnCoordinates(myExistingToken.x, myExistingToken.y);
+      }
+      return;
+    }
 
     const charName = currentUser?.username || "قهرمان من";
-    const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+    const avatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(
         charName
     )}&backgroundColor=b6e3f4`;
 
+    // ساخت توکن جدید بدون هاردکد پرمیشن‌ها (پرمیشن پایدار از دیتابیس خوانده می‌شود)
     addToken({
       name: charName,
       label: charName,
       avatarUrl: avatar,
-      controlledBy: currentUserId,
+      controlledBy: currentUserId || currentUsername,
       x: (currentScene?.mapWidth || 2000) / 2,
       y: (currentScene?.mapHeight || 1500) / 2,
       size: 1,
-      hp: 25,
-      maxHp: 25,
+      hp: 20,
+      maxHp: 20,
       ac: 14,
       isProp: false,
+      showHp: true,
+      showConditions: true,
+      showAc: true,
     });
   };
 
@@ -197,19 +216,18 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
                       content="My Character"
                       subContent={
                         myExistingToken
-                            ? "کاراکتر شما روی نقشه قرار دارد"
-                            : "افزودن کاراکتر من به نقشه (۱ عدد)"
+                            ? "نمایش و فوکوس روی کاراکتر شما"
+                            : "افزودن کاراکتر من به نقشه"
                       }
                   >
                     <button
                         type="button"
-                        disabled={Boolean(myExistingToken)}
-                        onClick={handleAddMyCharacter}
+                        onClick={handleMyCharacterClick}
                         className={cn(
                             "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
                             myExistingToken
-                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 opacity-70"
-                                : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 animate-pulse"
+                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20"
+                                : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 animate-pulse shadow-md shadow-amber-500/10"
                         )}
                     >
                       <User className="w-5 h-5" />

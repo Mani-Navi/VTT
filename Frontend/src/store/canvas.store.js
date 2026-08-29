@@ -23,7 +23,8 @@ export const useCanvasStore = create((set) => ({
     editingTokenId: null,
 
     isAssetMenuOpen: false,
-    isSettingsOpen: false,
+    isSettingsMenuOpen: false,
+    isDiceRollerOpen: false,
 
     setActiveTool: (tool) => set({ activeTool: tool }),
     setActiveDrawShape: (shape) => set({ activeDrawShape: shape }),
@@ -36,8 +37,20 @@ export const useCanvasStore = create((set) => ({
     setFogAction: (action) => set({ fogAction: action }),
     setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
 
-    setZoom: (zoom) => set({ zoom }),
+    setZoom: (zoom) => set((state) => ({ zoom: typeof zoom === "function" ? zoom(state.zoom) : zoom })),
     setStagePos: (stageX, stageY) => set({ stageX, stageY }),
+
+    resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
+
+    // تمرکز دوربین روی یک نقطه مشخص
+    focusOnCoordinates: (targetX, targetY) => {
+        const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
+        const windowHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
+        set((state) => ({
+            stageX: windowWidth / 2 - targetX * state.zoom,
+            stageY: windowHeight / 2 - targetY * state.zoom,
+        }));
+    },
 
     toggleTokenSelection: (tokenId, isMulti = false) => {
         set((state) => {
@@ -65,16 +78,19 @@ export const useCanvasStore = create((set) => ({
     toggleMenu: (menuName) => {
         set((state) => {
             if (menuName === "asset") {
-                return { isAssetMenuOpen: !state.isAssetMenuOpen, isSettingsOpen: false };
+                return { isAssetMenuOpen: !state.isAssetMenuOpen, isSettingsMenuOpen: false, isDiceRollerOpen: false };
             }
             if (menuName === "settings") {
-                return { isSettingsOpen: !state.isSettingsOpen, isAssetMenuOpen: false };
+                return { isSettingsMenuOpen: !state.isSettingsMenuOpen, isAssetMenuOpen: false, isDiceRollerOpen: false };
+            }
+            if (menuName === "dice") {
+                return { isDiceRollerOpen: !state.isDiceRollerOpen, isAssetMenuOpen: false, isSettingsMenuOpen: false };
             }
             return {};
         });
     },
 
-    // متر و لیزر
+    // خط‌کش اندازه‌گیری و نشانگر لیزری
     measurement: null,
     laserPosition: null,
 
