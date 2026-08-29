@@ -31,6 +31,7 @@ export const RoomPage = () => {
   const user = useAuthStore((state) => state.user);
   const setCurrentRoom = useRoomStore((state) => state.setCurrentRoom);
   const loadScenes = useSceneStore((state) => state.loadScenes);
+  const setAvailableConditions = useSceneStore((state) => state.setAvailableConditions);
 
   const [roomData, setRoomData] = useState(null);
   const [onlineMembers, setOnlineMembers] = useState([]);
@@ -72,6 +73,13 @@ export const RoomPage = () => {
           }
         }
 
+        // همگام‌سازی بلادرنگ وضعیت‌های اضافه یا حذف شده توسط GM
+        if (action === "CONDITION_POOL_UPDATE") {
+          if (data?.availableConditions) {
+            setAvailableConditions(data.availableConditions);
+          }
+        }
+
         if (action === "PERMISSION_UPDATED") {
           if (data?.username === user?.username || data?.memberId === user?.id) {
             const updatedPerms = {
@@ -90,7 +98,7 @@ export const RoomPage = () => {
           }
         }
       },
-      [user, setCurrentRoom]
+      [user, setCurrentRoom, setAvailableConditions]
   );
 
   const { isConnected } = useWebSocket(roomId, handleSocketMessage);
@@ -102,7 +110,7 @@ export const RoomPage = () => {
         .getRoom(roomId)
         .then((data) => {
           setRoomData(data);
-          setCurrentRoom(data); // تزریق پایدار به استور اتاق
+          setCurrentRoom(data);
         })
         .catch((err) => {
           console.error("خطا در دریافت اطلاعات اتاق:", err);

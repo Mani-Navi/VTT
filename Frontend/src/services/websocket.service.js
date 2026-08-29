@@ -46,7 +46,7 @@ class WebSocketService {
         useWebSocketStore.getState().setStatus("CONNECTED");
 
         try {
-          // ۱. سابسکرایب اصلی اتاق
+          // ۱. سابسکرایب اصلی رویدادهای اتاق
           this.client.subscribe(`/topic/room/${roomId}`, (message) => {
             try {
               const payload = JSON.parse(message.body);
@@ -130,12 +130,16 @@ class WebSocketService {
     if (!this.currentRoomId || !this.client || !this.isConnected) return;
 
     let destination = `/app/room/${this.currentRoomId}/event`;
-    let action = "UPDATE";
+    let action = type;
 
     switch (type) {
       case "TOKEN_MOVE":
         destination = `/app/room/${this.currentRoomId}/token/move`;
         action = "MOVE";
+        break;
+      case "CONDITION_POOL_UPDATE":
+        destination = `/app/room/${this.currentRoomId}/conditions`;
+        action = "CONDITION_POOL_UPDATE";
         break;
       case "DRAWING_ADD":
         destination = `/app/room/${this.currentRoomId}/drawing`;
@@ -204,7 +208,9 @@ class WebSocketService {
 
     const eventData = payload.data || payload;
 
-    if (
+    if (payload.action === "CONDITION_POOL_UPDATE") {
+      this.trigger("CONDITION_POOL_UPDATE", eventData);
+    } else if (
         payload.action === "MOVE" ||
         payload.action === "TOKEN_MOVE" ||
         (eventData && (eventData.tokenId !== undefined || (eventData.id && eventData.x !== undefined)))

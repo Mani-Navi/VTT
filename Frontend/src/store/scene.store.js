@@ -31,7 +31,41 @@ export const useSceneStore = create((set, get) => ({
   pings: [],
   isLoading: false,
 
-  availableConditions: ["blinded", "poisoned", "stunned", "invisible", "prone"],
+  // لیست به صورت پیش‌فرض کاملاً خالی است و توسط GM مدیریت می‌شود
+  availableConditions: [],
+
+  setAvailableConditions: (conditions) => {
+    set({ availableConditions: Array.isArray(conditions) ? conditions : [] });
+  },
+
+  addAvailableCondition: (conditionId, shouldBroadcast = true) => {
+    const state = get();
+    if (state.availableConditions.includes(conditionId)) return;
+    const nextList = [...state.availableConditions, conditionId];
+    set({ availableConditions: nextList });
+
+    if (shouldBroadcast) {
+      wsService.send("CONDITION_POOL_UPDATE", { availableConditions: nextList });
+    }
+  },
+
+  removeAvailableCondition: (conditionId, shouldBroadcast = true) => {
+    const state = get();
+    const nextAvailable = state.availableConditions.filter((c) => c !== conditionId);
+    const updatedTokens = (state.currentScene?.tokens || []).map((t) => ({
+      ...t,
+      conditions: (t.conditions || []).filter((c) => c !== conditionId),
+    }));
+
+    set({
+      availableConditions: nextAvailable,
+      currentScene: state.currentScene ? { ...state.currentScene, tokens: updatedTokens } : null,
+    });
+
+    if (shouldBroadcast) {
+      wsService.send("CONDITION_POOL_UPDATE", { availableConditions: nextAvailable });
+    }
+  },
 
   loadScenes: async (roomId) => {
     if (!roomId) return;
@@ -58,7 +92,6 @@ export const useSceneStore = create((set, get) => ({
       const currentUserId = String(currentUser?.id || currentUser?.userId || "").toLowerCase();
       const currentUsername = String(currentUser?.username || "").toLowerCase();
 
-      // نرمال‌سازی توکن‌ها و جلوگیری از تکرار
       const rawTokens = fullState.tokens || [];
       const loadedTokens = [];
       const seenTokenIds = new Set();
@@ -78,7 +111,10 @@ export const useSceneStore = create((set, get) => ({
             showHp: t.showHp !== undefined ? Boolean(t.showHp) : true,
             showConditions: t.showConditions !== undefined ? Boolean(t.showConditions) : true,
             showAc: t.showAc !== undefined ? Boolean(t.showAc) : true,
-            showSize: t.showSize !== undefined ? Boolean(t.showSize) : true,
+            allowPlayerHp: t.allowPlayerHp !== undefined ? Boolean(t.allowPlayerHp) : true,
+            allowPlayerConditions: t.allowPlayerConditions !== undefined ? Boolean(t.allowPlayerConditions) : true,
+            allowPlayerAc: t.allowPlayerAc !== undefined ? Boolean(t.allowPlayerAc) : true,
+            allowPlayerSize: t.allowPlayerSize !== undefined ? Boolean(t.allowPlayerSize) : true,
           });
         }
       }
@@ -110,7 +146,6 @@ export const useSceneStore = create((set, get) => ({
         isLoading: false,
       });
 
-      // بررسی دقیق برای جلوگیری از ساخت مجدد توکن
       if (currentUser && currentUser.role !== "GM" && currentUser.role !== "ADMIN") {
         const hasExistingToken = loadedTokens.some((t) => {
           const cb = String(t.controlledBy || "").toLowerCase();
@@ -144,7 +179,10 @@ export const useSceneStore = create((set, get) => ({
             showHp: true,
             showConditions: true,
             showAc: true,
-            showSize: true,
+            allowPlayerHp: true,
+            allowPlayerConditions: true,
+            allowPlayerAc: true,
+            allowPlayerSize: true,
           });
         }
       }
@@ -177,7 +215,6 @@ export const useSceneStore = create((set, get) => ({
           (t) => String(t.id).toLowerCase() === targetId
       );
 
-      // پاک‌سازی فیلدهای null یا undefined ارسالی تا تنظیمات قبلی GM بازنویسی و نابود نشوند
       const cleanSocketData = {};
       Object.keys(socketData).forEach((key) => {
         if (socketData[key] !== null && socketData[key] !== undefined) {
@@ -206,7 +243,10 @@ export const useSceneStore = create((set, get) => ({
                   showHp: cleanSocketData.showHp !== undefined ? Boolean(cleanSocketData.showHp) : oldToken.showHp,
                   showConditions: cleanSocketData.showConditions !== undefined ? Boolean(cleanSocketData.showConditions) : oldToken.showConditions,
                   showAc: cleanSocketData.showAc !== undefined ? Boolean(cleanSocketData.showAc) : oldToken.showAc,
-                  showSize: cleanSocketData.showSize !== undefined ? Boolean(cleanSocketData.showSize) : oldToken.showSize,
+                  allowPlayerHp: cleanSocketData.allowPlayerHp !== undefined ? Boolean(cleanSocketData.allowPlayerHp) : oldToken.allowPlayerHp,
+                  allowPlayerConditions: cleanSocketData.allowPlayerConditions !== undefined ? Boolean(cleanSocketData.allowPlayerConditions) : oldToken.allowPlayerConditions,
+                  allowPlayerAc: cleanSocketData.allowPlayerAc !== undefined ? Boolean(cleanSocketData.allowPlayerAc) : oldToken.allowPlayerAc,
+                  allowPlayerSize: cleanSocketData.allowPlayerSize !== undefined ? Boolean(cleanSocketData.allowPlayerSize) : oldToken.allowPlayerSize,
                 }
                 : t
         );
@@ -224,7 +264,10 @@ export const useSceneStore = create((set, get) => ({
           showHp: cleanSocketData.showHp !== undefined ? Boolean(cleanSocketData.showHp) : true,
           showConditions: cleanSocketData.showConditions !== undefined ? Boolean(cleanSocketData.showConditions) : true,
           showAc: cleanSocketData.showAc !== undefined ? Boolean(cleanSocketData.showAc) : true,
-          showSize: cleanSocketData.showSize !== undefined ? Boolean(cleanSocketData.showSize) : true,
+          allowPlayerHp: cleanSocketData.allowPlayerHp !== undefined ? Boolean(cleanSocketData.allowPlayerHp) : true,
+          allowPlayerConditions: cleanSocketData.allowPlayerConditions !== undefined ? Boolean(cleanSocketData.allowPlayerConditions) : true,
+          allowPlayerAc: cleanSocketData.allowPlayerAc !== undefined ? Boolean(cleanSocketData.allowPlayerAc) : true,
+          allowPlayerSize: cleanSocketData.allowPlayerSize !== undefined ? Boolean(cleanSocketData.allowPlayerSize) : true,
         };
         updatedTokens = [...currentTokens, newToken];
       }
@@ -234,28 +277,6 @@ export const useSceneStore = create((set, get) => ({
           ...state.currentScene,
           tokens: updatedTokens,
         },
-      };
-    });
-  },
-
-  addAvailableCondition: (conditionId) => {
-    set((state) => {
-      if (state.availableConditions.includes(conditionId)) return state;
-      return { availableConditions: [...state.availableConditions, conditionId] };
-    });
-  },
-
-  removeAvailableCondition: (conditionId) => {
-    set((state) => {
-      const nextAvailable = state.availableConditions.filter((c) => c !== conditionId);
-      const updatedTokens = (state.currentScene?.tokens || []).map((t) => ({
-        ...t,
-        conditions: (t.conditions || []).filter((c) => c !== conditionId),
-      }));
-
-      return {
-        availableConditions: nextAvailable,
-        currentScene: state.currentScene ? { ...state.currentScene, tokens: updatedTokens } : null,
       };
     });
   },
@@ -435,7 +456,10 @@ export const useSceneStore = create((set, get) => ({
         showHp: t.showHp !== undefined ? Boolean(t.showHp) : true,
         showConditions: t.showConditions !== undefined ? Boolean(t.showConditions) : true,
         showAc: t.showAc !== undefined ? Boolean(t.showAc) : true,
-        showSize: t.showSize !== undefined ? Boolean(t.showSize) : true,
+        allowPlayerHp: t.allowPlayerHp !== undefined ? Boolean(t.allowPlayerHp) : true,
+        allowPlayerConditions: t.allowPlayerConditions !== undefined ? Boolean(t.allowPlayerConditions) : true,
+        allowPlayerAc: t.allowPlayerAc !== undefined ? Boolean(t.allowPlayerAc) : true,
+        allowPlayerSize: t.allowPlayerSize !== undefined ? Boolean(t.allowPlayerSize) : true,
       }));
 
       const sceneWithState = {
