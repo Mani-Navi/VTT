@@ -21,10 +21,19 @@ public class AddTokenRequest {
     private Boolean isProp;
     private Integer goldValue;
     private Integer xpValue;
+
+    // نمایش روی بوم
     private Boolean showHp;
     private Boolean showName;
     private Boolean showAc;
     private Boolean showConditions;
     private Boolean showNotes;
+
+    // پرمیشن پلیر
+    private Boolean allowPlayerHp;
+    private Boolean allowPlayerConditions;
+    private Boolean allowPlayerAc;
+    private Boolean allowPlayerSize;
+
     private List<String> conditions;
 }

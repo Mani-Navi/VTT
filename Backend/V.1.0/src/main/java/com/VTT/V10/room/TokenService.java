@@ -24,6 +24,7 @@ public class TokenService {
     private final SceneRepository sceneRepository;
     private final AssetRepository assetRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final PlayerPermissionRepository playerPermissionRepository;
 
     @Transactional
     public TokenResponse addToken(AddTokenRequest request, String userEmail) {
@@ -91,9 +92,13 @@ public class TokenService {
                 .isLooted(false)
                 .showHp(request.getShowHp() != null ? request.getShowHp() : true)
                 .showName(request.getShowName() != null ? request.getShowName() : true)
-                .showAc(request.getShowAc() != null ? request.getShowAc() : false)
+                .showAc(request.getShowAc() != null ? request.getShowAc() : true)
                 .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
                 .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
+                .allowPlayerHp(request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true)
+                .allowPlayerConditions(request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true)
+                .allowPlayerAc(request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true)
+                .allowPlayerSize(request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true)
                 .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
                 .build();
 
@@ -114,6 +119,7 @@ public class TokenService {
 
             boolean isGM = false;
             boolean isOwner = false;
+            boolean hasEditTokenPermission = false;
 
             if (userEmail != null) {
                 var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, userEmail);
@@ -122,8 +128,18 @@ public class TokenService {
                     isGM = member.getRole() == RoomMember.Role.ADMIN;
                     String uid = member.getUser().getId().toString();
                     String uName = member.getUser().getUsername();
-                    isOwner = token.getControlledBy() != null &&
-                            (token.getControlledBy().equalsIgnoreCase(uid) || token.getControlledBy().equalsIgnoreCase(uName));
+
+                    isOwner = token.getControlledBy() == null ||
+                            token.getControlledBy().isBlank() ||
+                            token.getControlledBy().equalsIgnoreCase(uid) ||
+                            token.getControlledBy().equalsIgnoreCase(uName) ||
+                            token.getControlledBy().equalsIgnoreCase(userEmail) ||
+                            (token.getLabel() != null && token.getLabel().equalsIgnoreCase(uName));
+
+                    if (!isGM) {
+                        var permOpt = playerPermissionRepository.findByMemberId(member.getId());
+                        hasEditTokenPermission = permOpt.isPresent() && Boolean.TRUE.equals(permOpt.get().getCanEditToken());
+                    }
                 }
             }
 
@@ -131,16 +147,20 @@ public class TokenService {
                 return;
             }
 
+            // حذف توکن فقط توسط GM
             if (Boolean.TRUE.equals(data.getIsDeleted())) {
-                tokenRepository.deleteById(tokenId);
+                if (isGM) {
+                    tokenRepository.deleteById(tokenId);
+                }
                 return;
             }
 
+            // مختصات و چرخش
             if (data.getX() != null) token.setX(data.getX());
             if (data.getY() != null) token.setY(data.getY());
             if (data.getRotation() != null) token.setRotation(data.getRotation());
 
-            // فقط در صورتی نام تغییر کند که نام جدید معتبر و غیرخالی باشد
+            // نام و آواتار
             if (data.getName() != null && !data.getName().isBlank()) {
                 token.setLabel(data.getName());
             } else if (data.getLabel() != null && !data.getLabel().isBlank()) {
@@ -150,23 +170,45 @@ public class TokenService {
             if (data.getAvatarUrl() != null && !data.getAvatarUrl().isBlank()) {
                 token.setAvatarUrl(data.getAvatarUrl());
             }
-            if (data.getHp() != null) token.setHp(data.getHp());
-            if (data.getMaxHp() != null) token.setMaxHp(data.getMaxHp());
-            if (data.getAc() != null) token.setAc(data.getAc());
-            if (data.getConditions() != null) token.setConditions(data.getConditions());
 
-            if (isGM) {
+            // بررسی دسترسی ویرایش مقادیر توسط پلیر (اگر مجاز باشد یا GM باشد)
+            if (isGM || Boolean.TRUE.equals(token.getAllowPlayerHp()) || hasEditTokenPermission) {
+                if (data.getHp() != null) token.setHp(data.getHp());
+                if (data.getMaxHp() != null) token.setMaxHp(data.getMaxHp());
+            }
+
+            if (isGM || Boolean.TRUE.equals(token.getAllowPlayerAc()) || hasEditTokenPermission) {
+                if (data.getAc() != null) token.setAc(data.getAc());
+            }
+
+            if (isGM || Boolean.TRUE.equals(token.getAllowPlayerConditions()) || hasEditTokenPermission) {
+                if (data.getConditions() != null) token.setConditions(data.getConditions());
+            }
+
+            if (isGM || Boolean.TRUE.equals(token.getAllowPlayerSize()) || hasEditTokenPermission) {
                 if (data.getSize() != null) token.setSize(data.getSize());
+            }
+
+            // تنظیمات و تاگل‌های دسترسی فقط توسط GM قابل تغییر است
+            if (isGM) {
                 if (data.getGmNotes() != null) token.setGmNotes(data.getGmNotes());
                 if (data.getGoldValue() != null) token.setGoldValue(data.getGoldValue());
                 if (data.getXpValue() != null) token.setXpValue(data.getXpValue());
                 if (data.getIsHidden() != null) token.setIsHidden(data.getIsHidden());
                 if (data.getIsLocked() != null) token.setIsLocked(data.getIsLocked());
+
+                // تاگل‌های نمایش روی بوم
                 if (data.getShowHp() != null) token.setShowHp(data.getShowHp());
                 if (data.getShowName() != null) token.setShowName(data.getShowName());
                 if (data.getShowAc() != null) token.setShowAc(data.getShowAc());
                 if (data.getShowConditions() != null) token.setShowConditions(data.getShowConditions());
                 if (data.getShowNotes() != null) token.setShowNotes(data.getShowNotes());
+
+                // تاگل‌های پرمیشن دسترسی پلیر
+                if (data.getAllowPlayerHp() != null) token.setAllowPlayerHp(data.getAllowPlayerHp());
+                if (data.getAllowPlayerConditions() != null) token.setAllowPlayerConditions(data.getAllowPlayerConditions());
+                if (data.getAllowPlayerAc() != null) token.setAllowPlayerAc(data.getAllowPlayerAc());
+                if (data.getAllowPlayerSize() != null) token.setAllowPlayerSize(data.getAllowPlayerSize());
             }
 
             tokenRepository.save(token);
@@ -209,9 +251,13 @@ public class TokenService {
                 .isLooted(token.getIsLooted())
                 .showHp(token.getShowHp() != null ? token.getShowHp() : true)
                 .showName(token.getShowName() != null ? token.getShowName() : true)
-                .showAc(token.getShowAc() != null ? token.getShowAc() : false)
+                .showAc(token.getShowAc() != null ? token.getShowAc() : true)
                 .showConditions(token.getShowConditions() != null ? token.getShowConditions() : true)
                 .showNotes(token.getShowNotes() != null ? token.getShowNotes() : false)
+                .allowPlayerHp(token.getAllowPlayerHp() != null ? token.getAllowPlayerHp() : true)
+                .allowPlayerConditions(token.getAllowPlayerConditions() != null ? token.getAllowPlayerConditions() : true)
+                .allowPlayerAc(token.getAllowPlayerAc() != null ? token.getAllowPlayerAc() : true)
+                .allowPlayerSize(token.getAllowPlayerSize() != null ? token.getAllowPlayerSize() : true)
                 .conditions(token.getConditions() != null ? token.getConditions() : new ArrayList<>())
                 .build();
     }

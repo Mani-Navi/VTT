@@ -60,17 +60,27 @@ public class Token {
     private Integer xpValue;
     private Boolean isLooted;
 
-    // تاگل‌های کنترل نمایش روی بوم
+    // ۱. تاگل‌های کنترل نمایش بصری روی بوم و توکن
     @Builder.Default
     private Boolean showHp = true;
     @Builder.Default
     private Boolean showName = true;
     @Builder.Default
-    private Boolean showAc = false;
+    private Boolean showAc = true;
     @Builder.Default
     private Boolean showConditions = true;
     @Builder.Default
     private Boolean showNotes = false;
+
+    // ۲. تاگل‌های اعطای دسترسی و پرمیشن استفاده به پلیر
+    @Builder.Default
+    private Boolean allowPlayerHp = true;
+    @Builder.Default
+    private Boolean allowPlayerConditions = true;
+    @Builder.Default
+    private Boolean allowPlayerAc = true;
+    @Builder.Default
+    private Boolean allowPlayerSize = true;
 
     // لیست کاندیشن‌ها (JSONB)
     @JdbcTypeCode(SqlTypes.JSON)
