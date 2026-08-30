@@ -65,11 +65,70 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
-    // ۷. تغییر صحنه
-    const unsubScene = wsService.on("SCENE_CHANGE", (payload) => {
+    // ۷. تغییر / سوییچ صحنه برای همه کاربران
+    const unsubScene = wsService.on("SCENE_CHANGE", async (payload) => {
       const data = payload?.data || payload;
       if (data && data.sceneId) {
-        useSceneStore.getState().switchScene(data.sceneId, false);
+        const store = useSceneStore.getState();
+        const exists = store.scenes.some((s) => s.id === data.sceneId);
+        if (!exists) {
+          await store.loadScenes(roomId);
+        } else {
+          store.switchScene(data.sceneId, false);
+        }
+      }
+      if (onMessageRef.current) onMessageRef.current(payload);
+    });
+
+    // ۸. حذف بلادرنگ صحنه از نوار ابزار تمام کاربران
+    const unsubSceneDelete = wsService.on("SCENE_DELETE", async (payload) => {
+      const data = payload?.data || payload;
+      if (data && data.sceneId) {
+        useSceneStore.setState((state) => ({
+          scenes: state.scenes.filter((s) => s.id !== data.sceneId),
+        }));
+
+        if (data.activeSceneId) {
+          useSceneStore.getState().switchScene(data.activeSceneId, false);
+        } else {
+          await useSceneStore.getState().loadScenes(roomId);
+        }
+      }
+      if (onMessageRef.current) onMessageRef.current(payload);
+    });
+
+    // ۹. به‌روزرسانی بلادرنگ نقشه صحنه (آپلود / تغییر مپ)
+    const unsubSceneUpdate = wsService.on("SCENE_UPDATE", (payload) => {
+      const data = payload?.data || payload;
+      if (data && data.sceneId) {
+        const nextMapUrl = data.mapUrl || data.assetUrl || "";
+        useSceneStore.setState((state) => {
+          const isCurrent = state.currentScene?.id === data.sceneId;
+          return {
+            scenes: state.scenes.map((s) =>
+                s.id === data.sceneId ? { ...s, mapUrl: nextMapUrl, assetUrl: nextMapUrl } : s
+            ),
+            currentScene: isCurrent
+                ? {
+                  ...state.currentScene,
+                  mapUrl: nextMapUrl,
+                  assetUrl: nextMapUrl,
+                }
+                : state.currentScene,
+          };
+        });
+      }
+      if (onMessageRef.current) onMessageRef.current(payload);
+    });
+
+    // ۱۰. تغییر نام صحنه
+    const unsubRename = wsService.on("SCENE_RENAME", (payload) => {
+      const data = payload?.data || payload;
+      if (data && data.sceneId && data.name) {
+        useSceneStore.setState((state) => ({
+          scenes: state.scenes.map((s) => (s.id === data.sceneId ? { ...s, name: data.name } : s)),
+          currentScene: state.currentScene?.id === data.sceneId ? { ...state.currentScene, name: data.name } : state.currentScene,
+        }));
       }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
@@ -82,6 +141,9 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubFog();
       unsubDice();
       unsubScene();
+      unsubSceneDelete();
+      unsubSceneUpdate();
+      unsubRename();
       wsService.disconnect();
     };
   }, [roomId]); // اتصال فقط به ورود و خروج اتاق وابسته است

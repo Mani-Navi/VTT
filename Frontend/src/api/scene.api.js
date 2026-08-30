@@ -16,6 +16,11 @@ export const sceneApi = {
     return res.data;
   },
 
+  renameScene: async (sceneId, name) => {
+    const res = await api.put(`/scenes/${sceneId}/rename`, { name });
+    return res.data;
+  },
+
   updateSceneMap: async (sceneId, payload) => {
     const res = await api.put(`/scenes/${sceneId}/map`, payload);
     return res.data;

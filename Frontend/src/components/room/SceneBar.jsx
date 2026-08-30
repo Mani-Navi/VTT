@@ -3,14 +3,13 @@ import {
     Layers,
     Plus,
     Trash2,
-    Image as ImageIcon,
+    Edit2,
     Check,
     X,
-    ChevronDown,
 } from "lucide-react";
 import { useSceneStore } from "../../store/scene.store";
 import { sceneApi } from "../../api/scene.api";
-import { Button } from "../ui/Button";
+import { wsService } from "../../services/websocket.service";
 import { cn } from "../../utils/cn";
 
 export const SceneBar = ({ isGM = false, roomId = null }) => {
@@ -18,10 +17,15 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
     const currentScene = useSceneStore((state) => state.currentScene);
     const switchScene = useSceneStore((state) => state.switchScene);
     const loadScenes = useSceneStore((state) => state.loadScenes);
+    const renameScene = useSceneStore((state) => state.renameScene);
 
     const [isCreating, setIsCreating] = useState(false);
     const [newSceneName, setNewSceneName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // وضعیت ویرایش نام صحنه
+    const [editingSceneId, setEditingSceneId] = useState(null);
+    const [editingName, setEditingName] = useState("");
 
     if (!roomId) return null;
 
@@ -31,7 +35,7 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
 
         setIsSubmitting(true);
         try {
-            await sceneApi.createScene({
+            const created = await sceneApi.createScene({
                 roomId,
                 name: newSceneName.trim(),
                 isActive: true,
@@ -39,6 +43,10 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
             setNewSceneName("");
             setIsCreating(false);
             await loadScenes(roomId);
+
+            if (created && created.id) {
+                wsService.send("SCENE_CHANGE", { sceneId: created.id });
+            }
         } catch (err) {
             console.error("خطا در ایجاد صحنه:", err);
         } finally {
@@ -48,105 +56,188 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
 
     const handleDeleteScene = async (sceneId, e) => {
         e.stopPropagation();
-        if (!confirm("آیا از حذف این صحنه و محتویات آن اطمینان دارید؟")) return;
+        if (!confirm("آیا از حذف این صحنه و تمام محتویات آن اطمینان دارید؟")) return;
 
         try {
             await sceneApi.deleteScene(sceneId);
             await loadScenes(roomId);
+
+            const updatedState = useSceneStore.getState();
+            const newActiveId = updatedState.currentScene?.id || null;
+
+            wsService.send("SCENE_DELETE", {
+                sceneId: sceneId,
+                activeSceneId: newActiveId,
+            });
         } catch (err) {
             console.error("خطا در حذف صحنه:", err);
         }
     };
 
+    const startEditing = (scene, e) => {
+        e.stopPropagation();
+        setEditingSceneId(scene.id);
+        setEditingName(scene.name);
+    };
+
+    const saveRename = async (sceneId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!editingName.trim()) {
+            setEditingSceneId(null);
+            return;
+        }
+
+        await renameScene(sceneId, editingName.trim());
+        setEditingSceneId(null);
+    };
+
     return (
         <div
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl shadow-2xl backdrop-blur-xl font-fa select-none pointer-events-auto"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-3 py-1.5 bg-zinc-950/85 border border-zinc-800/90 rounded-2xl shadow-2xl shadow-black/70 backdrop-blur-xl font-fa select-none pointer-events-auto"
             dir="rtl"
         >
-            <div className="flex items-center gap-1 px-2 text-zinc-400 text-xs font-bold">
-                <Layers className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline">صحنه‌ها:</span>
+            {/* نشان عنوان صحنه‌ها */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-zinc-300 text-xs font-semibold shrink-0">
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">صحنه‌ها</span>
             </div>
 
-            {/* تب‌های صحنه‌ها */}
-            <div className="flex items-center gap-1 max-w-[40vw] overflow-x-auto custom-scrollbar py-0.5">
+            {/* لیست تب‌های صحنه‌ها */}
+            <div className="flex items-center gap-1.5 max-w-[55vw] overflow-x-auto custom-scrollbar py-0.5 px-0.5">
                 {scenes.map((scene) => {
                     const isActive = currentScene?.id === scene.id;
+                    const isEditingThis = editingSceneId === scene.id;
+
+                    if (isEditingThis && isGM) {
+                        return (
+                            <form
+                                key={scene.id}
+                                onSubmit={(e) => saveRename(scene.id, e)}
+                                className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-xl border border-amber-500 shadow-md shrink-0 animate-in fade-in duration-150"
+                            >
+                                <input
+                                    type="text"
+                                    value={editingName}
+                                    onChange={(e) => setEditingName(e.target.value)}
+                                    autoFocus
+                                    className="w-28 px-1 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
+                                />
+                                <button
+                                    type="submit"
+                                    className="w-6 h-6 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center cursor-pointer hover:bg-amber-400 transition-colors"
+                                >
+                                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingSceneId(null)}
+                                    className="w-6 h-6 rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </form>
+                        );
+                    }
+
                     return (
                         <div
                             key={scene.id}
                             onClick={() => isGM && switchScene(scene.id)}
+                            onDoubleClick={(e) => isGM && startEditing(scene, e)}
                             className={cn(
-                                "group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0",
+                                "group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0",
                                 isActive
-                                    ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
+                                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/20 border border-amber-400/40 cursor-default"
                                     : isGM
-                                        ? "bg-zinc-950/60 border border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 cursor-pointer"
-                                        : "bg-zinc-950/60 text-zinc-500 cursor-default"
+                                        ? "bg-zinc-900/60 border border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer"
+                                        : "bg-zinc-900/40 border border-zinc-800/40 text-zinc-500 cursor-default"
                             )}
+                            title={isGM ? "برای سوییچ کلیک و برای ویرایش نام دابل‌کلیک کنید" : ""}
                         >
-                            <span className="truncate max-w-[120px]">{scene.name}</span>
+                            <span className="truncate max-w-[150px] tracking-wide">
+                                {scene.name}
+                            </span>
 
-                            {/* دکمه حذف فقط برای GM و در صورت وجود بیش از یک صحنه */}
-                            {isGM && scenes.length > 1 && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => handleDeleteScene(scene.id, e)}
-                                    className={cn(
-                                        "w-4 h-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
-                                        isActive
-                                            ? "hover:bg-amber-600 text-zinc-950"
-                                            : "hover:bg-rose-500/20 text-rose-400"
+                            {/* کنترلرهای هاور GM */}
+                            {isGM && (
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-150 mr-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => startEditing(scene, e)}
+                                        className={cn(
+                                            "w-5 h-5 rounded-md flex items-center justify-center transition-colors",
+                                            isActive
+                                                ? "hover:bg-amber-600 text-zinc-950"
+                                                : "hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-200"
+                                        )}
+                                        title="ویرایش نام"
+                                    >
+                                        <Edit2 className="w-3 h-3" />
+                                    </button>
+
+                                    {scenes.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteScene(scene.id, e)}
+                                            className={cn(
+                                                "w-5 h-5 rounded-md flex items-center justify-center transition-colors",
+                                                isActive
+                                                    ? "hover:bg-rose-600 text-zinc-950 hover:text-white"
+                                                    : "hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400"
+                                            )}
+                                            title="حذف صحنه"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
                                     )}
-                                    title="حذف صحنه"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </button>
+                                </div>
                             )}
                         </div>
                     );
                 })}
             </div>
 
-            {/* دکمه افزودن صحنه جدید (فقط برای GM) */}
+            {/* دکمه افزودن صحنه جدید */}
             {isGM && (
-                <>
+                <div className="shrink-0">
                     {!isCreating ? (
                         <button
                             type="button"
                             onClick={() => setIsCreating(true)}
-                            className="w-7 h-7 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-amber-400 flex items-center justify-center transition-colors cursor-pointer mr-1"
+                            className="h-8 px-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800/80 hover:border-amber-500/50 text-amber-400 flex items-center gap-1 text-xs font-semibold transition-all cursor-pointer shadow-sm"
                             title="ایجاد صحنه جدید"
                         >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                            <span className="hidden md:inline">صحنه جدید</span>
                         </button>
                     ) : (
-                        <form onSubmit={handleCreateScene} className="flex items-center gap-1 mr-1 animate-in fade-in duration-100">
+                        <form onSubmit={handleCreateScene} className="flex items-center gap-1.5 bg-zinc-900 px-2 py-1 rounded-xl border border-amber-500/70 shadow-lg animate-in fade-in duration-150">
                             <input
                                 type="text"
                                 value={newSceneName}
                                 onChange={(e) => setNewSceneName(e.target.value)}
                                 placeholder="نام صحنه..."
                                 autoFocus
-                                className="w-28 px-2 py-1 bg-zinc-950 border border-amber-500/50 rounded-lg text-xs text-zinc-100 focus:outline-none"
+                                className="w-32 px-2 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
                             />
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-6 h-6 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center cursor-pointer"
+                                className="w-6 h-6 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center cursor-pointer hover:bg-amber-400 transition-colors"
                             >
-                                <Check className="w-3.5 h-3.5" />
+                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setIsCreating(false)}
-                                className="w-6 h-6 rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center justify-center cursor-pointer"
+                                className="w-6 h-6 rounded-lg bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
                         </form>
                     )}
-                </>
+                </div>
             )}
         </div>
     );

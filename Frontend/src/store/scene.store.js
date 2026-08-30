@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { sceneApi } from "../api/scene.api";
 import { tokenApi } from "../api/token.api";
 import { wsService } from "../services/websocket.service";
-import { useAuthStore } from "./auth.store";
 
 const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
     const S = Number(gridSize) || 60;
@@ -75,7 +74,7 @@ export const useSceneStore = create((set, get) => ({
             if (!scenes || scenes.length === 0) {
                 const defaultScene = await sceneApi.createScene({
                     roomId: roomId,
-                    name: "صحنه اصلی",
+                    name: "صحنه خوش‌آمدگویی",
                     isActive: true,
                 });
                 scenes = [defaultScene];
@@ -144,7 +143,6 @@ export const useSceneStore = create((set, get) => ({
                 availableConditions: Array.isArray(persistentConditions) ? persistentConditions : [],
                 isLoading: false,
             });
-            // ساخت خودکار توکن به طور کامل حذف شد
         } catch (err) {
             console.error("خطا در دریافت صحنه‌های اتاق:", err);
             set({ isLoading: false });
@@ -240,7 +238,8 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
-    setMapForCurrentScene: async (mapUrl, mapName = "نقشه اصلی", assetId = null) => {
+    // رفع باگ ۵: نام صحنه نباید به نام فایل تغییر کند
+    setMapForCurrentScene: async (mapUrl, assetId = null) => {
         const state = get();
         let current = state.currentScene;
         if (!current) return;
@@ -249,23 +248,38 @@ export const useSceneStore = create((set, get) => ({
             ...current,
             mapUrl: mapUrl,
             assetUrl: mapUrl,
-            name: mapName,
         };
 
         set({
             currentScene: updatedScene,
-            scenes: state.scenes.map((s) => (s.id === current.id ? { ...s, mapUrl, name: mapName } : s)),
+            scenes: state.scenes.map((s) => (s.id === current.id ? { ...s, mapUrl, assetUrl: mapUrl } : s)),
         });
 
         try {
             await sceneApi.updateSceneMap(current.id, {
                 mapUrl,
-                name: mapName,
                 assetId,
             });
-            wsService.send("SCENE_UPDATE", { sceneId: current.id, mapUrl, mapName });
+            wsService.send("SCENE_UPDATE", { sceneId: current.id, mapUrl, assetId });
         } catch (err) {
             console.error("خطا در ذخیره نقشه در سرور:", err);
+        }
+    },
+
+    renameScene: async (sceneId, newName) => {
+        if (!sceneId || !newName?.trim()) return;
+        const trimmed = newName.trim();
+
+        set((state) => ({
+            scenes: state.scenes.map((s) => (s.id === sceneId ? { ...s, name: trimmed } : s)),
+            currentScene: state.currentScene?.id === sceneId ? { ...state.currentScene, name: trimmed } : state.currentScene,
+        }));
+
+        try {
+            await sceneApi.renameScene(sceneId, trimmed);
+            wsService.send("SCENE_RENAME", { sceneId, name: trimmed });
+        } catch (err) {
+            console.error("خطا در تغییر نام صحنه:", err);
         }
     },
 
