@@ -19,7 +19,6 @@ import { TOKEN_PRESETS } from "../../constants/tokenPresets";
 import { Button } from "../ui/Button";
 import { cn } from "../../utils/cn";
 
-// محدودیت‌های حجمی کلاینت
 const SIZE_LIMITS = {
   maps: { bytes: 15 * 1024 * 1024, label: "۱۵ مگابایت", type: "MAP" },
   tokens: { bytes: 3 * 1024 * 1024, label: "۳ مگابایت", type: "TOKEN" },
@@ -41,7 +40,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
 
   const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState("maps"); // maps | tokens | props
+  const [activeTab, setActiveTab] = useState("maps");
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [userAssets, setUserAssets] = useState([]);
@@ -50,9 +49,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [assetUrlInput, setAssetUrlInput] = useState("");
   const [assetNameInput, setAssetNameInput] = useState("");
-
-  const setStagePos = useCanvasStore((state) => state.setStagePos);
-  const setZoom = useCanvasStore((state) => state.setZoom);
 
   const hasActiveMap = Boolean(currentScene?.assetUrl || currentScene?.mapUrl);
   const canAccessAssets = isGM || permissions?.canAssets === true;
@@ -81,6 +77,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
         <div
             className="fixed top-16 right-6 z-50 w-80 bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-5 text-zinc-100 font-fa select-none text-center"
             dir="rtl"
+            onWheel={(e) => e.stopPropagation()}
         >
           <div className="w-10 h-10 mx-auto rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
             <Lock className="w-5 h-5" />
@@ -101,25 +98,17 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     );
   }
 
-  // انتخاب و قرارگیری نقشه روی بوم
-  const handleSelectMap = async (rawMapUrl, mapName, assetId = null) => {
+  // فقط ثبت نقشه و بستن منو (MapLayer خودکار تصویر را لود و دوربین را دقیق فیت می‌کند)
+  const handleSelectMap = async (rawMapUrl, assetId = null) => {
     if (!canUploadMap) return;
 
     const fullMapUrl = getAssetUrl(rawMapUrl);
     const validAssetId = isValidUUID(assetId) ? assetId : null;
-    await setMapForCurrentScene(fullMapUrl, mapName, validAssetId);
-
-    const mapWidth = 2000;
-    const mapHeight = 1500;
-    const centerX = (window.innerWidth - mapWidth * 0.6) / 2;
-    const centerY = (window.innerHeight - mapHeight * 0.6) / 2;
-    setStagePos(Math.max(centerX, 20), Math.max(centerY, 20));
-    setZoom(0.6);
 
     toggleMenu("asset");
+    await setMapForCurrentScene(fullMapUrl, validAssetId);
   };
 
-  // افزودن توکن یا شئ به صحنه
   const handleAddToken = (rawTokenUrl, tokenName, extraData = {}) => {
     if (!hasActiveMap) return;
 
@@ -147,7 +136,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     addToken(newToken);
   };
 
-  // آپلود مستقیم فایل
   const handleDirectUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,7 +155,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
       const uploaded = await assetApi.uploadAsset(file, assetName, currentLimit.type, { dpi: 150 });
 
       if (activeTab === "maps") {
-        await handleSelectMap(uploaded.fileUrl, uploaded.name, uploaded.id);
+        await handleSelectMap(uploaded.fileUrl, uploaded.id);
       } else {
         handleAddToken(uploaded.fileUrl, uploaded.name, uploaded);
         loadAssets();
@@ -180,7 +168,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     }
   };
 
-  // ثبت منبع از طریق لینک وب
   const handleAddFromUrl = async (e) => {
     e.preventDefault();
     if (!assetUrlInput.trim()) return;
@@ -199,7 +186,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
       setShowUrlInput(false);
 
       if (activeTab === "maps") {
-        await handleSelectMap(created.fileUrl, created.name, created.id);
+        await handleSelectMap(created.fileUrl, created.id);
       } else {
         handleAddToken(created.fileUrl, created.name, created);
         loadAssets();
@@ -211,7 +198,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     }
   };
 
-  // حذف است شخصی
   const handleDeleteAsset = async (e, assetId) => {
     e.stopPropagation();
     try {
@@ -222,7 +208,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     }
   };
 
-  // فیلتر پریست‌های دیفالت
   const filteredPresets =
       activeTab === "maps"
           ? (MAP_PRESETS || []).filter(
@@ -252,8 +237,8 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
       <div
           className="fixed top-16 right-6 z-50 w-[460px] max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-4 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-150"
           dir="rtl"
+          onWheel={(e) => e.stopPropagation()}
       >
-        {/* هدر */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
@@ -273,7 +258,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
           </button>
         </div>
 
-        {/* تب‌های تفکیک‌شده */}
         <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
           {[
             { id: "maps", label: "نقشه‌ها", icon: MapPin },
@@ -304,7 +288,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
           })}
         </div>
 
-        {/* نوار جستجو و دکمه‌های آپلود/لینک */}
         <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -348,7 +331,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
           </Button>
         </div>
 
-        {/* فرم افزودن با لینک مستقیم وب */}
         {showUrlInput && (
             <form
                 onSubmit={handleAddFromUrl}
@@ -379,7 +361,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
             </form>
         )}
 
-        {/* راهنمای حجم */}
         <div className="flex justify-between items-center px-1 mb-2 text-[10px] text-zinc-500 font-medium">
           <span>فرمت‌های مجاز: JPG, PNG, WEBP, GIF</span>
           <span>حداکثر حجم مجاز: {SIZE_LIMITS[activeTab]?.label}</span>
@@ -391,9 +372,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
             </div>
         )}
 
-        {/* لیست منابع */}
         <div className="max-h-[48vh] overflow-y-auto pr-1 custom-scrollbar space-y-3">
-          {/* ۱. نقشه‌ها */}
           {activeTab === "maps" && (
               <div>
                 <span className="text-[11px] font-bold text-zinc-400 mb-2 block">نقشه‌های پیش‌فرض سیستم:</span>
@@ -401,7 +380,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
                   {filteredPresets.map((map) => (
                       <div
                           key={map.id}
-                          onClick={() => canUploadMap && handleSelectMap(map.url || map.thumbnailUrl, map.nameFa || map.name)}
+                          onClick={() => canUploadMap && handleSelectMap(map.url || map.thumbnailUrl, map.id)}
                           className={cn(
                               "group relative rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950 transition-all",
                               canUploadMap
@@ -425,7 +404,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
               </div>
           )}
 
-          {/* ۲. توکن‌ها */}
           {activeTab === "tokens" && (
               <div>
             <span className="text-[11px] font-bold text-zinc-400 mb-2 block">
@@ -460,7 +438,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
               </div>
           )}
 
-          {/* ۳. اشیاء (Props) */}
           {activeTab === "props" && (
               <div>
                 <span className="text-[11px] font-bold text-zinc-400 mb-2 block">اشیاء و تجهیزات پیش‌فرض:</span>
@@ -491,7 +468,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
               </div>
           )}
 
-          {/* فایل‌های شخصی ذخیره‌شده کاربر */}
           {filteredUserAssets.length > 0 && (
               <div className="pt-3 border-t border-zinc-800/80">
             <span className="text-[11px] font-bold text-amber-400/90 mb-2 block">
@@ -503,7 +479,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
                           key={asset.id}
                           onClick={() => {
                             if (asset.type === "MAP" && canUploadMap) {
-                              handleSelectMap(asset.fileUrl, asset.name, asset.id);
+                              handleSelectMap(asset.fileUrl, asset.id);
                             } else if (hasActiveMap) {
                               handleAddToken(asset.fileUrl, asset.name, asset);
                             }

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Image as KonvaImage, Rect, Group } from "react-konva";
 import { getFullAssetUrl } from "../../utils/imageUrl";
+import { useCanvasStore } from "../../store/canvas.store";
 
-export const MapLayer = ({ mapUrl, width = 2000, height = 1500 }) => {
+export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChange = null }) => {
   const [image, setImage] = useState(null);
   const [dimensions, setDimensions] = useState({ width, height });
+  const fitToMap = useCanvasStore((state) => state.fitToMap);
 
   const resolvedUrl = getFullAssetUrl(mapUrl);
 
@@ -26,24 +28,38 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500 }) => {
     img.onload = () => {
       if (isMounted) {
         setImage(img);
-        setDimensions({
-          width: img.naturalWidth || width,
-          height: img.naturalHeight || height,
-        });
+        const naturalW = img.naturalWidth || width;
+        const naturalH = img.naturalHeight || height;
+        setDimensions({ width: naturalW, height: naturalH });
+
+        if (onDimensionsChange) {
+          onDimensionsChange(naturalW, naturalH);
+        }
+
+        // سنتر و فیت قطعی دوربین در لحظه لود کامل بایت‌های تصویر
+        const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
+        const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
+        fitToMap(naturalW, naturalH, screenW, screenH);
       }
     };
 
     img.onerror = () => {
-      // تلاش مجدد بدون crossOrigin
       const fallbackImg = new window.Image();
       fallbackImg.src = resolvedUrl;
       fallbackImg.onload = () => {
         if (isMounted) {
           setImage(fallbackImg);
-          setDimensions({
-            width: fallbackImg.naturalWidth || width,
-            height: fallbackImg.naturalHeight || height,
-          });
+          const naturalW = fallbackImg.naturalWidth || width;
+          const naturalH = fallbackImg.naturalHeight || height;
+          setDimensions({ width: naturalW, height: naturalH });
+
+          if (onDimensionsChange) {
+            onDimensionsChange(naturalW, naturalH);
+          }
+
+          const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
+          const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
+          fitToMap(naturalW, naturalH, screenW, screenH);
         }
       };
       fallbackImg.onerror = () => {
@@ -54,12 +70,31 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500 }) => {
     return () => {
       isMounted = false;
     };
-  }, [resolvedUrl, width, height]);
+  }, [resolvedUrl]);
 
   if (!resolvedUrl) return null;
 
+  const cornerRadius = 24;
+
   return (
       <Group listening={false}>
+        {/* کادر و سایه عمیق دور نقشه */}
+        <Rect
+            x={0}
+            y={0}
+            width={dimensions.width}
+            height={dimensions.height}
+            cornerRadius={cornerRadius}
+            fill="transparent"
+            stroke="rgba(245, 158, 11, 0.45)"
+            strokeWidth={3}
+            shadowColor="#000000"
+            shadowBlur={40}
+            shadowOpacity={0.9}
+            shadowOffset={{ x: 0, y: 15 }}
+            listening={false}
+        />
+
         {image ? (
             <KonvaImage
                 image={image}
@@ -67,6 +102,8 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500 }) => {
                 y={0}
                 width={dimensions.width}
                 height={dimensions.height}
+                cornerRadius={cornerRadius}
+                name="map-background"
                 listening={false}
             />
         ) : (
@@ -75,9 +112,11 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500 }) => {
                 y={0}
                 width={width}
                 height={height}
+                cornerRadius={cornerRadius}
                 fill="#18181b"
                 stroke="#3f3f46"
                 strokeWidth={2}
+                name="map-background"
                 listening={false}
             />
         )}

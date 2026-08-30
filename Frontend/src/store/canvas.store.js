@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { TOOLS, DRAW_MODES, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../constants/tools";
 
-export const useCanvasStore = create((set) => ({
-    // ابزار پیش‌فرض انتخاب و حرکت توکن
+export const useCanvasStore = create((set, get) => ({
     activeTool: TOOLS.SELECT,
     activeDrawShape: DRAW_MODES.MARKER,
     drawStrokeColor: "#f59e0b",
@@ -42,7 +41,35 @@ export const useCanvasStore = create((set) => ({
 
     resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
 
-    // تمرکز دوربین روی یک نقطه مشخص
+    // محاسبه کاملاً دقیق ریاضی فیت شدن هر ابعاد نقشه‌ای در مرکز نمایشگر
+    fitToMap: (mapW = 2000, mapH = 1500, containerW = null, containerH = null) => {
+        const screenW = (containerW && containerW > 300) ? containerW : (typeof window !== "undefined" ? window.innerWidth : 1920);
+        const screenH = (containerH && containerH > 300) ? containerH : (typeof window !== "undefined" ? window.innerHeight : 1080);
+
+        const safeW = (mapW && mapW > 50) ? Number(mapW) : 2000;
+        const safeH = (mapH && mapH > 50) ? Number(mapH) : 1500;
+
+        // فضای خالی حاشیه از بالا و پایین (جهت جلوگیری از تداخل با منوها)
+        const paddingX = 140;
+        const paddingY = 140;
+
+        const availW = Math.max(screenW - paddingX, 200);
+        const availH = Math.max(screenH - paddingY, 200);
+
+        const scaleX = availW / safeW;
+        const scaleY = availH / safeH;
+        const optimalScale = Math.min(scaleX, scaleY);
+
+        const stageX = (screenW - safeW * optimalScale) / 2;
+        const stageY = (screenH - safeH * optimalScale) / 2;
+
+        set({
+            zoom: Number(optimalScale.toFixed(3)),
+            stageX: Math.round(stageX),
+            stageY: Math.round(stageY),
+        });
+    },
+
     focusOnCoordinates: (targetX, targetY) => {
         const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1920;
         const windowHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
@@ -90,7 +117,6 @@ export const useCanvasStore = create((set) => ({
         });
     },
 
-    // خط‌کش اندازه‌گیری و نشانگر لیزری
     measurement: null,
     laserPosition: null,
 
