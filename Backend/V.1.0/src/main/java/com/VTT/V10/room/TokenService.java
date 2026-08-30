@@ -6,6 +6,7 @@ import com.VTT.V10.room.dto.AddTokenRequest;
 import com.VTT.V10.room.dto.TokenResponse;
 import com.VTT.V10.websocket.dto.TokenMoveEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TokenService {
@@ -28,6 +30,8 @@ public class TokenService {
 
     @Transactional
     public TokenResponse addToken(AddTokenRequest request, String userEmail) {
+        log.info("Adding token for user: {}, sceneId: {}, assetId: {}", userEmail, request.getSceneId(), request.getAssetId());
+
         Scene scene = sceneRepository.findById(request.getSceneId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
@@ -42,7 +46,7 @@ public class TokenService {
         boolean hasEditTokenPerm = false;
         String finalControlledBy = "";
 
-        if (requester != null) {
+        if (requester != null && requester.getUser() != null) {
             finalControlledBy = requester.getUser().getId().toString();
             if (!isGM) {
                 final String uid = finalControlledBy;
@@ -52,14 +56,18 @@ public class TokenService {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "هر بازیکن تنها مجاز به داشتن یک توکن اختصاصی است");
                 }
 
-                // دریافت پرمیشن پایدار ثبت‌شده توسط GM برای این بازیکن
-                var permOpt = playerPermissionRepository.findByMemberId(requester.getId());
-                hasEditTokenPerm = permOpt.isPresent() && Boolean.TRUE.equals(permOpt.get().getCanEditToken());
+                try {
+                    var permOpt = playerPermissionRepository.findByMemberId(requester.getId());
+                    hasEditTokenPerm = permOpt.isPresent() && Boolean.TRUE.equals(permOpt.get().getCanEditToken());
+                } catch (Exception e) {
+                    log.warn("Could not check player permission: {}", e.getMessage());
+                }
+            } else {
+                // اگر GM در حال ساخت توکن یا شیء است، فیلد مالک را خالی می‌گذاریم مگر اینکه مشخص کرده باشد
+                finalControlledBy = (request.getControlledBy() != null && !request.getControlledBy().isBlank())
+                        ? request.getControlledBy()
+                        : "";
             }
-        }
-
-        if (isGM && request.getControlledBy() != null && !request.getControlledBy().isBlank()) {
-            finalControlledBy = request.getControlledBy();
         }
 
         Asset asset = null;
@@ -74,44 +82,53 @@ public class TokenService {
 
         String label = request.getLabel();
         if (label == null || label.isBlank()) {
-            label = (requester != null && requester.getUser() != null) ? requester.getUser().getUsername() : "توکن کاراکتر";
+            if (Boolean.TRUE.equals(request.getIsProp())) {
+                label = "شیء جدید";
+            } else {
+                label = (requester != null && requester.getUser() != null) ? requester.getUser().getUsername() : "توکن جدید";
+            }
         }
 
-        // حفظ وضعیت پرمیشن‌های GM هنگام ساخت مجدد توکن
         boolean defaultPlayerAccess = isGM || hasEditTokenPerm;
 
-        Token token = Token.builder()
-                .scene(scene)
-                .asset(asset)
-                .label(label)
-                .avatarUrl(finalAvatar)
-                .x(request.getX() != null ? request.getX() : 1000.0)
-                .y(request.getY() != null ? request.getY() : 750.0)
-                .size(request.getSize() != null ? request.getSize() : 1.0)
-                .rotation(0.0)
-                .hp(request.getHp() != null ? request.getHp() : 20)
-                .maxHp(request.getMaxHp() != null ? request.getMaxHp() : 20)
-                .ac(request.getAc() != null ? request.getAc() : 12)
-                .controlledBy(finalControlledBy)
-                .gmNotes(isGM ? request.getGmNotes() : null)
-                .isProp(isGM && Boolean.TRUE.equals(request.getIsProp()))
-                .goldValue(isGM ? request.getGoldValue() : 0)
-                .xpValue(isGM ? request.getXpValue() : 0)
-                .isLooted(false)
-                .showHp(request.getShowHp() != null ? request.getShowHp() : true)
-                .showName(request.getShowName() != null ? request.getShowName() : true)
-                .showAc(request.getShowAc() != null ? request.getShowAc() : true)
-                .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
-                .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
-                .allowPlayerHp(isGM ? (request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true) : defaultPlayerAccess)
-                .allowPlayerConditions(isGM ? (request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true) : defaultPlayerAccess)
-                .allowPlayerAc(isGM ? (request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true) : defaultPlayerAccess)
-                .allowPlayerSize(isGM ? (request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true) : defaultPlayerAccess)
-                .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
-                .build();
+        try {
+            Token token = Token.builder()
+                    .scene(scene)
+                    .asset(asset)
+                    .label(label)
+                    .avatarUrl(finalAvatar != null ? finalAvatar : "")
+                    .x(request.getX() != null ? request.getX() : 1000.0)
+                    .y(request.getY() != null ? request.getY() : 750.0)
+                    .size(request.getSize() != null ? request.getSize() : (Boolean.TRUE.equals(request.getIsProp()) ? 0.5 : 1.0))
+                    .rotation(0.0)
+                    .hp(request.getHp() != null ? request.getHp() : 20)
+                    .maxHp(request.getMaxHp() != null ? request.getMaxHp() : 20)
+                    .ac(request.getAc() != null ? request.getAc() : 12)
+                    .controlledBy(finalControlledBy)
+                    .gmNotes(isGM ? request.getGmNotes() : null)
+                    .isProp(Boolean.TRUE.equals(request.getIsProp()))
+                    .goldValue(isGM && request.getGoldValue() != null ? request.getGoldValue() : 0)
+                    .xpValue(isGM && request.getXpValue() != null ? request.getXpValue() : 0)
+                    .isLooted(false)
+                    .showHp(request.getShowHp() != null ? request.getShowHp() : true)
+                    .showName(request.getShowName() != null ? request.getShowName() : true)
+                    .showAc(request.getShowAc() != null ? request.getShowAc() : true)
+                    .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
+                    .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
+                    .allowPlayerHp(isGM ? (request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true) : defaultPlayerAccess)
+                    .allowPlayerConditions(isGM ? (request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true) : defaultPlayerAccess)
+                    .allowPlayerAc(isGM ? (request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true) : defaultPlayerAccess)
+                    .allowPlayerSize(isGM ? (request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true) : defaultPlayerAccess)
+                    .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
+                    .build();
 
-        tokenRepository.save(token);
-        return convertToResponse(token);
+            tokenRepository.save(token);
+            log.info("Token created successfully with ID: {}", token.getId());
+            return convertToResponse(token);
+        } catch (Exception e) {
+            log.error("Fatal error saving token to database: ", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "خطا در ذخیره‌سازی توکن: " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -134,15 +151,15 @@ public class TokenService {
                 if (memberOpt.isPresent()) {
                     RoomMember member = memberOpt.get();
                     isGM = member.getRole() == RoomMember.Role.ADMIN;
-                    String uid = member.getUser().getId().toString();
-                    String uName = member.getUser().getUsername();
+                    String uid = member.getUser() != null ? member.getUser().getId().toString() : "";
+                    String uName = member.getUser() != null ? member.getUser().getUsername() : "";
 
                     isOwner = token.getControlledBy() == null ||
                             token.getControlledBy().isBlank() ||
-                            token.getControlledBy().equalsIgnoreCase(uid) ||
-                            token.getControlledBy().equalsIgnoreCase(uName) ||
+                            (uid.length() > 0 && token.getControlledBy().equalsIgnoreCase(uid)) ||
+                            (uName.length() > 0 && token.getControlledBy().equalsIgnoreCase(uName)) ||
                             token.getControlledBy().equalsIgnoreCase(userEmail) ||
-                            (token.getLabel() != null && token.getLabel().equalsIgnoreCase(uName));
+                            (token.getLabel() != null && uName.length() > 0 && token.getLabel().equalsIgnoreCase(uName));
 
                     if (!isGM) {
                         var permOpt = playerPermissionRepository.findByMemberId(member.getId());
