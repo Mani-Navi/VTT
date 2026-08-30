@@ -29,6 +29,10 @@ public class RoomMember {
     @Column(nullable = false)
     private Role role;
 
+    // عنوان و تگ نمایشی نقش (پایدار در دیتابیس)
+    @Column(name = "role_title")
+    private String roleTitle;
+
     @Builder.Default
     @Column(name = "is_muted", columnDefinition = "boolean default false")
     private Boolean isMuted = false;
@@ -51,6 +55,9 @@ public class RoomMember {
         }
         if (this.isBanned == null) {
             this.isBanned = false;
+        }
+        if (this.roleTitle == null || this.roleTitle.isBlank()) {
+            this.roleTitle = (this.role == Role.ADMIN) ? "میزبان" : "بازیکن";
         }
     }
 

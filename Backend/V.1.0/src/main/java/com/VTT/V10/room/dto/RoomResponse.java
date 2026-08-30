@@ -23,6 +23,13 @@ public class RoomResponse {
     private String role; // "GM" یا "Player"
     private boolean isProtected;
 
+    // عناوین همگانی نقش‌های اتاق
+    @Builder.Default
+    private String hostRoleTitle = "میزبان";
+
+    @Builder.Default
+    private String playerRoleTitle = "بازیکن";
+
     @JsonProperty("is_owner")
     private Boolean isOwner;
 

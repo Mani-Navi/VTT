@@ -49,6 +49,15 @@ public class Room {
 
     private String musicUrl;
 
+    // عناوین نمایشی نقش‌های اتاق (پایدار در دیتابیس)
+    @Builder.Default
+    @Column(name = "host_role_title")
+    private String hostRoleTitle = "میزبان";
+
+    @Builder.Default
+    @Column(name = "player_role_title")
+    private String playerRoleTitle = "بازیکن";
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

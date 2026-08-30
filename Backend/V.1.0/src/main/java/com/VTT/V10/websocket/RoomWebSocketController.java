@@ -15,6 +15,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +29,7 @@ public class RoomWebSocketController {
     private final DrawingService drawingService;
     private final FogService fogService;
     private final RoomService roomService;
+    private final RoomRepository roomRepository;
     private final RoomSettingsService roomSettingsService;
     private final RoomMemberRepository roomMemberRepository;
     private final PlayerPermissionRepository permissionRepository;
@@ -85,7 +87,6 @@ public class RoomWebSocketController {
 
         var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
         if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
-            // پیدا کردن صحنه فعال یا اولین صحنه اتاق برای ذخیره پایدار در دیتابیس
             var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
             if (activeSceneOpt.isEmpty()) {
                 var scenes = sceneRepository.findByRoomId(roomId);
@@ -101,6 +102,51 @@ public class RoomWebSocketController {
 
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
         }
+    }
+
+    // تغییر و همگام‌سازی همگانی عناوین رول‌ها در سطح کل اتاق
+    @MessageMapping("/room/{roomId}/role-title")
+    public void handleRoleTitleUpdate(
+            @DestinationVariable UUID roomId,
+            @Payload SocketEvent<Map<String, Object>> event,
+            Principal principal
+    ) {
+        if (event == null || principal == null || event.getData() == null) return;
+        roomService.updateLastActive(roomId, principal.getName());
+
+        try {
+            Map<String, Object> data = event.getData();
+            String title = (String) data.get("title");
+            String targetType = (String) data.get("targetType"); // "HOST" یا "PLAYER"
+
+            Optional<Room> roomOpt = roomRepository.findById(roomId);
+            if (roomOpt.isPresent() && title != null && !title.isBlank()) {
+                Room room = roomOpt.get();
+                if ("HOST".equalsIgnoreCase(targetType)) {
+                    room.setHostRoleTitle(title.trim());
+                } else {
+                    room.setPlayerRoleTitle(title.trim());
+                }
+                roomRepository.save(room);
+            }
+        } catch (Exception e) {
+            log.warn("Error saving role title on room: {}", e.getMessage());
+        }
+
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+    }
+
+    @MessageMapping("/room/{roomId}/event")
+    public void handleGenericEvent(
+            @DestinationVariable UUID roomId,
+            @Payload SocketEvent<Object> event,
+            Principal principal
+    ) {
+        if (event == null) return;
+        if (principal != null) {
+            roomService.updateLastActive(roomId, principal.getName());
+        }
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
     @MessageMapping("/room/{roomId}/drawing")

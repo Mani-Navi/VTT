@@ -17,6 +17,7 @@ public class RoomMemberResponse {
     private String username;
     private String email;
     private String role; // "GM" یا "Player"
+    private String roleTitle; // عنوان نمایشی رول (مانند: میزبان، دانجن‌مستر، ماجراجو)
     private Boolean isOwner;
     private Boolean isMuted;
     private Boolean isBanned;
