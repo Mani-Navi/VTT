@@ -26,6 +26,11 @@ const SIZE_LIMITS = {
   props: { bytes: 4 * 1024 * 1024, label: "۴ مگابایت", type: "PROP" },
 };
 
+const isValidUUID = (uuid) => {
+  if (!uuid || typeof uuid !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid.trim());
+};
+
 export const AssetMenu = ({ isGM = false, permissions = {} }) => {
   const isAssetOpen = useCanvasStore((state) => state.isAssetMenuOpen);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
@@ -42,7 +47,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
   const [userAssets, setUserAssets] = useState([]);
   const [uploadError, setUploadError] = useState("");
 
-  // فرم ثبت لینک مستقیم (URL)
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [assetUrlInput, setAssetUrlInput] = useState("");
   const [assetNameInput, setAssetNameInput] = useState("");
@@ -102,7 +106,8 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     if (!canUploadMap) return;
 
     const fullMapUrl = getAssetUrl(rawMapUrl);
-    await setMapForCurrentScene(fullMapUrl, mapName, assetId);
+    const validAssetId = isValidUUID(assetId) ? assetId : null;
+    await setMapForCurrentScene(fullMapUrl, mapName, validAssetId);
 
     const mapWidth = 2000;
     const mapHeight = 1500;
@@ -119,17 +124,26 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     if (!hasActiveMap) return;
 
     const fullUrl = getAssetUrl(rawTokenUrl);
+    const validAssetId = isValidUUID(extraData.id) ? extraData.id : null;
+    const isPropItem = activeTab === "props" || Boolean(extraData.isProp);
+
     const newToken = {
-      name: tokenName || "توکن جدید",
+      name: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
+      label: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
       avatarUrl: fullUrl,
-      assetId: extraData.id || null,
+      assetUrl: fullUrl,
+      assetId: validAssetId,
       x: (currentScene?.mapWidth || 2000) / 2,
       y: (currentScene?.mapHeight || 1500) / 2,
-      size: extraData.size || (activeTab === "props" ? 0.75 : 1),
-      hp: extraData.maxHp || 20,
+      size: extraData.size || (isPropItem ? 0.5 : 1),
+      hp: extraData.hp || extraData.maxHp || 20,
       maxHp: extraData.maxHp || 20,
       ac: extraData.ac || 12,
+      isProp: isPropItem,
+      goldValue: extraData.goldValue || 0,
+      xpValue: extraData.xpValue || 0,
     };
+
     addToken(newToken);
   };
 
@@ -259,7 +273,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
           </button>
         </div>
 
-        {/* تب‌های تفکیک‌شده (نقشه‌ها، توکن‌ها، اشیاء) */}
+        {/* تب‌های تفکیک‌شده */}
         <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
           {[
             { id: "maps", label: "نقشه‌ها", icon: MapPin },
@@ -454,7 +468,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
                   {filteredPresets.map((prop) => (
                       <div
                           key={prop.id}
-                          onClick={() => handleAddToken(prop.avatarUrl, prop.nameFa || prop.name, prop)}
+                          onClick={() => handleAddToken(prop.avatarUrl || prop.url, prop.nameFa || prop.name, prop)}
                           className={cn(
                               "group p-2 rounded-2xl border border-zinc-800 bg-zinc-950 transition-all flex flex-col items-center gap-1.5",
                               !hasActiveMap
@@ -463,7 +477,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getAssetUrl(prop.avatarUrl)}
+                            src={getAssetUrl(prop.avatarUrl || prop.url)}
                             alt={prop.name}
                             className="w-12 h-12 rounded-xl object-contain border border-amber-500/30"
                             loading="lazy"

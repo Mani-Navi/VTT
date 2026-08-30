@@ -87,10 +87,7 @@ export const useSceneStore = create((set, get) => ({
 
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
 
-            const currentUser = useAuthStore.getState().user;
-            const currentUserId = String(currentUser?.id || currentUser?.userId || "").toLowerCase();
-            const currentUsername = String(currentUser?.username || "").toLowerCase();
-
+            // نرمال‌سازی توکن‌ها و جلوگیری از تکرار
             const rawTokens = fullState.tokens || [];
             const loadedTokens = [];
             const seenTokenIds = new Set();
@@ -139,7 +136,6 @@ export const useSceneStore = create((set, get) => ({
                 },
             };
 
-            // دریافت لیست پایدار وضعیت‌ها از دیتابیس صحنه
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];
 
             set({
@@ -148,43 +144,7 @@ export const useSceneStore = create((set, get) => ({
                 availableConditions: Array.isArray(persistentConditions) ? persistentConditions : [],
                 isLoading: false,
             });
-
-            if (currentUser && currentUser.role !== "GM" && currentUser.role !== "ADMIN") {
-                const hasExistingToken = loadedTokens.some((t) => {
-                    const cb = String(t.controlledBy || "").toLowerCase();
-                    const lbl = String(t.label || t.name || "").toLowerCase();
-                    return (
-                        (cb && (cb === currentUserId || cb === currentUsername)) ||
-                        (lbl && lbl === currentUsername)
-                    );
-                });
-
-                if (!hasExistingToken && loadedTokens.length === 0) {
-                    const gridSize = sceneData.gridSize || 60;
-                    const initialCenter = snapToCellCenter(
-                        (sceneData.mapWidth || 2000) / 2,
-                        (sceneData.mapHeight || 1500) / 2,
-                        gridSize,
-                        1
-                    );
-
-                    get().addToken({
-                        name: currentUser.username || "بازیکن",
-                        label: currentUser.username || "بازیکن",
-                        avatarUrl: currentUser.avatarUrl || "",
-                        controlledBy: currentUserId,
-                        x: initialCenter.x,
-                        y: initialCenter.y,
-                        size: 1,
-                        hp: 20,
-                        maxHp: 20,
-                        ac: 12,
-                        showHp: true,
-                        showConditions: true,
-                        showAc: true,
-                    });
-                }
-            }
+            // ساخت خودکار توکن به طور کامل حذف شد
         } catch (err) {
             console.error("خطا در دریافت صحنه‌های اتاق:", err);
             set({ isLoading: false });
@@ -317,15 +277,21 @@ export const useSceneStore = create((set, get) => ({
         const centerPos = snapToCellCenter(tokenData.x || 0, tokenData.y || 0, gridSize, tokenData.size || 1);
         const tokenName = tokenData.name || tokenData.label || "توکن";
 
+        const isValidUUID = (uuid) => {
+            if (!uuid || typeof uuid !== "string") return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid.trim());
+        };
+        const validAssetId = isValidUUID(tokenData.assetId) ? tokenData.assetId : null;
+
         try {
             const savedToken = await tokenApi.createToken({
                 sceneId: state.currentScene.id,
-                assetId: tokenData.assetId || null,
+                assetId: validAssetId,
                 label: tokenName,
                 avatarUrl: tokenData.avatarUrl || tokenData.assetUrl || "",
                 x: centerPos.x,
                 y: centerPos.y,
-                size: tokenData.size || 1,
+                size: tokenData.size || (tokenData.isProp ? 0.5 : 1),
                 hp: tokenData.hp || 20,
                 maxHp: tokenData.maxHp || 20,
                 ac: tokenData.ac || 12,
