@@ -194,6 +194,7 @@ public class RoomService {
 
         Room room = roomRepository.saveAndFlush(roomBuilder.build());
 
+        // ساخت عضویت ادمین
         RoomMember admin = RoomMember.builder()
                 .room(room)
                 .user(owner)
@@ -216,6 +217,25 @@ public class RoomService {
                 .canRuler(true)
                 .build();
         permissionRepository.save(adminPermission);
+
+        // ۱. ایجاد صحنه پیش‌فرض خوش‌آمدگویی اتاق
+        String defaultMapUrl = (room.getTemplate() != null && room.getTemplate().getBaseMapUrl() != null)
+                ? room.getTemplate().getBaseMapUrl()
+                : "";
+
+        Scene defaultScene = Scene.builder()
+                .room(room)
+                .name("صحنه خوش‌آمدگویی")
+                .isActive(true)
+                .mapUrl(defaultMapUrl)
+                .mapWidth(2000)
+                .mapHeight(1500)
+                .gridSize(60)
+                .gridColor("#000000")
+                .gridOpacity(0.35)
+                .availableConditions(new ArrayList<>())
+                .build();
+        sceneRepository.save(defaultScene);
 
         if (room.getType() == Room.RoomType.OFFICIAL && room.getTemplate() != null && room.getTemplate().getDefaultJournals() != null) {
             for (TemplateJournal tj : room.getTemplate().getDefaultJournals()) {

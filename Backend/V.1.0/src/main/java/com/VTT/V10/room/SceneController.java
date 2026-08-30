@@ -24,6 +24,15 @@ public class SceneController {
         return ResponseEntity.ok(sceneService.createScene(request));
     }
 
+    @PutMapping("/{sceneId}/rename")
+    public ResponseEntity<SceneResponse> renameScene(
+            @PathVariable UUID sceneId,
+            @RequestBody Map<String, String> payload
+    ) {
+        String name = payload.getOrDefault("name", "");
+        return ResponseEntity.ok(sceneService.renameScene(sceneId, name));
+    }
+
     @PutMapping("/{sceneId}/map")
     public ResponseEntity<SceneResponse> updateSceneMap(
             @PathVariable UUID sceneId,

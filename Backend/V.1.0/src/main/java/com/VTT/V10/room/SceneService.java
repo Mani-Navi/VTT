@@ -71,6 +71,18 @@ public class SceneService {
     }
 
     @Transactional
+    public SceneResponse renameScene(UUID sceneId, String newName) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        if (newName != null && !newName.trim().isEmpty()) {
+            scene.setName(newName.trim());
+            sceneRepository.save(scene);
+        }
+        return convertToResponse(scene);
+    }
+
+    @Transactional
     public SceneResponse updateSceneMap(UUID sceneId, Map<String, Object> payload) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
@@ -87,7 +99,10 @@ public class SceneService {
         }
 
         if (payload.containsKey("name") && payload.get("name") != null) {
-            scene.setName(payload.get("name").toString().trim());
+            String nameStr = payload.get("name").toString().trim();
+            if (!nameStr.isEmpty()) {
+                scene.setName(nameStr);
+            }
         }
 
         sceneRepository.save(scene);
