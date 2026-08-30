@@ -7,12 +7,6 @@ export function useWebSocket(roomId, onMessage = null) {
   const status = useWebSocketStore((state) => state.status);
   const latency = useWebSocketStore((state) => state.latency);
 
-  const syncTokenFromSocket = useSceneStore((state) => state.syncTokenFromSocket);
-  const addDrawing = useSceneStore((state) => state.addDrawing);
-  const addFogShape = useSceneStore((state) => state.addFogShape);
-  const addDiceRoll = useSceneStore((state) => state.addDiceRoll);
-  const switchScene = useSceneStore((state) => state.switchScene);
-
   const onMessageRef = useRef(onMessage);
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -35,7 +29,7 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubToken = wsService.on("TOKEN_MOVE", (payload) => {
       const data = payload?.data || payload;
       if (data) {
-        syncTokenFromSocket(data);
+        useSceneStore.getState().syncTokenFromSocket(data);
       }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
@@ -43,7 +37,7 @@ export function useWebSocket(roomId, onMessage = null) {
     // ۳. پیام‌های عمومی
     const unsubGeneral = wsService.on("MESSAGE", (payload) => {
       if (payload?.action === "MOVE" && payload.data) {
-        syncTokenFromSocket(payload.data);
+        useSceneStore.getState().syncTokenFromSocket(payload.data);
       }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
@@ -51,21 +45,23 @@ export function useWebSocket(roomId, onMessage = null) {
     // ۴. نقاشی
     const unsubDraw = wsService.on("DRAWING_ADD", (payload) => {
       const data = payload?.data || payload;
-      if (data) addDrawing(data);
+      if (data) useSceneStore.getState().addDrawing(data);
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
     // ۵. مه جنگ
     const unsubFog = wsService.on("FOG_UPDATE", (payload) => {
       const data = payload?.data || payload;
-      if (data) addFogShape(data);
+      if (data) useSceneStore.getState().addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
     // ۶. تاس
     const unsubDice = wsService.on("DICE_ROLL", (payload) => {
       const data = payload?.data || payload;
-      if (data && addDiceRoll) addDiceRoll(data);
+      if (data && useSceneStore.getState().addDiceRoll) {
+        useSceneStore.getState().addDiceRoll(data);
+      }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
 
@@ -73,7 +69,7 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubScene = wsService.on("SCENE_CHANGE", (payload) => {
       const data = payload?.data || payload;
       if (data && data.sceneId) {
-        switchScene(data.sceneId, false);
+        useSceneStore.getState().switchScene(data.sceneId, false);
       }
       if (onMessageRef.current) onMessageRef.current(payload);
     });
@@ -88,7 +84,7 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubScene();
       wsService.disconnect();
     };
-  }, [roomId, syncTokenFromSocket, addDrawing, addFogShape, addDiceRoll, switchScene]);
+  }, [roomId]); // اتصال فقط به ورود و خروج اتاق وابسته است
 
   const sendEvent = (type, data) => {
     wsService.send(type, data);

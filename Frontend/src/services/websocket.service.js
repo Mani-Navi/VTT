@@ -36,8 +36,9 @@ class WebSocketService {
             }
             : { roomId: roomId },
         reconnectDelay: 3000,
-        heartbeatIncoming: 5000,
-        heartbeatOutgoing: 5000,
+        // افزایش زمان ضربان قلب به ۲۰ ثانیه جهت جلوگیری از قطع اتصال در حالت بیکاری یا بک‌گراند بودن تب
+        heartbeatIncoming: 20000,
+        heartbeatOutgoing: 20000,
         debug: () => {},
       });
 
@@ -46,7 +47,6 @@ class WebSocketService {
         useWebSocketStore.getState().setStatus("CONNECTED");
 
         try {
-          // ۱. سابسکرایب اصلی رویدادهای اتاق
           this.client.subscribe(`/topic/room/${roomId}`, (message) => {
             try {
               const payload = JSON.parse(message.body);
@@ -56,7 +56,6 @@ class WebSocketService {
             }
           });
 
-          // ۲. سابسکرایب اعضای آنلاین
           this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
             try {
               const onlineMembers = JSON.parse(message.body);
@@ -66,7 +65,6 @@ class WebSocketService {
             }
           });
 
-          // ۳. سابسکرایب تنظیمات
           this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
             try {
               const settings = JSON.parse(message.body);
@@ -141,6 +139,10 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/conditions`;
         action = "CONDITION_POOL_UPDATE";
         break;
+      case "ROLE_TITLE_UPDATE":
+        destination = `/app/room/${this.currentRoomId}/role-title`;
+        action = "ROLE_TITLE_UPDATE";
+        break;
       case "DRAWING_ADD":
         destination = `/app/room/${this.currentRoomId}/drawing`;
         action = "ADD";
@@ -208,7 +210,9 @@ class WebSocketService {
 
     const eventData = payload.data || payload;
 
-    if (payload.action === "CONDITION_POOL_UPDATE") {
+    if (payload.action === "ROLE_TITLE_UPDATE") {
+      this.trigger("ROLE_TITLE_UPDATE", eventData);
+    } else if (payload.action === "CONDITION_POOL_UPDATE") {
       this.trigger("CONDITION_POOL_UPDATE", eventData);
     } else if (
         payload.action === "MOVE" ||
