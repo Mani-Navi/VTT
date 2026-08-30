@@ -85,14 +85,17 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
         charName
     )}&backgroundColor=b6e3f4`;
 
-    // ساخت توکن جدید بدون هاردکد پرمیشن‌ها (پرمیشن پایدار از دیتابیس خوانده می‌شود)
+    const mapW = currentScene?.mapWidth || 2000;
+    const mapH = currentScene?.mapHeight || 1500;
+
+    // ساخت توکن دقیقاً در مرکز نقشه فعال
     addToken({
       name: charName,
       label: charName,
       avatarUrl: avatar,
       controlledBy: currentUserId || currentUsername,
-      x: (currentScene?.mapWidth || 2000) / 2,
-      y: (currentScene?.mapHeight || 1500) / 2,
+      x: mapW / 2,
+      y: mapH / 2,
       size: 1,
       hp: 20,
       maxHp: 20,

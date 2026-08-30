@@ -60,10 +60,13 @@ const SingleToken = ({
                          canEdit,
                          isGM,
                          fallbackUsername = "",
+                         clusterOffset = { x: 0, y: 0 },
+                         clusterScale = 1,
                          onSelect,
                          onOpenEditor,
                      }) => {
     const [imageObj, setImageObj] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
     const moveToken = useSceneStore((state) => state.moveToken);
     const groupRef = useRef(null);
 
@@ -150,8 +153,14 @@ const SingleToken = ({
         }
     };
 
+    const handleDragStart = (e) => {
+        e.cancelBubble = true;
+        setIsDragging(true);
+    };
+
     const handleDragEnd = (e) => {
         e.cancelBubble = true;
+        setIsDragging(false);
         const rawX = e.target.x();
         const rawY = e.target.y();
 
@@ -175,17 +184,22 @@ const SingleToken = ({
         });
     };
 
-    // محاسبه فواصل دایره‌های وضعیت
     const conditionBadgeRadius = 10;
     const conditionSpacing = 22;
     const totalConditionsWidth = (activeConditions.length - 1) * conditionSpacing;
     const startConditionX = -totalConditionsWidth / 2;
 
+    const currentX = isDragging ? Number(token.x || 0) : Number(token.x || 0) + (clusterOffset.x || 0);
+    const currentY = isDragging ? Number(token.y || 0) : Number(token.y || 0) + (clusterOffset.y || 0);
+    const currentScale = isDragging ? 1 : clusterScale;
+
     return (
         <Group
             ref={groupRef}
-            x={Number(token.x || 0)}
-            y={Number(token.y || 0)}
+            x={currentX}
+            y={currentY}
+            scaleX={currentScale}
+            scaleY={currentScale}
             draggable={isDraggable}
             opacity={token.isHidden ? 0.55 : 1}
             onClick={(e) => {
@@ -199,9 +213,7 @@ const SingleToken = ({
             onContextMenu={handleOpenEdit}
             onDblClick={handleOpenEdit}
             onDblTap={handleOpenEdit}
-            onDragStart={(e) => {
-                e.cancelBubble = true;
-            }}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
             {/* هاله انتخاب */}
@@ -217,7 +229,7 @@ const SingleToken = ({
                 />
             )}
 
-            {/* وضعیت‌های کاندیشن (دایره‌های مستقل مشابه نشان AC) */}
+            {/* وضعیت‌های کاندیشن */}
             {showConditions && activeConditions.length > 0 && (
                 <Group y={-radius - 12} listening={false}>
                     {activeConditions.map((emoji, idx) => {
@@ -503,16 +515,70 @@ export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
         String(currentRoom.creatorId) === String(currentUser.id);
 
     const isGM = Boolean(
-        propIsGM ||
-        hookIsGM ||
-        isRoomHost ||
-        currentUser?.role === "GM" ||
-        currentUser?.role === "ADMIN"
+        propIsGM || hookIsGM || isRoomHost || currentUser?.role === "GM" || currentUser?.role === "ADMIN"
     );
 
     if (!currentScene || !currentScene.tokens) return null;
 
     const userTokens = currentScene.tokens;
+
+    // دسته‌بندی توکن‌ها بر اساس سلول گرید جهت چینش چندتوکنی
+    const cellGroups = {};
+    userTokens.forEach((t) => {
+        const cellKey = `${Math.round(t.x || 0)}_${Math.round(t.y || 0)}`;
+        if (!cellGroups[cellKey]) {
+            cellGroups[cellKey] = [];
+        }
+        cellGroups[cellKey].push(t);
+    });
+
+    const getClusterParams = (token) => {
+        const cellKey = `${Math.round(token.x || 0)}_${Math.round(token.y || 0)}`;
+        const group = cellGroups[cellKey] || [token];
+        const count = group.length;
+        const idx = group.findIndex((t) => String(t.id) === String(token.id));
+
+        if (count <= 1 || idx === -1) {
+            return { offset: { x: 0, y: 0 }, scale: 1 };
+        }
+
+        const distance = gridSize * 0.22;
+
+        if (count === 2) {
+            const offsetX = idx === 0 ? -distance : distance;
+            return { offset: { x: offsetX, y: 0 }, scale: 0.72 };
+        }
+
+        if (count === 3) {
+            const offsets = [
+                { x: 0, y: -distance },
+                { x: -distance, y: distance * 0.8 },
+                { x: distance, y: distance * 0.8 },
+            ];
+            return { offset: offsets[idx] || { x: 0, y: 0 }, scale: 0.65 };
+        }
+
+        if (count === 4) {
+            const offsets = [
+                { x: -distance, y: -distance },
+                { x: distance, y: -distance },
+                { x: -distance, y: distance },
+                { x: distance, y: distance },
+            ];
+            return { offset: offsets[idx] || { x: 0, y: 0 }, scale: 0.60 };
+        }
+
+        // بیشتر از ۴ توکن (الگوی دایره‌ای)
+        const angle = (idx / count) * 2 * Math.PI;
+        const ringDist = gridSize * 0.26;
+        return {
+            offset: {
+                x: Math.cos(angle) * ringDist,
+                y: Math.sin(angle) * ringDist,
+            },
+            scale: 0.50,
+        };
+    };
 
     return (
         <Group id="tokens-layer-group">
@@ -533,6 +599,8 @@ export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
                 const canControl = Boolean(isGM || isOwner);
                 const canEdit = Boolean(isGM || isOwner || permissions?.canEditToken);
 
+                const { offset, scale } = getClusterParams(token);
+
                 return (
                     <SingleToken
                         key={token.id}
@@ -543,6 +611,8 @@ export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
                         canEdit={canEdit}
                         isGM={isGM}
                         fallbackUsername={currentUser?.username || "بازیکن"}
+                        clusterOffset={offset}
+                        clusterScale={scale}
                         onSelect={(e) => {
                             toggleTokenSelection(token.id, e.evt?.shiftKey || e.evt?.ctrlKey);
                         }}

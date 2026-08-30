@@ -86,7 +86,6 @@ export const useSceneStore = create((set, get) => ({
 
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
 
-            // نرمال‌سازی توکن‌ها و جلوگیری از تکرار
             const rawTokens = fullState.tokens || [];
             const loadedTokens = [];
             const seenTokenIds = new Set();
@@ -238,7 +237,6 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
-    // رفع باگ ۵: نام صحنه نباید به نام فایل تغییر کند
     setMapForCurrentScene: async (mapUrl, assetId = null) => {
         const state = get();
         let current = state.currentScene;
@@ -283,12 +281,21 @@ export const useSceneStore = create((set, get) => ({
         }
     },
 
+    // ایجاد توکن با محاسبه دقیق مرکز نقشه
     addToken: async (tokenData) => {
         const state = get();
         if (!state.currentScene) return;
 
+        const mapW = state.currentScene.mapWidth || 2000;
+        const mapH = state.currentScene.mapHeight || 1500;
+        const defaultCenterX = mapW / 2;
+        const defaultCenterY = mapH / 2;
+
+        const rawX = tokenData.x !== undefined ? tokenData.x : defaultCenterX;
+        const rawY = tokenData.y !== undefined ? tokenData.y : defaultCenterY;
+
         const gridSize = state.currentScene.grid?.size || 60;
-        const centerPos = snapToCellCenter(tokenData.x || 0, tokenData.y || 0, gridSize, tokenData.size || 1);
+        const centerPos = snapToCellCenter(rawX, rawY, gridSize, tokenData.size || 1);
         const tokenName = tokenData.name || tokenData.label || "توکن";
 
         const isValidUUID = (uuid) => {

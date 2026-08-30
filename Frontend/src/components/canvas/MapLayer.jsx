@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Image as KonvaImage, Rect, Group } from "react-konva";
 import { getFullAssetUrl } from "../../utils/imageUrl";
 import { useCanvasStore } from "../../store/canvas.store";
+import { useSceneStore } from "../../store/scene.store";
 
 export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChange = null }) => {
   const [image, setImage] = useState(null);
@@ -32,11 +33,17 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChan
         const naturalH = img.naturalHeight || height;
         setDimensions({ width: naturalW, height: naturalH });
 
+        // همگام‌سازی ابعاد واقعی نقشه در استور جهت محاسبه دقیق مرکز برای توکن‌ها
+        useSceneStore.setState((state) => ({
+          currentScene: state.currentScene
+              ? { ...state.currentScene, mapWidth: naturalW, mapHeight: naturalH }
+              : state.currentScene,
+        }));
+
         if (onDimensionsChange) {
           onDimensionsChange(naturalW, naturalH);
         }
 
-        // سنتر و فیت قطعی دوربین در لحظه لود کامل بایت‌های تصویر
         const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
         const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
         fitToMap(naturalW, naturalH, screenW, screenH);
@@ -52,6 +59,12 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChan
           const naturalW = fallbackImg.naturalWidth || width;
           const naturalH = fallbackImg.naturalHeight || height;
           setDimensions({ width: naturalW, height: naturalH });
+
+          useSceneStore.setState((state) => ({
+            currentScene: state.currentScene
+                ? { ...state.currentScene, mapWidth: naturalW, mapHeight: naturalH }
+                : state.currentScene,
+          }));
 
           if (onDimensionsChange) {
             onDimensionsChange(naturalW, naturalH);
@@ -110,8 +123,8 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChan
             <Rect
                 x={0}
                 y={0}
-                width={width}
-                height={height}
+                width={dimensions.width}
+                height={dimensions.height}
                 cornerRadius={cornerRadius}
                 fill="#18181b"
                 stroke="#3f3f46"
