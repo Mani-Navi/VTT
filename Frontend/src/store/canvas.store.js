@@ -29,8 +29,17 @@ export const useCanvasStore = create((set, get) => ({
     isSettingsMenuOpen: false,
     isDiceRollerOpen: false,
 
-    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null }),
-    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null })),
+    laserPosition: null,
+    remoteLasers: {},
+
+    // تنظیمات خط‌کش اندازه‌گیری
+    rulerType: "dnd5e_5105",
+    rulerUnit: "ft",
+    measurement: null,
+    remoteMeasurements: {},
+
+    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null, laserPosition: null }),
+    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null, laserPosition: null })),
     setActiveDrawShape: (shape) => set({ activeDrawShape: shape, selectedDrawingId: null }),
     setDrawStrokeColor: (color) => set({ drawStrokeColor: color }),
     setDrawStrokeWidth: (width) => set({ drawStrokeWidth: width }),
@@ -44,12 +53,14 @@ export const useCanvasStore = create((set, get) => ({
     setFogAction: (action) => set({ fogAction: action }),
     setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
 
+    setRulerType: (type) => set({ rulerType: type }),
+    setRulerUnit: (unit) => set({ rulerUnit: unit }),
+
     setZoom: (zoom) => set((state) => ({ zoom: typeof zoom === "function" ? zoom(state.zoom) : zoom })),
     setStagePos: (stageX, stageY) => set({ stageX, stageY }),
 
     resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
 
-    // محاسبه کاملاً دقیق فیت شدن نقشه با در نظر گرفتن ابعاد زنده کانتینر
     fitToMap: (mapW = 2000, mapH = 1500, containerW = null, containerH = null) => {
         let screenW = containerW;
         let screenH = containerH;
@@ -71,7 +82,6 @@ export const useCanvasStore = create((set, get) => ({
         const safeW = (mapW && Number(mapW) > 50) ? Number(mapW) : 2000;
         const safeH = (mapH && Number(mapH) > 50) ? Number(mapH) : 1500;
 
-        // حاشیه بهینه از لبه‌ها برای نمایش عالی و عدم پوشانده شدن توسط نوار ابزارها
         const paddingX = Math.min(screenW * 0.08, 90);
         const paddingY = Math.min(screenH * 0.10, 90);
 
@@ -117,16 +127,10 @@ export const useCanvasStore = create((set, get) => ({
     },
 
     setSelectedDrawingId: (id) => set({ selectedDrawingId: id, selectedTokenIds: [] }),
-
     clearSelection: () => set({ selectedTokenIds: [], selectedDrawingId: null }),
 
-    openTokenEditor: (tokenId) => {
-        set({ isTokenEditorOpen: true, editingTokenId: tokenId });
-    },
-
-    closeTokenEditor: () => {
-        set({ isTokenEditorOpen: false, editingTokenId: null });
-    },
+    openTokenEditor: (tokenId) => set({ isTokenEditorOpen: true, editingTokenId: tokenId }),
+    closeTokenEditor: () => set({ isTokenEditorOpen: false, editingTokenId: null }),
 
     toggleMenu: (menuName) => {
         set((state) => {
@@ -143,9 +147,7 @@ export const useCanvasStore = create((set, get) => ({
         });
     },
 
-    measurement: null,
-    laserPosition: null,
-
+    // خط‌کش لوکال
     startMeasurement: (x, y) => {
         set({
             measurement: {
@@ -184,5 +186,56 @@ export const useCanvasStore = create((set, get) => ({
     },
 
     endMeasurement: () => set({ measurement: null }),
+
+    // خط‌کش سایر بازیکنان
+    updateRemoteMeasurement: (data) => {
+        if (!data || !data.userId) return;
+        const key = String(data.userId);
+        set((state) => ({
+            remoteMeasurements: {
+                ...state.remoteMeasurements,
+                [key]: {
+                    ...data,
+                    timestamp: Date.now(),
+                },
+            },
+        }));
+    },
+
+    clearRemoteMeasurement: (userId) => {
+        if (!userId) return;
+        const key = String(userId);
+        set((state) => {
+            const next = { ...state.remoteMeasurements };
+            delete next[key];
+            return { remoteMeasurements: next };
+        });
+    },
+
     setLaserPosition: (pos) => set({ laserPosition: pos }),
+
+    updateRemoteLaser: (laserData) => {
+        if (!laserData) return;
+        const key = String(laserData.userId || laserData.userName || "laser-user");
+        set((state) => ({
+            remoteLasers: {
+                ...state.remoteLasers,
+                [key]: {
+                    ...laserData,
+                    userId: key,
+                    timestamp: Date.now(),
+                },
+            },
+        }));
+    },
+
+    clearRemoteLaser: (userId) => {
+        if (!userId) return;
+        const key = String(userId);
+        set((state) => {
+            const next = { ...state.remoteLasers };
+            delete next[key];
+            return { remoteLasers: next };
+        });
+    },
 }));

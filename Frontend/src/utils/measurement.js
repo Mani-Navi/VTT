@@ -1,85 +1,104 @@
-import { MEASUREMENT_TYPES } from "../constants/measurementTypes.js";
-
 /**
- * محاسبه فاصله یک قطعه بر اساس قوانین هندسی و D&D 5e
+ * محاسبه مسافت بین دو نقطه بر اساس قوانین سیستم‌های مختلف D&D و گرید
  */
-export function calculateSegmentDistance(p1, p2, gridSize, scaleValue, type) {
-  if (!gridSize || gridSize <= 0) return { distance: 0, gridUnits: 0 };
+export const calculateSegmentDistance = (
+    p1,
+    p2,
+    gridSize = 60,
+    scaleValue = 5,
+    rulerType = "dnd5e_5105"
+) => {
+  if (!p1 || !p2) return { gridUnits: 0, realDistance: 0 };
 
   const dxPixels = Math.abs(p2.x - p1.x);
   const dyPixels = Math.abs(p2.y - p1.y);
 
-  const dxCells = dxPixels / gridSize;
-  const dyCells = dyPixels / gridSize;
+  const S = Number(gridSize) || 60;
+  const dx = dxPixels / S;
+  const dy = dyPixels / S;
 
-  let cellDistance = 0;
-  const euclideanType = MEASUREMENT_TYPES?.EUCLIDEAN || "EUCLIDEAN";
-  const dnd5eType = MEASUREMENT_TYPES?.DND5E_5105 || "DND5E_5105";
-  const manhattanType = MEASUREMENT_TYPES?.MANHATTAN || "MANHATTAN";
-  const chebyshevType = MEASUREMENT_TYPES?.CHEBYSHEV || "CHEBYSHEV";
+  let gridUnits = 0;
 
-  switch (type) {
-    case euclideanType: {
-      cellDistance = Math.sqrt(dxCells * dxCells + dyCells * dyCells);
+  switch (rulerType) {
+    case "dnd5e_5105":
+    case "dnd5e": {
+      // قانون استاندارد 5e: بیشترین مقدار بین x و y
+      gridUnits = Math.max(dx, dy);
       break;
     }
-    case dnd5eType: {
-      // قانون ۵-۱۰-۵ در دی اند دی: قطر اول ۵ فوت، قطر دوم ۱۰ فوت
-      const straight = Math.max(dxCells, dyCells);
-      const diagonal = Math.min(dxCells, dyCells);
-      cellDistance = straight + Math.floor(diagonal * 0.5);
+
+    case "dnd35_alternating":
+    case "dnd35": {
+      // قانون 3.5e: حرکت مورب متناوب (۵، ۱۰، ۵، ۱۰)
+      const minD = Math.min(dx, dy);
+      const maxD = Math.max(dx, dy);
+      gridUnits = Math.floor(minD * 1.5) + (maxD - minD);
       break;
     }
-    case manhattanType: {
-      cellDistance = dxCells + dyCells;
+
+    case "euclidean": {
+      // اقلیدسی: خط مستقیم فیثاغورس
+      gridUnits = Math.sqrt(dx * dx + dy * dy);
       break;
     }
-    case chebyshevType: {
-      cellDistance = Math.max(dxCells, dyCells);
+
+    case "manhattan": {
+      // منهتن: مجموع افقی و عمودی
+      gridUnits = dx + dy;
       break;
     }
-    default:
-      cellDistance = Math.sqrt(dxCells * dxCells + dyCells * dyCells);
+
+    default: {
+      gridUnits = Math.max(dx, dy);
+      break;
+    }
   }
 
-  const distance = cellDistance * (scaleValue || 5);
-  return { distance, gridUnits: cellDistance };
-}
+  const realDistance = gridUnits * (Number(scaleValue) || 5);
+  return {
+    gridUnits: Number(gridUnits.toFixed(1)),
+    realDistance: Number(realDistance.toFixed(1)),
+  };
+};
 
 /**
- * محاسبه مجموع مسافت مسیر چندنقطه‌ای (Waypoints)
+ * محاسبه کل مسیر شامل تمام ایستگاه‌ها (Waypoints)
  */
-export function calculateTotalDistance(start, end, waypoints = [], gridSize = 50, scaleValue = 5, unit = "ft", type = "EUCLIDEAN") {
-  const points = [start, ...waypoints, end];
-  let totalDistance = 0;
-  let totalCells = 0;
-
-  for (let i = 0; i < points.length - 1; i++) {
-    if (points[i] && points[i + 1]) {
-      const res = calculateSegmentDistance(
-          points[i],
-          points[i + 1],
-          gridSize,
-          scaleValue,
-          type
-      );
-      totalDistance += res.distance;
-      totalCells += res.gridUnits;
-    }
+export const calculateTotalDistance = (
+    start,
+    current,
+    waypoints = [],
+    gridSize = 60,
+    scaleValue = 5,
+    unit = "ft",
+    rulerType = "dnd5e_5105"
+) => {
+  if (!start || !current) {
+    return { totalDistance: 0, gridUnits: 0, formattedText: "0 ft" };
   }
 
-  const roundedDist = Math.round(totalDistance * 10) / 10;
-  const roundedCells = Math.round(totalCells * 10) / 10;
+  const fullPath = [start, ...waypoints, current];
+  let totalGridUnits = 0;
+  let totalRealDistance = 0;
 
-  let unitLabel = unit;
-  if (unit === "ft") unitLabel = "فوت";
-  if (unit === "m") unitLabel = "متر";
-  if (unit === "sq") unitLabel = "خانه";
-  if (unit === "hex") unitLabel = "هگز";
+  for (let i = 0; i < fullPath.length - 1; i++) {
+    const seg = calculateSegmentDistance(
+        fullPath[i],
+        fullPath[i + 1],
+        gridSize,
+        scaleValue,
+        rulerType
+    );
+    totalGridUnits += seg.gridUnits;
+    totalRealDistance += seg.realDistance;
+  }
+
+  const formattedDistance = totalRealDistance % 1 === 0 ? totalRealDistance : totalRealDistance.toFixed(1);
+  const unitLabel = unit === "m" || unit === "meter" ? "متر" : "ft";
 
   return {
-    distance: roundedDist,
-    gridUnits: roundedCells,
-    formattedText: `${roundedDist} ${unitLabel}`,
+    totalDistance: totalRealDistance,
+    gridUnits: Number(totalGridUnits.toFixed(1)),
+    formattedText: `${formattedDistance} ${unitLabel}`,
   };
-}
+};

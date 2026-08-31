@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { wsService } from "../services/websocket.service";
 import { useSceneStore } from "../store/scene.store";
+import { useCanvasStore } from "../store/canvas.store";
 import { useWebSocketStore } from "../store/websocket.store";
 
 export function useWebSocket(roomId, onMessage = null) {
@@ -59,6 +60,32 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveDrawing(null);
     });
 
+    // ۳.۳. نشانگر لیزری بلادرنگ
+    const unsubLaserMove = wsService.on("LASER_MOVE", (data) => {
+      if (data && data.x !== undefined && data.y !== undefined) {
+        useCanvasStore.getState().updateRemoteLaser(data);
+      }
+    });
+
+    const unsubLaserClear = wsService.on("LASER_CLEAR", (data) => {
+      if (data && data.userId) {
+        useCanvasStore.getState().clearRemoteLaser(data.userId);
+      }
+    });
+
+    // ۳.۴. خط‌کش اندازه‌گیری بلادرنگ
+    const unsubRulerUpdate = wsService.on("RULER_UPDATE", (data) => {
+      if (data && data.startX !== undefined && data.currentX !== undefined) {
+        useCanvasStore.getState().updateRemoteMeasurement(data);
+      }
+    });
+
+    const unsubRulerClear = wsService.on("RULER_CLEAR", (data) => {
+      if (data && data.userId) {
+        useCanvasStore.getState().clearRemoteMeasurement(data.userId);
+      }
+    });
+
     // ۴. تغییر بلادرنگ پرمیشن‌های ابزارها
     const unsubPerm = wsService.on("PERMISSION_UPDATED", (data) => {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
@@ -68,6 +95,22 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubFog = wsService.on("FOG_UPDATE", (data) => {
       if (data) useSceneStore.getState().addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(data);
+    });
+
+    // ۵.۱. تنظیمات گرید و سیستم اندازه‌گیری
+    const unsubSettings = wsService.on("SETTINGS_UPDATE", (data) => {
+      if (data && data.measurementType) {
+        useCanvasStore.getState().setRulerType(data.measurementType);
+      }
+    });
+
+    const unsubGrid = wsService.on("SCENE_GRID_UPDATE", (data) => {
+      if (data && data.grid) {
+        const current = useSceneStore.getState().currentScene;
+        if (current && current.id === data.sceneId) {
+          useSceneStore.setState({ currentScene: { ...current, grid: data.grid } });
+        }
+      }
     });
 
     // ۶. تاس
@@ -149,8 +192,14 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubDrawDelete();
       unsubDrawLive();
       unsubDrawLiveEnd();
+      unsubLaserMove();
+      unsubLaserClear();
+      unsubRulerUpdate();
+      unsubRulerClear();
       unsubPerm();
       unsubFog();
+      unsubSettings();
+      unsubGrid();
       unsubDice();
       unsubScene();
       unsubSceneDelete();

@@ -51,6 +51,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const isDrawGMLayer = useCanvasStore((state) => state.isDrawGMLayer);
   const textFontSize = useCanvasStore((state) => state.textFontSize || 24);
   const textColor = useCanvasStore((state) => state.textColor || drawStrokeColor);
+  const rulerType = useCanvasStore((state) => state.rulerType);
 
   const setZoom = useCanvasStore((state) => state.setZoom);
   const setStagePos = useCanvasStore((state) => state.setStagePos);
@@ -75,7 +76,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const [polygonVertices, setPolygonVertices] = useState([]);
   const [shapeStart, setShapeStart] = useState(null);
   const isInteracting = useRef(false);
+
   const lastBroadcastTime = useRef(0);
+  const lastLaserBroadcastTime = useRef(0);
+  const lastRulerBroadcastTime = useRef(0);
 
   const activeMapUrl = currentScene?.mapUrl || currentScene?.assetUrl || "";
   const hasActiveMap = Boolean(activeMapUrl && activeMapUrl.trim() !== "");
@@ -87,6 +91,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.ERASER);
 
   const isSelectMode = activeTool === TOOLS.SELECT;
+
+  const myIdentifier = String(user?.id || user?.userId || user?.username || "player-1");
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -153,12 +159,16 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         setPolygonVertices([]);
         setLiveDrawing(null);
         liveDrawingRef.current = null;
+        if (activeTool === TOOLS.RULER) {
+          endMeasurement();
+          wsService.send("RULER_CLEAR", { userId: myIdentifier });
+        }
         isInteracting.current = false;
       }
     };
     window.addEventListener("keydown", handleEscapeKey);
     return () => window.removeEventListener("keydown", handleEscapeKey);
-  }, []);
+  }, [activeTool, endMeasurement, myIdentifier]);
 
   const handleWheel = (e) => {
     e.evt.preventDefault();
@@ -205,6 +215,42 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (isEraserActive) {
       isInteracting.current = true;
+      return;
+    }
+
+    // خط‌کش اندازه‌گیری
+    if (activeTool === TOOLS.RULER) {
+      if (e.evt.button === 0) {
+        if (!isInteracting.current) {
+          isInteracting.current = true;
+          startMeasurement(pos.x, pos.y);
+          wsService.send("RULER_UPDATE", {
+            startX: pos.x,
+            startY: pos.y,
+            currentX: pos.x,
+            currentY: pos.y,
+            waypoints: [],
+            userId: myIdentifier,
+            userName: user?.username || "Player",
+            userColor: isGM ? "#f59e0b" : "#38bdf8",
+            rulerType: rulerType,
+          });
+        } else {
+          addMeasurementWaypoint(pos.x, pos.y);
+          const currentMeas = useCanvasStore.getState().measurement;
+          wsService.send("RULER_UPDATE", {
+            ...(currentMeas || {}),
+            userId: myIdentifier,
+            userName: user?.username || "Player",
+            userColor: isGM ? "#f59e0b" : "#38bdf8",
+            rulerType: rulerType,
+          });
+        }
+      } else if (e.evt.button === 2) {
+        endMeasurement();
+        wsService.send("RULER_CLEAR", { userId: myIdentifier });
+        isInteracting.current = false;
+      }
       return;
     }
 
@@ -349,20 +395,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    if (activeTool === TOOLS.RULER) {
-      if (e.evt.button === 0) {
-        if (!isInteracting.current) {
-          isInteracting.current = true;
-          startMeasurement(pos.x, pos.y);
-        } else {
-          addMeasurementWaypoint(pos.x, pos.y);
-        }
-      } else if (e.evt.button === 2) {
-        endMeasurement();
-        isInteracting.current = false;
-      }
-    }
-
     if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
       isInteracting.current = true;
       setShapeStart(pos);
@@ -393,13 +425,38 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (activeTool === TOOLS.LASER) {
       setLaserPosition(pos);
-      wsService.send("LASER_MOVE", {
-        x: pos.x,
-        y: pos.y,
-        userId: user?.id,
-        userName: user?.username,
-        color: isGM ? "#f59e0b" : "#10b981",
-      });
+
+      const now = Date.now();
+      if (now - lastLaserBroadcastTime.current > 30) {
+        lastLaserBroadcastTime.current = now;
+        wsService.send("LASER_MOVE", {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
+          userId: myIdentifier,
+          userName: user?.username || "Player",
+          color: isGM ? "#ef4444" : "#f59e0b",
+        });
+      }
+    }
+
+    // به‌روزرسانی و ارسال زنده خط‌کش
+    if (activeTool === TOOLS.RULER && isInteracting.current) {
+      updateMeasurement(pos.x, pos.y);
+
+      const now = Date.now();
+      if (now - lastRulerBroadcastTime.current > 30) {
+        lastRulerBroadcastTime.current = now;
+        const currentMeas = useCanvasStore.getState().measurement;
+        if (currentMeas) {
+          wsService.send("RULER_UPDATE", {
+            ...currentMeas,
+            userId: myIdentifier,
+            userName: user?.username || "Player",
+            userColor: isGM ? "#f59e0b" : "#38bdf8",
+            rulerType: rulerType,
+          });
+        }
+      }
     }
 
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length > 0) {
@@ -417,10 +474,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     if (!isInteracting.current) return;
-
-    if (activeTool === TOOLS.RULER) {
-      updateMeasurement(pos.x, pos.y);
-    }
 
     if (activeTool === TOOLS.DRAW && shapeStart) {
       let updatedDraw = null;
@@ -494,7 +547,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog) && shapeStart) {
+    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
       if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND) {
         setCurrentLinePoints((prev) => [...prev, pos.x, pos.y]);
       }
@@ -502,6 +555,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   };
 
   const handleMouseUp = () => {
+    if (activeTool === TOOLS.RULER) {
+      return; // خط‌کش با کلیک‌های بعدی یا راست‌کلیک متوقف می‌شود
+    }
+
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
       return;
     }
@@ -571,6 +628,13 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     isInteracting.current = false;
+  };
+
+  const handleMouseLeave = () => {
+    if (activeTool === TOOLS.LASER) {
+      setLaserPosition(null);
+      wsService.send("LASER_CLEAR", { userId: myIdentifier });
+    }
   };
 
   const handleDblClick = (e) => {
@@ -731,6 +795,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
             onDblClick={handleDblClick}
             onContextMenu={(e) => e.evt.preventDefault()}
             onDragEnd={(e) => {
@@ -758,7 +823,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
           {hasActiveMap && (
               <>
-                {/* لایه ۲: ترسیمات و مه جنگ (پراپ‌های isGM و permissions مستقیماً پاس داده می‌شوند) */}
+                {/* لایه ۲: ترسیمات و مه جنگ */}
                 <Layer
                     id="layer-canvas-features"
                     clip={{ x: 0, y: 0, width: mapWidth, height: mapHeight }}
