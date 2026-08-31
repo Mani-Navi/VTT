@@ -71,7 +71,11 @@ public class RoomWebSocketController {
         if (event == null || event.getData() == null || principal == null) return;
 
         roomService.updateLastActive(roomId, principal.getName());
-        tokenService.updateTokenFromEvent(event.getData(), principal.getName(), roomId);
+        try {
+            tokenService.updateTokenFromEvent(event.getData(), principal.getName(), roomId);
+        } catch (Exception e) {
+            log.warn("Token save warning: {}", e.getMessage());
+        }
         messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
     }
 
@@ -86,7 +90,7 @@ public class RoomWebSocketController {
         roomService.updateLastActive(roomId, principal.getName());
 
         var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
-        if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
+        if (memberOpt.isPresent() && (memberOpt.get().getRole() == RoomMember.Role.ADMIN || isHost(roomId, principal.getName()))) {
             var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
             if (activeSceneOpt.isEmpty()) {
                 var scenes = sceneRepository.findByRoomId(roomId);
@@ -104,7 +108,6 @@ public class RoomWebSocketController {
         }
     }
 
-    // تغییر و همگام‌سازی همگانی عناوین رول‌ها در سطح کل اتاق
     @MessageMapping("/room/{roomId}/role-title")
     public void handleRoleTitleUpdate(
             @DestinationVariable UUID roomId,
@@ -117,7 +120,7 @@ public class RoomWebSocketController {
         try {
             Map<String, Object> data = event.getData();
             String title = (String) data.get("title");
-            String targetType = (String) data.get("targetType"); // "HOST" یا "PLAYER"
+            String targetType = (String) data.get("targetType");
 
             Optional<Room> roomOpt = roomRepository.findById(roomId);
             if (roomOpt.isPresent() && title != null && !title.isBlank()) {
@@ -160,7 +163,38 @@ public class RoomWebSocketController {
         roomService.updateLastActive(roomId, principal.getName());
 
         if (hasPermission(roomId, principal.getName(), "DRAWING")) {
-            drawingService.saveDrawing(event.getData().getSceneId(), event.getData());
+            try {
+                if (event.getData().getSceneId() != null) {
+                    drawingService.saveOrUpdateDrawing(event.getData().getSceneId(), event.getData());
+                }
+            } catch (Exception e) {
+                log.warn("Drawing save/update in DB warning: {}", e.getMessage());
+            }
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/drawing/delete")
+    public void handleDrawingDelete(
+            @DestinationVariable UUID roomId,
+            @Payload SocketEvent<DrawingEvent> event,
+            Principal principal
+    ) {
+        if (principal == null || event == null || event.getData() == null) return;
+
+        roomService.updateLastActive(roomId, principal.getName());
+
+        if (hasPermission(roomId, principal.getName(), "DRAWING")) {
+            try {
+                String targetId = event.getData().getClientDrawingId() != null
+                        ? event.getData().getClientDrawingId()
+                        : (event.getData().getId() != null ? event.getData().getId() : event.getData().getDrawingId());
+
+                drawingService.deleteDrawing(event.getData().getSceneId(), targetId);
+            } catch (Exception e) {
+                log.warn("Drawing delete DB error: {}", e.getMessage());
+            }
+            // برادکست به همه اعضای اتاق
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
         }
     }
@@ -176,7 +210,11 @@ public class RoomWebSocketController {
         roomService.updateLastActive(roomId, principal.getName());
 
         if (hasPermission(roomId, principal.getName(), "FOG")) {
-            fogService.handleFogUpdate(event.getData());
+            try {
+                fogService.handleFogUpdate(event.getData());
+            } catch (Exception e) {
+                log.warn("Fog save in DB warning: {}", e.getMessage());
+            }
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
         }
     }
@@ -205,14 +243,30 @@ public class RoomWebSocketController {
         roomService.updateLastActive(roomId, principal.getName());
 
         var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
-        if (memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN) {
+        if (memberOpt.isPresent() && (memberOpt.get().getRole() == RoomMember.Role.ADMIN || isHost(roomId, principal.getName()))) {
             roomSettingsService.updateSettings(roomId, event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/settings", event);
         }
     }
 
+    private boolean isHost(UUID roomId, String email) {
+        try {
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            Optional<Room> roomOpt = roomRepository.findById(roomId);
+            if (userOpt.isPresent() && roomOpt.isPresent()) {
+                Room room = roomOpt.get();
+                if (room.getOwner() != null && userOpt.get().getId() != null) {
+                    return room.getOwner().getId().equals(userOpt.get().getId());
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     private boolean hasPermission(UUID roomId, String email, String action) {
         try {
+            if (isHost(roomId, email)) return true;
+
             var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
             if (memberOpt.isEmpty()) return false;
 

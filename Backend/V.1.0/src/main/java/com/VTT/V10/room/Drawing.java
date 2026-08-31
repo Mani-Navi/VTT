@@ -17,18 +17,21 @@ public class Drawing {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "client_drawing_id")
+    private String clientDrawingId; // شناسه یکتای سمت فرانت‌اند جهت جلوگیری از ایجاد رکوردهای تکراری
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "scene_id", nullable = false)
     private Scene scene;
 
-    private String type; // marker, brush, line, rectangle, circle, triangle, hexagon, text
+    private String type;
     private String tool;
 
-    private String stroke; // رنگ خط
+    private String stroke;
     private String color;
-    private Double strokeWidth; // ضخامت خط
+    private Double strokeWidth;
     private Double lineWidth;
-    private String fill; // رنگ پس‌زمینه
+    private String fill;
 
     private Double x;
     private Double y;
@@ -37,9 +40,18 @@ public class Drawing {
     private Double radius;
     private String text;
 
+    @Builder.Default
+    private Double scaleX = 1.0;
+
+    @Builder.Default
+    private Double scaleY = 1.0;
+
+    @Builder.Default
+    private Double rotation = 0.0;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Object points; // آرایه نقاط [x1, y1, x2, y2, ...]
+    private Object points;
 
     @Builder.Default
     private Boolean isGMLayer = false;

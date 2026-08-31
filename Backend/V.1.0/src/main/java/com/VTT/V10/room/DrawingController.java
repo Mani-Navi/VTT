@@ -19,4 +19,13 @@ public class DrawingController {
         List<DrawingResponse> responses = drawingService.getByScene(sceneId);
         return ResponseEntity.ok(responses);
     }
+
+    @DeleteMapping("/{drawingId}")
+    public ResponseEntity<Void> deleteDrawing(
+            @PathVariable String drawingId,
+            @RequestParam(required = false) UUID sceneId
+    ) {
+        drawingService.deleteDrawing(sceneId, drawingId);
+        return ResponseEntity.noContent().build();
+    }
 }

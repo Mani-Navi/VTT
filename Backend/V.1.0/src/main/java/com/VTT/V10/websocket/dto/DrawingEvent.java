@@ -11,9 +11,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DrawingEvent {
-    private UUID drawingId;
+    private String drawingId; // اصلاح نوع داده از UUID به String جهت جلوگیری از خطای جکسون
     private UUID sceneId;
     private String id;
+    private String clientDrawingId;
     private String type;
     private String tool;
     private String stroke;
@@ -27,6 +28,9 @@ public class DrawingEvent {
     private Double height;
     private Double radius;
     private String text;
+    private Double scaleX;
+    private Double scaleY;
+    private Double rotation;
     private Object points;
     private Boolean isGMLayer;
 }

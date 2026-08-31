@@ -12,6 +12,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DrawingResponse {
     private UUID id;
+    private String clientDrawingId;
     private String type;
     private String tool;
     private String stroke;
@@ -24,6 +25,9 @@ public class DrawingResponse {
     private Double width;
     private Double height;
     private Double radius;
+    private Double scaleX;
+    private Double scaleY;
+    private Double rotation;
     private String text;
     private Object points;
     private Boolean isGMLayer;
