@@ -21,7 +21,7 @@ export const useCanvasStore = create((set, get) => ({
     stageY: 0,
 
     selectedTokenIds: [],
-    selectedDrawingId: null, // شناسه شکل انتخابی جهت ترنسفورم و جابجایی
+    selectedDrawingId: null,
     isTokenEditorOpen: false,
     editingTokenId: null,
 
@@ -49,28 +49,45 @@ export const useCanvasStore = create((set, get) => ({
 
     resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
 
+    // محاسبه کاملاً دقیق فیت شدن نقشه با در نظر گرفتن ابعاد زنده کانتینر
     fitToMap: (mapW = 2000, mapH = 1500, containerW = null, containerH = null) => {
-        const screenW = (containerW && containerW > 300) ? containerW : (typeof window !== "undefined" ? window.innerWidth : 1920);
-        const screenH = (containerH && containerH > 300) ? containerH : (typeof window !== "undefined" ? window.innerHeight : 1080);
+        let screenW = containerW;
+        let screenH = containerH;
 
-        const safeW = (mapW && mapW > 50) ? Number(mapW) : 2000;
-        const safeH = (mapH && mapH > 50) ? Number(mapH) : 1500;
+        if (!screenW || screenW <= 300) {
+            if (typeof document !== "undefined") {
+                const container = document.getElementById("vtt-game-canvas-container");
+                if (container && container.clientWidth > 300) {
+                    screenW = container.clientWidth;
+                    screenH = container.clientHeight;
+                }
+            }
+        }
+        if (!screenW || screenW <= 300) {
+            screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
+            screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
+        }
 
-        const paddingX = 140;
-        const paddingY = 140;
+        const safeW = (mapW && Number(mapW) > 50) ? Number(mapW) : 2000;
+        const safeH = (mapH && Number(mapH) > 50) ? Number(mapH) : 1500;
 
-        const availW = Math.max(screenW - paddingX, 200);
-        const availH = Math.max(screenH - paddingY, 200);
+        // حاشیه بهینه از لبه‌ها برای نمایش عالی و عدم پوشانده شدن توسط نوار ابزارها
+        const paddingX = Math.min(screenW * 0.08, 90);
+        const paddingY = Math.min(screenH * 0.10, 90);
+
+        const availW = Math.max(screenW - paddingX * 2, 200);
+        const availH = Math.max(screenH - paddingY * 2, 200);
 
         const scaleX = availW / safeW;
         const scaleY = availH / safeH;
         const optimalScale = Math.min(scaleX, scaleY);
+        const clampedScale = Math.max(0.15, Math.min(optimalScale, 2.5));
 
-        const stageX = (screenW - safeW * optimalScale) / 2;
-        const stageY = (screenH - safeH * optimalScale) / 2;
+        const stageX = (screenW - safeW * clampedScale) / 2;
+        const stageY = (screenH - safeH * clampedScale) / 2;
 
         set({
-            zoom: Number(optimalScale.toFixed(3)),
+            zoom: Number(clampedScale.toFixed(3)),
             stageX: Math.round(stageX),
             stageY: Math.round(stageY),
         });

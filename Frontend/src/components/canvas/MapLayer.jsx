@@ -26,27 +26,36 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChan
 
     img.src = resolvedUrl;
 
+    const applyFocus = (naturalW, naturalH) => {
+      if (!isMounted) return;
+
+      setDimensions({ width: naturalW, height: naturalH });
+
+      useSceneStore.setState((state) => ({
+        currentScene: state.currentScene
+            ? { ...state.currentScene, mapWidth: naturalW, mapHeight: naturalH }
+            : state.currentScene,
+      }));
+
+      if (onDimensionsChange) {
+        onDimensionsChange(naturalW, naturalH);
+      }
+
+      // سنتر فوری و تکرار در فریم بعدی جهت اعمال قطعی پس از تغییر DOM
+      fitToMap(naturalW, naturalH);
+      requestAnimationFrame(() => {
+        if (isMounted) {
+          fitToMap(naturalW, naturalH);
+        }
+      });
+    };
+
     img.onload = () => {
       if (isMounted) {
         setImage(img);
         const naturalW = img.naturalWidth || width;
         const naturalH = img.naturalHeight || height;
-        setDimensions({ width: naturalW, height: naturalH });
-
-        // همگام‌سازی ابعاد واقعی نقشه در استور جهت محاسبه دقیق مرکز برای توکن‌ها
-        useSceneStore.setState((state) => ({
-          currentScene: state.currentScene
-              ? { ...state.currentScene, mapWidth: naturalW, mapHeight: naturalH }
-              : state.currentScene,
-        }));
-
-        if (onDimensionsChange) {
-          onDimensionsChange(naturalW, naturalH);
-        }
-
-        const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
-        const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
-        fitToMap(naturalW, naturalH, screenW, screenH);
+        applyFocus(naturalW, naturalH);
       }
     };
 
@@ -58,21 +67,7 @@ export const MapLayer = ({ mapUrl, width = 2000, height = 1500, onDimensionsChan
           setImage(fallbackImg);
           const naturalW = fallbackImg.naturalWidth || width;
           const naturalH = fallbackImg.naturalHeight || height;
-          setDimensions({ width: naturalW, height: naturalH });
-
-          useSceneStore.setState((state) => ({
-            currentScene: state.currentScene
-                ? { ...state.currentScene, mapWidth: naturalW, mapHeight: naturalH }
-                : state.currentScene,
-          }));
-
-          if (onDimensionsChange) {
-            onDimensionsChange(naturalW, naturalH);
-          }
-
-          const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
-          const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
-          fitToMap(naturalW, naturalH, screenW, screenH);
+          applyFocus(naturalW, naturalH);
         }
       };
       fallbackImg.onerror = () => {
