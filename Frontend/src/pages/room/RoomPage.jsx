@@ -39,7 +39,6 @@ export const RoomPage = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-    // تضمین استفاده از UUID پایدار اتاق جهت هماهنگی با کنترلر وب‌سوکت بک‌اند
     const effectiveRoomId = useMemo(() => {
         return roomData?.id ? String(roomData.id) : urlParamId;
     }, [roomData?.id, urlParamId]);
@@ -55,7 +54,8 @@ export const RoomPage = () => {
                 return;
             }
 
-            const { action, data } = event;
+            const action = event.action || (event.data ? event.action : null);
+            const data = event.data !== undefined ? event.data : event;
 
             if (action === "ROOM_CLOSED") {
                 alert(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.");
@@ -64,7 +64,9 @@ export const RoomPage = () => {
             }
 
             if (action === "MEMBER_KICKED") {
-                if (data?.userId === user?.id || data?.username === user?.username) {
+                const currentUname = String(user?.username || "").toLowerCase().trim();
+                const incomingUname = String(data?.username || "").toLowerCase().trim();
+                if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
                     alert("شما توسط دانجن‌مستر از اتاق اخراج شدید.");
                     window.location.href = "/dashboard";
                     return;
@@ -72,7 +74,9 @@ export const RoomPage = () => {
             }
 
             if (action === "MEMBER_BANNED") {
-                if (data?.userId === user?.id || data?.username === user?.username) {
+                const currentUname = String(user?.username || "").toLowerCase().trim();
+                const incomingUname = String(data?.username || "").toLowerCase().trim();
+                if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
                     alert("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.");
                     window.location.href = "/dashboard";
                     return;
@@ -89,28 +93,45 @@ export const RoomPage = () => {
                 }
             }
 
-            if (action === "PERMISSION_UPDATED") {
-                if (data?.username === user?.username || data?.memberId === user?.id) {
+            // به‌روزرسانی آنی پرمیشن در نوار ابزار بازیکن بدون نیاز به ریلود
+            if (action === "PERMISSION_UPDATED" && data) {
+                const currentUname = String(user?.username || "").toLowerCase().trim();
+                const incomingUname = String(data.username || "").toLowerCase().trim();
+                const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
+                const incomingMemberId = String(data.memberId || "").toLowerCase().trim();
+
+                const isTargetMe =
+                    (currentUname && currentUname === incomingUname) ||
+                    (data.userId && String(data.userId).toLowerCase().trim() === currentUid) ||
+                    (incomingMemberId && onlineMembers.some(
+                        (m) =>
+                            String(m.id || m.memberId).toLowerCase() === incomingMemberId &&
+                            (String(m.userId) === currentUid || String(m.username).toLowerCase() === currentUname)
+                    ));
+
+                if (isTargetMe) {
                     const updatedPerms = {
-                        canAssets: data.canAssets,
-                        canText: data.canText,
-                        canFog: data.canFog,
-                        canDrawing: data.canDrawing,
-                        canScene: data.canScene,
-                        canRuler: data.canRuler,
+                        canAssets: Boolean(data.canAssets),
+                        canText: Boolean(data.canText),
+                        canFog: Boolean(data.canFog),
+                        canDrawing: Boolean(data.canDrawing),
+                        canScene: Boolean(data.canScene),
+                        canRuler: data.canRuler !== undefined ? Boolean(data.canRuler) : true,
+                        canEditToken: Boolean(data.canEditToken),
                     };
+
                     setRoomData((prev) => ({
                         ...prev,
                         permissions: updatedPerms,
                     }));
+
                     setCurrentRoom((prev) => (prev ? { ...prev, permissions: updatedPerms } : prev));
                 }
             }
         },
-        [user, setCurrentRoom, setAvailableConditions]
+        [user, setCurrentRoom, setAvailableConditions, onlineMembers]
     );
 
-    // اتصال وب‌سوکت با شناسه قطعی اتاق
     const { isConnected } = useWebSocket(effectiveRoomId, handleSocketMessage);
 
     useEffect(() => {
@@ -223,7 +244,7 @@ export const RoomPage = () => {
             {/* بوم بازی */}
             <GameCanvas isGM={isGM} permissions={userPermissions} />
 
-            {/* نوار ابزار اصلی */}
+            {/* نوار ابزار اصلی (دریافت زنده پرمیشن‌ها) */}
             <Toolbar isGM={isGM} permissions={userPermissions} />
 
             {/* پنل‌ها */}

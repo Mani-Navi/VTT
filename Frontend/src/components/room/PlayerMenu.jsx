@@ -13,7 +13,6 @@ import {
   Copy,
   Check,
   Tag,
-  Sparkles,
   Settings2,
   Sliders,
   Users,
@@ -47,15 +46,19 @@ export const PlayerMenu = ({
                              isGM = false,
                              roomId = null,
                              roomData = null,
-                             onlineMembers = [],
+                             onlineMembers: propOnlineMembers = [],
                            }) => {
   const currentUser = useAuthStore((state) => state.user);
   const { copy, copied } = useClipboard();
 
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState(null);
+  const [membersList, setMembersList] = useState(propOnlineMembers);
 
-  // عناوین همگانی نقش‌های اتاق
+  useEffect(() => {
+    setMembersList(propOnlineMembers);
+  }, [propOnlineMembers]);
+
   const [hostTitle, setHostTitle] = useState(() => {
     return roomData?.hostRoleTitle || localStorage.getItem(`room_${roomId}_host_title`) || "میزبان";
   });
@@ -80,7 +83,7 @@ export const PlayerMenu = ({
   }, [hostTitle, playerTitle, roomId]);
 
   useEffect(() => {
-    const unsubscribe = wsService.on("ROLE_TITLE_UPDATE", (data) => {
+    const unsubRole = wsService.on("ROLE_TITLE_UPDATE", (data) => {
       if (data?.targetType === "HOST" && data.title) {
         setHostTitle(data.title);
       } else if (data?.targetType === "PLAYER" && data.title) {
@@ -88,8 +91,21 @@ export const PlayerMenu = ({
       }
     });
 
+    const unsubPerm = wsService.on("PERMISSION_UPDATED", (data) => {
+      if (data && data.memberId) {
+        setMembersList((prev) =>
+            prev.map((m) =>
+                m.id === data.memberId || m.userId === data.memberId
+                    ? { ...m, permissions: { ...(m.permissions || {}), ...data } }
+                    : m
+            )
+        );
+      }
+    });
+
     return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
+      unsubRole();
+      unsubPerm();
     };
   }, []);
 
@@ -148,42 +164,76 @@ export const PlayerMenu = ({
     }
   };
 
+  // تاگل آنی (Optimistic UI) و ارسال به سرور
   const handlePermissionToggle = async (memberId, permissionKey, currentValue) => {
+    const nextVal = !currentValue;
+
+    // ۱. آپدیت فوری استیت لوکال جهت تغییر رنگ سوئیچ
+    setMembersList((prev) =>
+        prev.map((m) => {
+          if (m.id === memberId || m.userId === memberId) {
+            return {
+              ...m,
+              permissions: {
+                ...(m.permissions || {}),
+                [permissionKey]: nextVal,
+              },
+            };
+          }
+          return m;
+        })
+    );
+
+    // ۲. ارسال درخواست به سرور
     try {
       const payload = {
         memberId: memberId,
-        [permissionKey]: !currentValue,
+        [permissionKey]: nextVal,
       };
       await roomApi.updatePermissions(payload);
     } catch (err) {
       console.error("خطا در آپدیت پرمیشن:", err);
+      // در صورت خطا، استیت برگردانده شود
+      setMembersList((prev) =>
+          prev.map((m) => {
+            if (m.id === memberId || m.userId === memberId) {
+              return {
+                ...m,
+                permissions: {
+                  ...(m.permissions || {}),
+                  [permissionKey]: currentValue,
+                },
+              };
+            }
+            return m;
+          })
+      );
     }
   };
 
   const displayCode = roomData?.code || (roomId ? roomId.substring(0, 6).toUpperCase() : "------");
-  const myMemberObject = onlineMembers.find((m) => m.userId === currentUser?.id || m.username === currentUser?.username);
   const mySelfTitle = getMemberDisplayTitle(isGM);
 
-  // تفکیک اعضا به دو گروه دیسکوردی (میزبانان و بازیکنان)
-  const hostMembers = onlineMembers.filter((m) => m.role === "GM" || m.role === "ADMIN");
-  const playerMembers = onlineMembers.filter((m) => m.role !== "GM" && m.role !== "ADMIN");
+  const hostMembers = membersList.filter((m) => m.role === "GM" || m.role === "ADMIN");
+  const playerMembers = membersList.filter((m) => m.role !== "GM" && m.role !== "ADMIN");
 
   const renderMemberCard = (member) => {
+    const memberActualId = member.id || member.memberId || member.userId;
     const isSelf =
         member.userId === currentUser?.id ||
         member.username?.toLowerCase() === currentUser?.username?.toLowerCase();
     const isMemberGM = member.role === "GM" || member.role === "ADMIN";
-    const isExpanded = expandedMemberId === member.id;
+    const isExpanded = expandedMemberId === memberActualId;
     const perms = member.permissions || {};
     const displayTitle = getMemberDisplayTitle(isMemberGM);
 
-    const currentInputVal = customInputMap[member.id] || "";
+    const currentInputVal = customInputMap[memberActualId] || "";
     const targetType = isMemberGM ? "HOST" : "PLAYER";
     const availablePresets = isMemberGM ? HOST_ROLE_PRESETS : PLAYER_ROLE_PRESETS;
 
     return (
         <div
-            key={member.id || member.userId}
+            key={memberActualId}
             className={cn(
                 "rounded-2xl border transition-all duration-200 overflow-hidden",
                 isExpanded
@@ -191,7 +241,6 @@ export const PlayerMenu = ({
                     : "bg-zinc-900/60 hover:bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700"
             )}
         >
-          {/* ردیف اصلی اطلاعات کاربر (Discord-like Member Row) */}
           <div className="flex items-center justify-between p-3">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -250,7 +299,7 @@ export const PlayerMenu = ({
               {isGM && (
                   <button
                       type="button"
-                      onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
+                      onClick={() => setExpandedMemberId(isExpanded ? null : memberActualId)}
                       className={cn(
                           "w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer",
                           isExpanded
@@ -265,11 +314,9 @@ export const PlayerMenu = ({
             </div>
           </div>
 
-          {/* پنل مدیریت تفصیلی (Discord Style Popover Panel) */}
           {isGM && isExpanded && (
               <div className="p-3.5 bg-zinc-950 border-t border-zinc-800/90 space-y-3 animate-in fade-in zoom-in-95 duration-150">
 
-                {/* بخش تغییر همگانی عنوان نقش */}
                 <div className="p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-amber-400">
                     <div className="flex items-center gap-1.5">
@@ -278,7 +325,6 @@ export const PlayerMenu = ({
                     </div>
                   </div>
 
-                  {/* کپسول‌های عناوین آماده دیسکوردی */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {availablePresets.map((preset) => (
                         <button
@@ -297,7 +343,6 @@ export const PlayerMenu = ({
                     ))}
                   </div>
 
-                  {/* ورودی متن دلخواه */}
                   <div className="flex gap-1.5 pt-1.5">
                     <input
                         type="text"
@@ -305,7 +350,7 @@ export const PlayerMenu = ({
                         onChange={(e) =>
                             setCustomInputMap((prev) => ({
                               ...prev,
-                              [member.id]: e.target.value,
+                              [memberActualId]: e.target.value,
                             }))
                         }
                         placeholder={isMemberGM ? "عنوان دلخواه میزبان..." : "عنوان دلخواه تمام بازیکنان..."}
@@ -316,7 +361,7 @@ export const PlayerMenu = ({
                         onClick={() => {
                           if (currentInputVal) {
                             handleSetRoleTitle(targetType, currentInputVal);
-                            setCustomInputMap((prev) => ({ ...prev, [member.id]: "" }));
+                            setCustomInputMap((prev) => ({ ...prev, [memberActualId]: "" }));
                           }
                         }}
                         className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-amber-500/20"
@@ -326,13 +371,12 @@ export const PlayerMenu = ({
                   </div>
                 </div>
 
-                {/* کنترل‌های سریع دیسکوردی (میوت، ارتقا، اخراج، بن) */}
                 {!isSelf && (
                     <>
                       <div className="grid grid-cols-4 gap-2">
                         <button
                             type="button"
-                            onClick={() => handleToggleMute(member.id)}
+                            onClick={() => handleToggleMute(memberActualId)}
                             className={cn(
                                 "py-2 px-1 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all",
                                 member.isMuted
@@ -346,7 +390,7 @@ export const PlayerMenu = ({
 
                         <button
                             type="button"
-                            onClick={() => handleRoleChange(member.id, member.role)}
+                            onClick={() => handleRoleChange(memberActualId, member.role)}
                             className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-amber-400 hover:bg-zinc-800 hover:border-zinc-700 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
                         >
                           <Shield className="w-4 h-4 text-amber-400" />
@@ -355,7 +399,7 @@ export const PlayerMenu = ({
 
                         <button
                             type="button"
-                            onClick={() => handleKick(member.id)}
+                            onClick={() => handleKick(memberActualId)}
                             className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
                         >
                           <UserX className="w-4 h-4 text-rose-400" />
@@ -364,7 +408,7 @@ export const PlayerMenu = ({
 
                         <button
                             type="button"
-                            onClick={() => handleBan(member.id)}
+                            onClick={() => handleBan(memberActualId)}
                             className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/40 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
                         >
                           <Ban className="w-4 h-4 text-rose-500" />
@@ -392,25 +436,25 @@ export const PlayerMenu = ({
                             return (
                                 <div
                                     key={p.key}
-                                    onClick={() => handlePermissionToggle(member.id, p.key, isAllowed)}
+                                    onClick={() => handlePermissionToggle(memberActualId, p.key, isAllowed)}
                                     className={cn(
                                         "p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none",
                                         isAllowed
-                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-300 font-medium"
+                                            ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium shadow-sm shadow-amber-500/10"
                                             : "bg-zinc-950 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
                                     )}
                                 >
                                   <span className="text-[11px] truncate">{p.label}</span>
                                   <div
                                       className={cn(
-                                          "w-6 h-3.5 rounded-full transition-colors relative",
+                                          "w-7 h-4 rounded-full transition-colors relative flex items-center p-0.5",
                                           isAllowed ? "bg-amber-500" : "bg-zinc-800"
                                       )}
                                   >
                                     <div
                                         className={cn(
-                                            "w-2.5 h-2.5 rounded-full bg-white transition-transform absolute top-0.5",
-                                            isAllowed ? "right-0.5" : "right-3"
+                                            "w-3 h-3 rounded-full bg-white transition-transform",
+                                            isAllowed ? "translate-x-0" : "-translate-x-3"
                                         )}
                                     />
                                   </div>
@@ -429,7 +473,6 @@ export const PlayerMenu = ({
 
   return (
       <div className="fixed top-4 right-6 z-40 font-fa select-none pointer-events-auto" dir="rtl">
-        {/* هدر بالایی کارت اتاق */}
         <div
             className={cn(
                 "w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 shadow-2xl backdrop-blur-2xl transition-all duration-200",
@@ -468,30 +511,27 @@ export const PlayerMenu = ({
               </div>
             </div>
 
-            {/* دکمه باز و بسته کردن لیست با شمارنده زنده */}
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
             >
               <Users className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-mono text-amber-400 font-bold">{onlineMembers.length}</span>
+              <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
               {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {/* پنل کشویی لیست اعضا به سبک دیسکورد */}
         {isOpen && (
             <div className="w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 border-t-0 rounded-b-3xl shadow-2xl backdrop-blur-2xl p-3.5 pt-1 space-y-3 animate-in fade-in zoom-in-95 duration-150">
               <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1 custom-scrollbar">
-                {onlineMembers.length === 0 ? (
+                {membersList.length === 0 ? (
                     <div className="text-center py-6 text-zinc-500 text-xs">
                       هیچ کاربری آنلاین نیست
                     </div>
                 ) : (
                     <>
-                      {/* گروه میزبانان (Hosts) */}
                       {hostMembers.length > 0 && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between px-1">
@@ -504,7 +544,6 @@ export const PlayerMenu = ({
                           </div>
                       )}
 
-                      {/* گروه بازیکنان (Players) */}
                       {playerMembers.length > 0 && (
                           <div className="space-y-2 pt-1">
                             <div className="flex items-center justify-between px-1">

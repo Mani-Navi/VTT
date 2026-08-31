@@ -41,7 +41,7 @@ export function useWebSocket(roomId, onMessage = null) {
 
     // ۳.۱. حذف نقاشی
     const unsubDrawDelete = wsService.on("DRAWING_DELETE", (data) => {
-      const targetId = data?.id || data?.drawingId || data;
+      const targetId = data?.id || data?.drawingId || data?.clientDrawingId || data;
       if (targetId) {
         useSceneStore.getState().removeDrawing(targetId);
       }
@@ -59,13 +59,18 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveDrawing(null);
     });
 
-    // ۴. مه جنگ
+    // ۴. تغییر بلادرنگ پرمیشن‌های ابزارها
+    const unsubPerm = wsService.on("PERMISSION_UPDATED", (data) => {
+      if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
+    });
+
+    // ۵. مه جنگ
     const unsubFog = wsService.on("FOG_UPDATE", (data) => {
       if (data) useSceneStore.getState().addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۵. تاس
+    // ۶. تاس
     const unsubDice = wsService.on("DICE_ROLL", (data) => {
       if (data && useSceneStore.getState().addDiceRoll) {
         useSceneStore.getState().addDiceRoll(data);
@@ -73,7 +78,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۶. تغییر صحنه
+    // ۷. تغییر صحنه
     const unsubScene = wsService.on("SCENE_CHANGE", async (data) => {
       if (data && data.sceneId) {
         const store = useSceneStore.getState();
@@ -87,7 +92,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۷. حذف صحنه
+    // ۸. حذف صحنه
     const unsubSceneDelete = wsService.on("SCENE_DELETE", async (data) => {
       if (data && data.sceneId) {
         useSceneStore.setState((state) => ({
@@ -103,7 +108,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. به‌روزرسانی مپ صحنه
+    // ۹. به‌روزرسانی مپ صحنه
     const unsubSceneUpdate = wsService.on("SCENE_UPDATE", (data) => {
       if (data && data.sceneId) {
         const nextMapUrl = data.mapUrl || data.assetUrl || "";
@@ -126,7 +131,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۹. تغییر نام صحنه
+    // ۱۰. تغییر نام صحنه
     const unsubRename = wsService.on("SCENE_RENAME", (data) => {
       if (data && data.sceneId && data.name) {
         useSceneStore.setState((state) => ({
@@ -144,6 +149,7 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubDrawDelete();
       unsubDrawLive();
       unsubDrawLiveEnd();
+      unsubPerm();
       unsubFog();
       unsubDice();
       unsubScene();
