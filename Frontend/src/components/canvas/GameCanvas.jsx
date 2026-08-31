@@ -123,17 +123,14 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     };
   }, []);
 
-  // حذف قطعی هم از استور، هم وب‌سوکت و هم REST API با آدرس استاندارد
   const handleEraseDrawing = useCallback(
       async (drawId) => {
         if (!drawId) return;
         const targetId = String(drawId);
         const sceneId = currentScene?.id;
 
-        // ۱. حذف آنی از استور لوکال
         removeDrawing(targetId);
 
-        // ۲. ارسال رویداد حذف زنده به وب‌سوکت برای سایر کاربران
         wsService.send("DRAWING_DELETE", {
           id: targetId,
           drawingId: targetId,
@@ -141,7 +138,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           sceneId: sceneId,
         });
 
-        // ۳. حذف پایدار مستقیم از دیتابیس از طریق REST API
         try {
           await drawingApi.deleteDrawing(targetId, sceneId);
         } catch (err) {
@@ -212,7 +208,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // رسم چندضلعی
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
       if (e.evt.button === 2) {
         setPolygonVertices([]);
@@ -274,7 +269,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // رسم سایر اشکال
     if (activeTool === TOOLS.DRAW) {
       isInteracting.current = true;
       setShapeStart(pos);
@@ -764,7 +758,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
           {hasActiveMap && (
               <>
-                {/* لایه ۲: ترسیمات و مه جنگ */}
+                {/* لایه ۲: ترسیمات و مه جنگ (پراپ‌های isGM و permissions مستقیماً پاس داده می‌شوند) */}
                 <Layer
                     id="layer-canvas-features"
                     clip={{ x: 0, y: 0, width: mapWidth, height: mapHeight }}
@@ -774,6 +768,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                       liveDrawing={liveDrawing}
                       isEraser={isEraserActive}
                       isSelectMode={isSelectMode}
+                      isGM={isGM}
+                      permissions={permissions}
                       onErase={handleEraseDrawing}
                   />
                   <FogLayer

@@ -2,7 +2,6 @@ import React, { useRef, useEffect } from "react";
 import { Line, Rect, Circle, RegularPolygon, Text, Group, Transformer } from "react-konva";
 import { useSceneStore } from "../../store/scene.store";
 import { useCanvasStore } from "../../store/canvas.store";
-import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { DRAW_MODES } from "../../constants/tools";
 
@@ -12,6 +11,7 @@ const SingleDrawingShape = ({
                               isEraser = false,
                               isSelectMode = false,
                               isSelected = false,
+                              canModify = false,
                               onSelect = null,
                               onErase = null,
                               onUpdate = null,
@@ -60,9 +60,9 @@ const SingleDrawingShape = ({
 
   const handleClick = (e) => {
     if (e && e.cancelBubble !== undefined) e.cancelBubble = true;
-    if (isEraser) {
+    if (isEraser && canModify) {
       handleEraseAction(e);
-    } else if (isSelectMode && onSelect) {
+    } else if (isSelectMode && canModify && onSelect) {
       onSelect(drawId);
     }
   };
@@ -70,7 +70,7 @@ const SingleDrawingShape = ({
   const handleDragEnd = (e) => {
     if (e && e.cancelBubble !== undefined) e.cancelBubble = true;
     const node = shapeRef.current;
-    if (!node || !onUpdate) return;
+    if (!node || !onUpdate || !canModify) return;
 
     onUpdate(drawId, {
       x: Math.round(node.x()),
@@ -84,7 +84,7 @@ const SingleDrawingShape = ({
   const handleTransformEnd = (e) => {
     if (e && e.cancelBubble !== undefined) e.cancelBubble = true;
     const node = shapeRef.current;
-    if (!node || !onUpdate) return;
+    if (!node || !onUpdate || !canModify) return;
 
     onUpdate(drawId, {
       x: Math.round(node.x()),
@@ -95,7 +95,7 @@ const SingleDrawingShape = ({
     });
   };
 
-  const isInteractive = (isEraser || isSelectMode) && !isLive;
+  const isInteractive = ((isEraser || isSelectMode) && canModify) && !isLive;
 
   const commonProps = {
     ref: shapeRef,
@@ -104,15 +104,15 @@ const SingleDrawingShape = ({
     scaleX: scaleX,
     scaleY: scaleY,
     rotation: rotation,
-    draggable: isSelectMode && !isLive,
+    draggable: isSelectMode && canModify && !isLive,
     listening: isInteractive,
     onClick: handleClick,
     onTap: handleClick,
     onMouseDown: (e) => {
-      if (isEraser) handleEraseAction(e);
+      if (isEraser && canModify) handleEraseAction(e);
     },
     onMouseEnter: (e) => {
-      if (isEraser && e.evt && (e.evt.buttons === 1 || e.evt.which === 1)) {
+      if (isEraser && canModify && e.evt && (e.evt.buttons === 1 || e.evt.which === 1)) {
         handleEraseAction(e);
       }
     },
@@ -274,7 +274,7 @@ const SingleDrawingShape = ({
   return (
       <Group>
         {renderedElement}
-        {isSelected && isSelectMode && (
+        {isSelected && isSelectMode && canModify && (
             <Transformer
                 ref={trRef}
                 rotateEnabled={true}
@@ -301,6 +301,8 @@ export const DrawingLayer = ({
                                liveDrawing = null,
                                isEraser = false,
                                isSelectMode = false,
+                               isGM = false,
+                               permissions = {},
                                onErase = null,
                              }) => {
   const currentScene = useSceneStore((state) => state.currentScene);
@@ -310,10 +312,14 @@ export const DrawingLayer = ({
   const selectedDrawingId = useCanvasStore((state) => state.selectedDrawingId);
   const setSelectedDrawingId = useCanvasStore((state) => state.setSelectedDrawingId);
 
-  const { isGM } = usePermissions();
+  // محاسبه دسترسی با اولویت پراپ‌های ارسال‌شده از صفحه اصلی
+  const canModifyDrawings = Boolean(isGM || permissions?.canDrawing === true);
+
   const drawings = currentScene?.drawings || [];
 
   const handleUpdateDrawing = (drawId, updates) => {
+    if (!canModifyDrawings) return;
+
     updateDrawing(drawId, updates);
     const existing = drawings.find((d) => String(d.clientDrawingId || d.id || d.drawingId) === String(drawId));
     if (existing) {
@@ -340,6 +346,7 @@ export const DrawingLayer = ({
                   isEraser={isEraser}
                   isSelectMode={isSelectMode}
                   isSelected={selectedDrawingId === drawId}
+                  canModify={canModifyDrawings}
                   onSelect={setSelectedDrawingId}
                   onErase={onErase}
                   onUpdate={handleUpdateDrawing}
@@ -352,6 +359,7 @@ export const DrawingLayer = ({
             <SingleDrawingShape
                 draw={liveDrawing}
                 isLive={true}
+                canModify={false}
                 isGM={isGM}
             />
         )}
@@ -360,6 +368,7 @@ export const DrawingLayer = ({
             <SingleDrawingShape
                 draw={remoteLiveDrawing}
                 isLive={true}
+                canModify={false}
                 isGM={isGM}
             />
         )}
