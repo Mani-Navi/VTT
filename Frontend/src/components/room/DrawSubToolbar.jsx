@@ -1,6 +1,5 @@
 import React from "react";
 import {
-    Hand,
     Shapes,
     PenTool,
     Paintbrush,
@@ -17,7 +16,7 @@ import { cn } from "../../utils/cn";
 import { Tooltip } from "../ui/Tooltip";
 
 const COLOR_PALETTE = [
-    "#f59e0b", // Amber (Titipool Neon)
+    "#f59e0b", // Amber
     "#ef4444", // Red
     "#10b981", // Emerald
     "#3b82f6", // Blue
@@ -41,7 +40,6 @@ export const DrawSubToolbar = () => {
     if (activeTool !== TOOLS.DRAW) return null;
 
     const drawModesList = [
-        { id: DRAW_MODES.GRAB, label: "انتخاب و جابجایی (Grab)", icon: Hand },
         { id: DRAW_MODES.MARKER, label: "ماژیک آزاد (Marker)", icon: PenTool },
         { id: DRAW_MODES.BRUSH, label: "قلم پر شده (Brush)", icon: Paintbrush },
         { id: DRAW_MODES.LINE, label: "خط مستقیم (Line)", icon: Minus },

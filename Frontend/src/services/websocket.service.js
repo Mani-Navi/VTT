@@ -36,7 +36,6 @@ class WebSocketService {
             }
             : { roomId: roomId },
         reconnectDelay: 3000,
-        // افزایش زمان ضربان قلب به ۲۰ ثانیه جهت جلوگیری از قطع اتصال در حالت بیکاری یا بک‌گراند بودن تب
         heartbeatIncoming: 20000,
         heartbeatOutgoing: 20000,
         debug: () => {},
@@ -144,8 +143,19 @@ class WebSocketService {
         action = "ROLE_TITLE_UPDATE";
         break;
       case "DRAWING_ADD":
+      case "DRAWING_UPDATE":
         destination = `/app/room/${this.currentRoomId}/drawing`;
         action = "ADD";
+        break;
+      case "DRAWING_DELETE":
+      case "DRAWING_REMOVE":
+        destination = `/app/room/${this.currentRoomId}/drawing/delete`;
+        action = "DELETE";
+        break;
+      case "DRAWING_LIVE":
+      case "DRAWING_LIVE_END":
+        destination = `/app/room/${this.currentRoomId}/event`;
+        action = type;
         break;
       case "FOG_UPDATE":
         destination = `/app/room/${this.currentRoomId}/fog`;
@@ -202,28 +212,31 @@ class WebSocketService {
     if (!payload) return;
     useWebSocketStore.getState().touchEvent();
 
+    const action = payload.action;
+    const eventData = payload.data !== undefined ? payload.data : payload;
+
     this.trigger("MESSAGE", payload);
 
-    if (payload.action) {
-      this.trigger(payload.action, payload);
-    }
-
-    const eventData = payload.data || payload;
-
-    if (payload.action === "ROLE_TITLE_UPDATE") {
-      this.trigger("ROLE_TITLE_UPDATE", eventData);
-    } else if (payload.action === "CONDITION_POOL_UPDATE") {
-      this.trigger("CONDITION_POOL_UPDATE", eventData);
-    } else if (
-        payload.action === "MOVE" ||
-        payload.action === "TOKEN_MOVE" ||
-        (eventData && (eventData.tokenId !== undefined || (eventData.id && eventData.x !== undefined)))
-    ) {
-      this.trigger("TOKEN_MOVE", eventData);
-    } else if (payload.action === "ADD" || (eventData && eventData.points !== undefined)) {
+    if (action === "ADD" || action === "DRAWING_ADD") {
       this.trigger("DRAWING_ADD", eventData);
-    } else if (payload.action === "ROLL" || (eventData && eventData.formula !== undefined)) {
+    } else if (action === "DELETE" || action === "DRAWING_DELETE" || action === "DRAWING_REMOVE") {
+      this.trigger("DRAWING_DELETE", eventData);
+    } else if (action === "DRAWING_LIVE") {
+      this.trigger("DRAWING_LIVE", eventData);
+    } else if (action === "DRAWING_LIVE_END") {
+      this.trigger("DRAWING_LIVE_END", eventData);
+    } else if (action === "MOVE" || action === "TOKEN_MOVE") {
+      this.trigger("TOKEN_MOVE", eventData);
+    } else if (action === "ROLE_TITLE_UPDATE") {
+      this.trigger("ROLE_TITLE_UPDATE", eventData);
+    } else if (action === "CONDITION_POOL_UPDATE") {
+      this.trigger("CONDITION_POOL_UPDATE", eventData);
+    } else if (action === "ROLL" || action === "DICE_ROLL") {
       this.trigger("DICE_ROLL", eventData);
+    } else if (action === "FOG_UPDATE" || (action === "UPDATE" && eventData && eventData.isCover !== undefined)) {
+      this.trigger("FOG_UPDATE", eventData);
+    } else if (action) {
+      this.trigger(action, eventData);
     }
   }
 }

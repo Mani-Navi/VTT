@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     LogOut,
@@ -26,7 +26,7 @@ import { TokenEditorModal } from "../../components/room/TokenEditorModal.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
 
 export const RoomPage = () => {
-    const { roomId } = useParams();
+    const { roomId: urlParamId } = useParams();
     const navigate = useNavigate();
 
     const user = useAuthStore((state) => state.user);
@@ -38,6 +38,11 @@ export const RoomPage = () => {
     const [onlineMembers, setOnlineMembers] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+    // تضمین استفاده از UUID پایدار اتاق جهت هماهنگی با کنترلر وب‌سوکت بک‌اند
+    const effectiveRoomId = useMemo(() => {
+        return roomData?.id ? String(roomData.id) : urlParamId;
+    }, [roomData?.id, urlParamId]);
 
     const { isGM, permissions: userPermissions } = usePermissions(roomData);
 
@@ -105,16 +110,19 @@ export const RoomPage = () => {
         [user, setCurrentRoom, setAvailableConditions]
     );
 
-    const { isConnected } = useWebSocket(roomId, handleSocketMessage);
+    // اتصال وب‌سوکت با شناسه قطعی اتاق
+    const { isConnected } = useWebSocket(effectiveRoomId, handleSocketMessage);
 
     useEffect(() => {
-        if (!roomId) return;
+        if (!urlParamId) return;
 
         roomApi
-            .getRoom(roomId)
+            .getRoom(urlParamId)
             .then((data) => {
                 setRoomData(data);
                 setCurrentRoom(data);
+                const actualId = data?.id ? String(data.id) : urlParamId;
+                loadScenes(actualId);
             })
             .catch((err) => {
                 console.error("خطا در دریافت اطلاعات اتاق:", err);
@@ -122,16 +130,14 @@ export const RoomPage = () => {
                 alert(message);
                 window.location.href = "/dashboard";
             });
-
-        loadScenes(roomId);
-    }, [roomId, loadScenes, setCurrentRoom]);
+    }, [urlParamId, loadScenes, setCurrentRoom]);
 
     const handleCloseRoom = async () => {
         if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
             return;
         }
         try {
-            await roomApi.closeRoom(roomId);
+            await roomApi.closeRoom(effectiveRoomId);
             window.location.href = "/dashboard";
         } catch (err) {
             console.error("خطا در بستن اتاق:", err);
@@ -150,12 +156,12 @@ export const RoomPage = () => {
         <div className="relative w-screen h-screen overflow-hidden bg-[#090a0f] select-none font-fa">
             <PlayerMenu
                 isGM={isGM}
-                roomId={roomId}
+                roomId={effectiveRoomId}
                 roomData={roomData}
                 onlineMembers={onlineMembers}
             />
 
-            <SceneBar isGM={isGM} roomId={roomId} />
+            <SceneBar isGM={isGM} roomId={effectiveRoomId} />
 
             <header
                 className="fixed top-4 left-6 z-30 flex items-center gap-2.5 pointer-events-auto"

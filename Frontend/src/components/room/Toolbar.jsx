@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   MousePointer,
   Hand,
@@ -60,13 +60,78 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     );
   });
 
-  const handleToolClick = (toolId) => {
+  // هندل کردن تاگل ابزارها (کلیک مجدد = دی‌سلکت و بازگشت به SELECT)
+  const handleToolClick = useCallback((toolId) => {
+    if (!hasActiveMap) return;
     if (activeTool === toolId) {
       setActiveTool(TOOLS.SELECT);
     } else {
       setActiveTool(toolId);
     }
-  };
+  }, [activeTool, hasActiveMap, setActiveTool]);
+
+  // کلیدهای میانبر سراسری کیبورد
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // اگر کاربر داخل فیلد متنی در حال تایپ بود کلیدهای میانبر نادیده گرفته شوند
+      const tagName = e.target.tagName.toLowerCase();
+      if (tagName === "input" || tagName === "textarea" || e.target.isContentEditable) {
+        return;
+      }
+
+      const key = e.key.toUpperCase();
+
+      if (e.key === "Escape") {
+        setActiveTool(TOOLS.SELECT);
+        return;
+      }
+
+      if (!hasActiveMap) return;
+
+      switch (key) {
+        case "V":
+        case "S":
+          handleToolClick(TOOLS.SELECT);
+          break;
+        case "H":
+          handleToolClick(TOOLS.PAN);
+          break;
+        case "D":
+          if (isGM || permissions?.canDrawing !== false) {
+            handleToolClick(TOOLS.DRAW);
+          }
+          break;
+        case "T":
+          if (isGM || permissions?.canText !== false) {
+            handleToolClick(TOOLS.TEXT);
+          }
+          break;
+        case "F":
+          if (isGM || permissions?.canFog === true) {
+            handleToolClick(TOOLS.FOG);
+          }
+          break;
+        case "R":
+          if (isGM || permissions?.canRuler !== false) {
+            handleToolClick(TOOLS.RULER);
+          }
+          break;
+        case "L":
+          handleToolClick(TOOLS.LASER);
+          break;
+        case "A":
+          if (isGM || permissions?.canAssets) {
+            toggleMenu("asset");
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasActiveMap, isGM, permissions, handleToolClick, setActiveTool, toggleMenu]);
 
   const handleMyCharacterClick = () => {
     if (!hasActiveMap) return;
@@ -111,7 +176,7 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.SELECT,
       label: "Select",
-      labelFa: "انتخاب و جابجایی (V)",
+      labelFa: "انتخاب و جابجایی (V یا S)",
       icon: MousePointer,
       shortcut: "V",
       allowed: true,
@@ -257,7 +322,7 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
             </Tooltip>
 
             {(isGM || permissions?.canAssets) && (
-                <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها">
+                <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها" shortcut="A">
                   <button
                       type="button"
                       onClick={() => toggleMenu("asset")}

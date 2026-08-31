@@ -9,6 +9,9 @@ export const useCanvasStore = create((set, get) => ({
     drawFillColor: "rgba(245, 158, 11, 0.2)",
     isDrawGMLayer: false,
 
+    textFontSize: 24,
+    textColor: "#f59e0b",
+
     fogBrushShape: FOG_BRUSH_SHAPES.CIRCLE,
     fogAction: FOG_ACTIONS.REVEAL,
     fogBrushRadius: 75,
@@ -18,6 +21,7 @@ export const useCanvasStore = create((set, get) => ({
     stageY: 0,
 
     selectedTokenIds: [],
+    selectedDrawingId: null, // شناسه شکل انتخابی جهت ترنسفورم و جابجایی
     isTokenEditorOpen: false,
     editingTokenId: null,
 
@@ -25,12 +29,16 @@ export const useCanvasStore = create((set, get) => ({
     isSettingsMenuOpen: false,
     isDiceRollerOpen: false,
 
-    setActiveTool: (tool) => set({ activeTool: tool }),
-    setActiveDrawShape: (shape) => set({ activeDrawShape: shape }),
+    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null }),
+    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null })),
+    setActiveDrawShape: (shape) => set({ activeDrawShape: shape, selectedDrawingId: null }),
     setDrawStrokeColor: (color) => set({ drawStrokeColor: color }),
     setDrawStrokeWidth: (width) => set({ drawStrokeWidth: width }),
     setDrawFillColor: (color) => set({ drawFillColor: color }),
     setIsDrawGMLayer: (isGM) => set({ isDrawGMLayer: isGM }),
+
+    setTextFontSize: (size) => set({ textFontSize: size }),
+    setTextColor: (color) => set({ textColor: color }),
 
     setFogBrushShape: (shape) => set({ fogBrushShape: shape }),
     setFogAction: (action) => set({ fogAction: action }),
@@ -41,7 +49,6 @@ export const useCanvasStore = create((set, get) => ({
 
     resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
 
-    // محاسبه کاملاً دقیق ریاضی فیت شدن هر ابعاد نقشه‌ای در مرکز نمایشگر
     fitToMap: (mapW = 2000, mapH = 1500, containerW = null, containerH = null) => {
         const screenW = (containerW && containerW > 300) ? containerW : (typeof window !== "undefined" ? window.innerWidth : 1920);
         const screenH = (containerH && containerH > 300) ? containerH : (typeof window !== "undefined" ? window.innerHeight : 1080);
@@ -49,7 +56,6 @@ export const useCanvasStore = create((set, get) => ({
         const safeW = (mapW && mapW > 50) ? Number(mapW) : 2000;
         const safeH = (mapH && mapH > 50) ? Number(mapH) : 1500;
 
-        // فضای خالی حاشیه از بالا و پایین (جهت جلوگیری از تداخل با منوها)
         const paddingX = 140;
         const paddingY = 140;
 
@@ -86,13 +92,16 @@ export const useCanvasStore = create((set, get) => ({
                     selectedTokenIds: state.selectedTokenIds.includes(tokenId)
                         ? state.selectedTokenIds.filter((id) => id !== tokenId)
                         : [...state.selectedTokenIds, tokenId],
+                    selectedDrawingId: null,
                 };
             }
-            return { selectedTokenIds: [tokenId] };
+            return { selectedTokenIds: [tokenId], selectedDrawingId: null };
         });
     },
 
-    clearSelection: () => set({ selectedTokenIds: [] }),
+    setSelectedDrawingId: (id) => set({ selectedDrawingId: id, selectedTokenIds: [] }),
+
+    clearSelection: () => set({ selectedTokenIds: [], selectedDrawingId: null }),
 
     openTokenEditor: (tokenId) => {
         set({ isTokenEditorOpen: true, editingTokenId: tokenId });

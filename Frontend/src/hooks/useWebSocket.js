@@ -18,56 +18,63 @@ export function useWebSocket(roomId, onMessage = null) {
     const token = localStorage.getItem("vtt_jwt");
     wsService.connect(roomId, token);
 
-    // ۱. رویداد آنلاین‌ها
-    const unsubUsers = wsService.on("USERS_UPDATE", (payload) => {
-      if (onMessageRef.current) {
-        onMessageRef.current(payload.users || payload);
-      }
+    // ۱. کاربران آنلاین
+    const unsubUsers = wsService.on("USERS_UPDATE", (data) => {
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۲. رویداد توکن‌ها
-    const unsubToken = wsService.on("TOKEN_MOVE", (payload) => {
-      const data = payload?.data || payload;
+    // ۲. توکن‌ها
+    const unsubToken = wsService.on("TOKEN_MOVE", (data) => {
       if (data) {
         useSceneStore.getState().syncTokenFromSocket(data);
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۳. پیام‌های عمومی
-    const unsubGeneral = wsService.on("MESSAGE", (payload) => {
-      if (payload?.action === "MOVE" && payload.data) {
-        useSceneStore.getState().syncTokenFromSocket(payload.data);
+    // ۳. نقاشی نهایی
+    const unsubDraw = wsService.on("DRAWING_ADD", (data) => {
+      if (data) {
+        useSceneStore.getState().addDrawing(data);
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۴. نقاشی
-    const unsubDraw = wsService.on("DRAWING_ADD", (payload) => {
-      const data = payload?.data || payload;
-      if (data) useSceneStore.getState().addDrawing(data);
-      if (onMessageRef.current) onMessageRef.current(payload);
+    // ۳.۱. حذف نقاشی
+    const unsubDrawDelete = wsService.on("DRAWING_DELETE", (data) => {
+      const targetId = data?.id || data?.drawingId || data;
+      if (targetId) {
+        useSceneStore.getState().removeDrawing(targetId);
+      }
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۵. مه جنگ
-    const unsubFog = wsService.on("FOG_UPDATE", (payload) => {
-      const data = payload?.data || payload;
+    // ۳.۲. رسم زنده
+    const unsubDrawLive = wsService.on("DRAWING_LIVE", (data) => {
+      if (data) {
+        useSceneStore.getState().setRemoteLiveDrawing(data);
+      }
+    });
+
+    const unsubDrawLiveEnd = wsService.on("DRAWING_LIVE_END", () => {
+      useSceneStore.getState().setRemoteLiveDrawing(null);
+    });
+
+    // ۴. مه جنگ
+    const unsubFog = wsService.on("FOG_UPDATE", (data) => {
       if (data) useSceneStore.getState().addFogShape(data);
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۶. تاس
-    const unsubDice = wsService.on("DICE_ROLL", (payload) => {
-      const data = payload?.data || payload;
+    // ۵. تاس
+    const unsubDice = wsService.on("DICE_ROLL", (data) => {
       if (data && useSceneStore.getState().addDiceRoll) {
         useSceneStore.getState().addDiceRoll(data);
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۷. تغییر / سوییچ صحنه برای همه کاربران
-    const unsubScene = wsService.on("SCENE_CHANGE", async (payload) => {
-      const data = payload?.data || payload;
+    // ۶. تغییر صحنه
+    const unsubScene = wsService.on("SCENE_CHANGE", async (data) => {
       if (data && data.sceneId) {
         const store = useSceneStore.getState();
         const exists = store.scenes.some((s) => s.id === data.sceneId);
@@ -77,12 +84,11 @@ export function useWebSocket(roomId, onMessage = null) {
           store.switchScene(data.sceneId, false);
         }
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. حذف بلادرنگ صحنه از نوار ابزار تمام کاربران
-    const unsubSceneDelete = wsService.on("SCENE_DELETE", async (payload) => {
-      const data = payload?.data || payload;
+    // ۷. حذف صحنه
+    const unsubSceneDelete = wsService.on("SCENE_DELETE", async (data) => {
       if (data && data.sceneId) {
         useSceneStore.setState((state) => ({
           scenes: state.scenes.filter((s) => s.id !== data.sceneId),
@@ -94,12 +100,11 @@ export function useWebSocket(roomId, onMessage = null) {
           await useSceneStore.getState().loadScenes(roomId);
         }
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۹. به‌روزرسانی بلادرنگ نقشه صحنه (آپلود / تغییر مپ)
-    const unsubSceneUpdate = wsService.on("SCENE_UPDATE", (payload) => {
-      const data = payload?.data || payload;
+    // ۸. به‌روزرسانی مپ صحنه
+    const unsubSceneUpdate = wsService.on("SCENE_UPDATE", (data) => {
       if (data && data.sceneId) {
         const nextMapUrl = data.mapUrl || data.assetUrl || "";
         useSceneStore.setState((state) => {
@@ -118,26 +123,27 @@ export function useWebSocket(roomId, onMessage = null) {
           };
         });
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۱۰. تغییر نام صحنه
-    const unsubRename = wsService.on("SCENE_RENAME", (payload) => {
-      const data = payload?.data || payload;
+    // ۹. تغییر نام صحنه
+    const unsubRename = wsService.on("SCENE_RENAME", (data) => {
       if (data && data.sceneId && data.name) {
         useSceneStore.setState((state) => ({
           scenes: state.scenes.map((s) => (s.id === data.sceneId ? { ...s, name: data.name } : s)),
           currentScene: state.currentScene?.id === data.sceneId ? { ...state.currentScene, name: data.name } : state.currentScene,
         }));
       }
-      if (onMessageRef.current) onMessageRef.current(payload);
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
     return () => {
       unsubUsers();
       unsubToken();
-      unsubGeneral();
       unsubDraw();
+      unsubDrawDelete();
+      unsubDrawLive();
+      unsubDrawLiveEnd();
       unsubFog();
       unsubDice();
       unsubScene();
@@ -146,7 +152,7 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubRename();
       wsService.disconnect();
     };
-  }, [roomId]); // اتصال فقط به ورود و خروج اتاق وابسته است
+  }, [roomId]);
 
   const sendEvent = (type, data) => {
     wsService.send(type, data);

@@ -24,16 +24,32 @@ const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
     }
 };
 
+// حل‌کننده دقیق شناسه یکتای شکل
+const matchDrawingId = (a, b) => {
+    if (!a || !b) return false;
+    const idA = String(a.clientDrawingId || a.id || a.drawingId || "").trim();
+    const idB = String(b.clientDrawingId || b.id || b.drawingId || "").trim();
+    if (idA && idB && idA === idB) return true;
+    if (a.id && b.id && String(a.id) === String(b.id)) return true;
+    if (a.clientDrawingId && b.clientDrawingId && String(a.clientDrawingId) === String(b.clientDrawingId)) return true;
+    return false;
+};
+
 export const useSceneStore = create((set, get) => ({
     currentScene: null,
     scenes: [],
     pings: [],
+    remoteLiveDrawing: null,
     isLoading: false,
 
     availableConditions: [],
 
     setAvailableConditions: (conditions) => {
         set({ availableConditions: Array.isArray(conditions) ? conditions : [] });
+    },
+
+    setRemoteLiveDrawing: (drawData) => {
+        set({ remoteLiveDrawing: drawData });
     },
 
     addAvailableCondition: (conditionId, shouldBroadcast = true) => {
@@ -154,7 +170,20 @@ export const useSceneStore = create((set, get) => ({
 
             const rawId = socketData.tokenId || socketData.id;
             if (!rawId) return state;
-            const targetId = String(rawId).toLowerCase();
+
+            const strId = String(rawId).toLowerCase();
+
+            if (
+                strId.startsWith("draw-") ||
+                strId.startsWith("fog-") ||
+                strId.startsWith("ping-") ||
+                strId.startsWith("text-") ||
+                socketData.points !== undefined ||
+                socketData.stroke !== undefined ||
+                socketData.isCover !== undefined
+            ) {
+                return state;
+            }
 
             const currentTokens = state.currentScene.tokens;
 
@@ -162,13 +191,13 @@ export const useSceneStore = create((set, get) => ({
                 return {
                     currentScene: {
                         ...state.currentScene,
-                        tokens: currentTokens.filter((t) => String(t.id).toLowerCase() !== targetId),
+                        tokens: currentTokens.filter((t) => String(t.id).toLowerCase() !== strId),
                     },
                 };
             }
 
             const existsIndex = currentTokens.findIndex(
-                (t) => String(t.id).toLowerCase() === targetId
+                (t) => String(t.id).toLowerCase() === strId
             );
 
             const cleanSocketData = {};
@@ -207,6 +236,10 @@ export const useSceneStore = create((set, get) => ({
                         : t
                 );
             } else {
+                if (!cleanSocketData.x && !cleanSocketData.y && !incomingName) {
+                    return state;
+                }
+
                 const newToken = {
                     ...cleanSocketData,
                     id: String(rawId),
@@ -281,7 +314,6 @@ export const useSceneStore = create((set, get) => ({
         }
     },
 
-    // ایجاد توکن با محاسبه دقیق مرکز نقشه
     addToken: async (tokenData) => {
         const state = get();
         if (!state.currentScene) return;
@@ -384,11 +416,56 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
+    // ثبت یا به‌روزرسانی بدون ایجاد آبجکت‌های تکراری
     addDrawing: (drawing) => {
         set((state) => {
             if (!state.currentScene) return state;
-            const drawings = state.currentScene.drawings ? [...state.currentScene.drawings, drawing] : [drawing];
-            return { currentScene: { ...state.currentScene, drawings } };
+            const existing = state.currentScene.drawings || [];
+            const existsIndex = existing.findIndex((d) => matchDrawingId(d, drawing));
+
+            let nextDrawings;
+            if (existsIndex !== -1) {
+                nextDrawings = existing.map((d, i) => (i === existsIndex ? { ...d, ...drawing } : d));
+            } else {
+                nextDrawings = [...existing, drawing];
+            }
+
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    drawings: nextDrawings,
+                },
+                remoteLiveDrawing: null,
+            };
+        });
+    },
+
+    updateDrawing: (drawingId, updates) => {
+        set((state) => {
+            if (!state.currentScene || !state.currentScene.drawings) return state;
+            const dummy = { id: drawingId, clientDrawingId: drawingId, drawingId };
+            const nextDrawings = state.currentScene.drawings.map((d) =>
+                matchDrawingId(d, dummy) ? { ...d, ...updates } : d
+            );
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    drawings: nextDrawings,
+                },
+            };
+        });
+    },
+
+    removeDrawing: (drawingId) => {
+        set((state) => {
+            if (!state.currentScene || !state.currentScene.drawings) return state;
+            const dummy = { id: drawingId, clientDrawingId: drawingId, drawingId };
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    drawings: state.currentScene.drawings.filter((d) => !matchDrawingId(d, dummy)),
+                },
+            };
         });
     },
 

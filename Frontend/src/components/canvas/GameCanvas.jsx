@@ -12,6 +12,7 @@ import { FogLayer } from "./FogLayer.jsx";
 import { RulerLayer } from "./RulerLayer.jsx";
 import { PingLayer } from "./PingLayer.jsx";
 import { wsService } from "../../services/websocket.service";
+import { drawingApi } from "../../api/drawing.api";
 import {
   ImagePlus,
   Lock,
@@ -48,6 +49,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const drawStrokeWidth = useCanvasStore((state) => state.drawStrokeWidth);
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
   const isDrawGMLayer = useCanvasStore((state) => state.isDrawGMLayer);
+  const textFontSize = useCanvasStore((state) => state.textFontSize || 24);
+  const textColor = useCanvasStore((state) => state.textColor || drawStrokeColor);
 
   const setZoom = useCanvasStore((state) => state.setZoom);
   const setStagePos = useCanvasStore((state) => state.setStagePos);
@@ -61,17 +64,29 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
   const currentScene = useSceneStore((state) => state.currentScene);
   const addDrawing = useSceneStore((state) => state.addDrawing);
+  const removeDrawing = useSceneStore((state) => state.removeDrawing);
   const addFogShape = useSceneStore((state) => state.addFogShape);
   const addPing = useSceneStore((state) => state.addPing);
   const user = useAuthStore((state) => state.user);
 
   const [liveDrawing, setLiveDrawing] = useState(null);
+  const liveDrawingRef = useRef(null);
   const [currentLinePoints, setCurrentLinePoints] = useState([]);
+  const [polygonVertices, setPolygonVertices] = useState([]);
   const [shapeStart, setShapeStart] = useState(null);
   const isInteracting = useRef(false);
+  const lastBroadcastTime = useRef(0);
 
   const activeMapUrl = currentScene?.mapUrl || currentScene?.assetUrl || "";
   const hasActiveMap = Boolean(activeMapUrl && activeMapUrl.trim() !== "");
+
+  const isStageDraggable = hasActiveMap && activeTool === TOOLS.PAN;
+
+  const isEraserActive =
+      activeTool === TOOLS.ERASER ||
+      (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.ERASER);
+
+  const isSelectMode = activeTool === TOOLS.SELECT;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -106,6 +121,47 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       x: (pointer.x - stage.x()) / stage.scaleX(),
       y: (pointer.y - stage.y()) / stage.scaleY(),
     };
+  }, []);
+
+  // حذف قطعی هم از استور، هم وب‌سوکت و هم REST API با آدرس استاندارد
+  const handleEraseDrawing = useCallback(
+      async (drawId) => {
+        if (!drawId) return;
+        const targetId = String(drawId);
+        const sceneId = currentScene?.id;
+
+        // ۱. حذف آنی از استور لوکال
+        removeDrawing(targetId);
+
+        // ۲. ارسال رویداد حذف زنده به وب‌سوکت برای سایر کاربران
+        wsService.send("DRAWING_DELETE", {
+          id: targetId,
+          drawingId: targetId,
+          clientDrawingId: targetId,
+          sceneId: sceneId,
+        });
+
+        // ۳. حذف پایدار مستقیم از دیتابیس از طریق REST API
+        try {
+          await drawingApi.deleteDrawing(targetId, sceneId);
+        } catch (err) {
+          console.error("خطا در حذف دیتابیس نقاشی:", err);
+        }
+      },
+      [removeDrawing, currentScene?.id]
+  );
+
+  useEffect(() => {
+    const handleEscapeKey = (e) => {
+      if (e.key === "Escape") {
+        setPolygonVertices([]);
+        setLiveDrawing(null);
+        liveDrawingRef.current = null;
+        isInteracting.current = false;
+      }
+    };
+    window.addEventListener("keydown", handleEscapeKey);
+    return () => window.removeEventListener("keydown", handleEscapeKey);
   }, []);
 
   const handleWheel = (e) => {
@@ -144,48 +200,158 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       clearSelection();
     }
 
-    if (!isClickedOnEmpty) return;
+    if (isSelectMode || activeTool === TOOLS.PAN) {
+      return;
+    }
 
     const pos = getPointerCanvasPos();
     if (pos.x < 0 || pos.x > mapWidth || pos.y < 0 || pos.y > mapHeight) return;
 
-    if (activeTool === TOOLS.DRAW) {
+    if (isEraserActive) {
       isInteracting.current = true;
-      setShapeStart(pos);
+      return;
+    }
 
-      if (activeDrawShape === DRAW_MODES.MARKER || activeDrawShape === DRAW_MODES.BRUSH) {
-        setCurrentLinePoints([pos.x, pos.y]);
-        setLiveDrawing({
-          type: activeDrawShape,
-          points: [pos.x, pos.y],
+    // رسم چندضلعی
+    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
+      if (e.evt.button === 2) {
+        setPolygonVertices([]);
+        setLiveDrawing(null);
+        liveDrawingRef.current = null;
+        return;
+      }
+
+      if (polygonVertices.length === 0) {
+        setPolygonVertices([pos.x, pos.y]);
+        const initPoly = {
+          type: DRAW_MODES.POLYGON,
+          points: [pos.x, pos.y, pos.x, pos.y],
           stroke: drawStrokeColor,
           strokeWidth: drawStrokeWidth,
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
-        });
+        };
+        liveDrawingRef.current = initPoly;
+        setLiveDrawing(initPoly);
+      } else {
+        const startX = polygonVertices[0];
+        const startY = polygonVertices[1];
+        const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
+
+        if (distToStart < 25 && polygonVertices.length >= 6) {
+          const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const finalPolygon = {
+            id: uniqueId,
+            clientDrawingId: uniqueId,
+            type: DRAW_MODES.POLYGON,
+            points: polygonVertices,
+            stroke: drawStrokeColor,
+            strokeWidth: drawStrokeWidth,
+            fill: drawFillColor,
+            isGMLayer: isDrawGMLayer,
+            sceneId: currentScene?.id,
+          };
+          addDrawing(finalPolygon);
+          wsService.send("DRAWING_ADD", finalPolygon);
+          setPolygonVertices([]);
+          setLiveDrawing(null);
+          liveDrawingRef.current = null;
+        } else {
+          const nextPoints = [...polygonVertices, pos.x, pos.y];
+          setPolygonVertices(nextPoints);
+          const currentPoly = {
+            type: DRAW_MODES.POLYGON,
+            points: [...nextPoints, pos.x, pos.y],
+            stroke: drawStrokeColor,
+            strokeWidth: drawStrokeWidth,
+            fill: drawFillColor,
+            isGMLayer: isDrawGMLayer,
+          };
+          liveDrawingRef.current = currentPoly;
+          setLiveDrawing(currentPoly);
+        }
+      }
+      return;
+    }
+
+    // رسم سایر اشکال
+    if (activeTool === TOOLS.DRAW) {
+      isInteracting.current = true;
+      setShapeStart(pos);
+
+      let initialDraw = null;
+      if (activeDrawShape === DRAW_MODES.MARKER || activeDrawShape === DRAW_MODES.BRUSH) {
+        const initialPoints = [pos.x, pos.y];
+        setCurrentLinePoints(initialPoints);
+        initialDraw = {
+          type: activeDrawShape,
+          points: initialPoints,
+          stroke: drawStrokeColor,
+          strokeWidth: drawStrokeWidth,
+          fill: activeDrawShape === DRAW_MODES.BRUSH ? drawFillColor : "transparent",
+          isGMLayer: isDrawGMLayer,
+        };
+      } else if (activeDrawShape === DRAW_MODES.RECTANGLE) {
+        initialDraw = {
+          type: DRAW_MODES.RECTANGLE,
+          x: pos.x,
+          y: pos.y,
+          width: 0,
+          height: 0,
+          stroke: drawStrokeColor,
+          strokeWidth: drawStrokeWidth,
+          fill: drawFillColor,
+          isGMLayer: isDrawGMLayer,
+        };
+      } else if (activeDrawShape === DRAW_MODES.CIRCLE || activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
+        initialDraw = {
+          type: activeDrawShape,
+          x: pos.x,
+          y: pos.y,
+          radius: 0,
+          stroke: drawStrokeColor,
+          strokeWidth: drawStrokeWidth,
+          fill: drawFillColor,
+          isGMLayer: isDrawGMLayer,
+        };
+      } else if (activeDrawShape === DRAW_MODES.LINE) {
+        initialDraw = {
+          type: DRAW_MODES.LINE,
+          points: [pos.x, pos.y, pos.x, pos.y],
+          stroke: drawStrokeColor,
+          strokeWidth: drawStrokeWidth,
+          isGMLayer: isDrawGMLayer,
+        };
+      }
+
+      if (initialDraw) {
+        liveDrawingRef.current = initialDraw;
+        setLiveDrawing(initialDraw);
+        wsService.send("DRAWING_LIVE", { ...initialDraw, sceneId: currentScene?.id });
       }
     }
 
     if (activeTool === TOOLS.TEXT) {
       const textContent = prompt("متن مورد نظر را وارد کنید:");
       if (textContent && textContent.trim()) {
+        const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const newTextDraw = {
-          id: `text-${Date.now()}`,
+          id: uniqueId,
+          clientDrawingId: uniqueId,
           type: "text",
-          x: pos.x,
-          y: pos.y,
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
           text: textContent.trim(),
-          fontSize: 20,
+          fontSize: textFontSize || 22,
           fontFamily: "Vazirmatn",
-          stroke: drawStrokeColor,
+          fill: textColor || drawStrokeColor,
+          stroke: textColor || drawStrokeColor,
           strokeWidth: 1,
           isGMLayer: isDrawGMLayer,
+          sceneId: currentScene?.id,
         };
         addDrawing(newTextDraw);
-        wsService.send("DRAWING_ADD", {
-          ...newTextDraw,
-          sceneId: currentScene?.id,
-        });
+        wsService.send("DRAWING_ADD", newTextDraw);
       }
     }
 
@@ -207,14 +373,12 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       isInteracting.current = true;
       setShapeStart(pos);
 
-      if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND) {
-        setCurrentLinePoints([pos.x, pos.y]);
-      } else if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE) {
+      if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE) {
         const fogShape = {
           id: `fog-${Date.now()}`,
           type: "circle",
-          x: pos.x,
-          y: pos.y,
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
           radius: fogBrushRadius || 70,
           isCover: fogAction === FOG_ACTIONS.HIDE,
         };
@@ -223,6 +387,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           ...fogShape,
           sceneId: currentScene?.id,
         });
+      } else if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND) {
+        setCurrentLinePoints([pos.x, pos.y]);
       }
     }
   };
@@ -233,6 +399,27 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (activeTool === TOOLS.LASER) {
       setLaserPosition(pos);
+      wsService.send("LASER_MOVE", {
+        x: pos.x,
+        y: pos.y,
+        userId: user?.id,
+        userName: user?.username,
+        color: isGM ? "#f59e0b" : "#10b981",
+      });
+    }
+
+    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length > 0) {
+      const polyPreview = {
+        type: DRAW_MODES.POLYGON,
+        points: [...polygonVertices, pos.x, pos.y],
+        stroke: drawStrokeColor,
+        strokeWidth: drawStrokeWidth,
+        fill: drawFillColor,
+        isGMLayer: isDrawGMLayer,
+      };
+      liveDrawingRef.current = polyPreview;
+      setLiveDrawing(polyPreview);
+      return;
     }
 
     if (!isInteracting.current) return;
@@ -242,19 +429,21 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     if (activeTool === TOOLS.DRAW && shapeStart) {
+      let updatedDraw = null;
+
       if (activeDrawShape === DRAW_MODES.MARKER || activeDrawShape === DRAW_MODES.BRUSH) {
         const updatedPoints = [...currentLinePoints, pos.x, pos.y];
         setCurrentLinePoints(updatedPoints);
-        setLiveDrawing({
+        updatedDraw = {
           type: activeDrawShape,
           points: updatedPoints,
           stroke: drawStrokeColor,
           strokeWidth: drawStrokeWidth,
-          fill: drawFillColor,
+          fill: activeDrawShape === DRAW_MODES.BRUSH ? drawFillColor : "transparent",
           isGMLayer: isDrawGMLayer,
-        });
+        };
       } else if (activeDrawShape === DRAW_MODES.RECTANGLE) {
-        setLiveDrawing({
+        updatedDraw = {
           type: DRAW_MODES.RECTANGLE,
           x: Math.min(shapeStart.x, pos.x),
           y: Math.min(shapeStart.y, pos.y),
@@ -264,10 +453,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           strokeWidth: drawStrokeWidth,
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
-        });
+        };
       } else if (activeDrawShape === DRAW_MODES.CIRCLE) {
-        const radius = Math.sqrt(Math.pow(pos.x - shapeStart.x, 2) + Math.pow(pos.y - shapeStart.y, 2));
-        setLiveDrawing({
+        const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
+        updatedDraw = {
           type: DRAW_MODES.CIRCLE,
           x: shapeStart.x,
           y: shapeStart.y,
@@ -276,10 +465,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           strokeWidth: drawStrokeWidth,
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
-        });
+        };
       } else if (activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
-        const radius = Math.sqrt(Math.pow(pos.x - shapeStart.x, 2) + Math.pow(pos.y - shapeStart.y, 2));
-        setLiveDrawing({
+        const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
+        updatedDraw = {
           type: activeDrawShape,
           x: shapeStart.x,
           y: shapeStart.y,
@@ -288,15 +477,26 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           strokeWidth: drawStrokeWidth,
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
-        });
+        };
       } else if (activeDrawShape === DRAW_MODES.LINE) {
-        setLiveDrawing({
+        updatedDraw = {
           type: DRAW_MODES.LINE,
           points: [shapeStart.x, shapeStart.y, pos.x, pos.y],
           stroke: drawStrokeColor,
           strokeWidth: drawStrokeWidth,
           isGMLayer: isDrawGMLayer,
-        });
+        };
+      }
+
+      if (updatedDraw) {
+        liveDrawingRef.current = updatedDraw;
+        setLiveDrawing(updatedDraw);
+
+        const now = Date.now();
+        if (now - lastBroadcastTime.current > 30) {
+          lastBroadcastTime.current = now;
+          wsService.send("DRAWING_LIVE", { ...updatedDraw, sceneId: currentScene?.id });
+        }
       }
     }
 
@@ -308,22 +508,28 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   };
 
   const handleMouseUp = () => {
+    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
+      return;
+    }
+
     if (!isInteracting.current || !hasActiveMap) return;
-    const pos = getPointerCanvasPos();
 
     if (activeTool === TOOLS.DRAW && shapeStart) {
-      if (liveDrawing) {
+      const finalShape = liveDrawingRef.current;
+      if (finalShape) {
+        const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const newDraw = {
-          ...liveDrawing,
-          id: `draw-${Date.now()}`,
+          ...finalShape,
+          id: uniqueId,
+          clientDrawingId: uniqueId,
+          sceneId: currentScene?.id,
         };
         addDrawing(newDraw);
-        wsService.send("DRAWING_ADD", {
-          ...newDraw,
-          sceneId: currentScene?.id,
-        });
+        wsService.send("DRAWING_ADD", newDraw);
       }
 
+      wsService.send("DRAWING_LIVE_END", { sceneId: currentScene?.id });
+      liveDrawingRef.current = null;
       setLiveDrawing(null);
       setCurrentLinePoints([]);
       setShapeStart(null);
@@ -331,6 +537,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog) && shapeStart) {
+      const pos = getPointerCanvasPos();
       if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
         const w = pos.x - shapeStart.x;
         const h = pos.y - shapeStart.y;
@@ -368,10 +575,35 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       setShapeStart(null);
       isInteracting.current = false;
     }
+
+    isInteracting.current = false;
   };
 
   const handleDblClick = (e) => {
     if (!hasActiveMap) return;
+
+    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length >= 6) {
+      const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const finalPolygon = {
+        id: uniqueId,
+        clientDrawingId: uniqueId,
+        type: DRAW_MODES.POLYGON,
+        points: polygonVertices,
+        stroke: drawStrokeColor,
+        strokeWidth: drawStrokeWidth,
+        fill: drawFillColor,
+        isGMLayer: isDrawGMLayer,
+        sceneId: currentScene?.id,
+      };
+      addDrawing(finalPolygon);
+      wsService.send("DRAWING_ADD", finalPolygon);
+      setPolygonVertices([]);
+      setLiveDrawing(null);
+      liveDrawingRef.current = null;
+      return;
+    }
+
+    if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.PAN) return;
     if (e.target.findAncestor?.("#tokens-layer-group")) return;
 
     const pos = getPointerCanvasPos();
@@ -396,7 +628,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           }}
           onContextMenu={(e) => e.preventDefault()}
       >
-        {/* الگوی گرید پس‌زمینه */}
         <div
             className="absolute inset-0 opacity-[0.06] pointer-events-none"
             style={{
@@ -405,7 +636,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             }}
         />
 
-        {/* کارت راهنما قبل از آپلود مپ */}
         {!hasActiveMap && (
             <div
                 className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center overflow-y-auto custom-scrollbar pointer-events-auto"
@@ -494,7 +724,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             </div>
         )}
 
-        {/* بوم اصلی */}
         <Stage
             ref={stageRef}
             width={dimensions.width}
@@ -503,7 +732,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             scaleY={zoom}
             x={stageX}
             y={stageY}
-            draggable={hasActiveMap && activeTool === TOOLS.PAN}
+            draggable={isStageDraggable}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -511,7 +740,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             onDblClick={handleDblClick}
             onContextMenu={(e) => e.evt.preventDefault()}
             onDragEnd={(e) => {
-              if (e.target === stageRef.current && activeTool === TOOLS.PAN) {
+              if (e.target === stageRef.current && isStageDraggable) {
                 setStagePos(e.target.x(), e.target.y());
               }
             }}
@@ -539,9 +768,14 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 <Layer
                     id="layer-canvas-features"
                     clip={{ x: 0, y: 0, width: mapWidth, height: mapHeight }}
-                    listening={activeTool === TOOLS.DRAW || activeTool === TOOLS.FOG || activeTool === TOOLS.RULER}
+                    listening={true}
                 >
-                  <DrawingLayer liveDrawing={liveDrawing} />
+                  <DrawingLayer
+                      liveDrawing={liveDrawing}
+                      isEraser={isEraserActive}
+                      isSelectMode={isSelectMode}
+                      onErase={handleEraseDrawing}
+                  />
                   <FogLayer
                       width={mapWidth}
                       height={mapHeight}
@@ -551,7 +785,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 </Layer>
 
                 {/* لایه ۳: توکن‌ها */}
-                <Layer id="layer-tokens" listening={true}>
+                <Layer
+                    id="layer-tokens"
+                    listening={isSelectMode}
+                >
                   <TokenLayer gridSize={currentScene?.grid?.size || 60} isGM={isGM} />
                 </Layer>
               </>

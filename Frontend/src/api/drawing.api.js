@@ -9,4 +9,16 @@ export const drawingApi = {
       return [];
     }
   },
+
+  deleteDrawing: async (drawingId, sceneId = null) => {
+    try {
+      const res = await api.delete(`/drawings/${encodeURIComponent(drawingId)}`, {
+        params: sceneId ? { sceneId } : {},
+      });
+      return res.data;
+    } catch (err) {
+      console.warn("خطا در حذف دیتابیس نقاشی:", err);
+      return false;
+    }
+  },
 };
