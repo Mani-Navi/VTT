@@ -11,7 +11,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DrawingEvent {
-    private String drawingId; // اصلاح نوع داده از UUID به String جهت جلوگیری از خطای جکسون
+    private String drawingId;
     private UUID sceneId;
     private String id;
     private String clientDrawingId;
@@ -27,7 +27,13 @@ public class DrawingEvent {
     private Double width;
     private Double height;
     private Double radius;
+
+    // فیلدهای متن اضافه شدند
     private String text;
+    private String fontFamily;
+    private String fontStyle;
+    private Double fontSize;
+
     private Double scaleX;
     private Double scaleY;
     private Double rotation;

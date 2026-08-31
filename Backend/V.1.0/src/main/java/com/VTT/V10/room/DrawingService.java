@@ -74,7 +74,13 @@ public class DrawingService {
             if (event.getWidth() != null) drawing.setWidth(event.getWidth());
             if (event.getHeight() != null) drawing.setHeight(event.getHeight());
             if (event.getRadius() != null) drawing.setRadius(event.getRadius());
+
+            // به‌روزرسانی مشخصات متن
             if (event.getText() != null) drawing.setText(event.getText());
+            if (event.getFontFamily() != null) drawing.setFontFamily(event.getFontFamily());
+            if (event.getFontStyle() != null) drawing.setFontStyle(event.getFontStyle());
+            if (event.getFontSize() != null) drawing.setFontSize(event.getFontSize());
+
             if (event.getScaleX() != null) drawing.setScaleX(event.getScaleX());
             if (event.getScaleY() != null) drawing.setScaleY(event.getScaleY());
             if (event.getRotation() != null) drawing.setRotation(event.getRotation());
@@ -97,6 +103,9 @@ public class DrawingService {
                     .height(event.getHeight())
                     .radius(event.getRadius())
                     .text(event.getText())
+                    .fontFamily(event.getFontFamily())
+                    .fontStyle(event.getFontStyle())
+                    .fontSize(event.getFontSize())
                     .scaleX(event.getScaleX() != null ? event.getScaleX() : 1.0)
                     .scaleY(event.getScaleY() != null ? event.getScaleY() : 1.0)
                     .rotation(event.getRotation() != null ? event.getRotation() : 0.0)
@@ -115,7 +124,6 @@ public class DrawingService {
         String cleanId = drawingIdStr.trim();
         log.info("Deleting drawing with identifier: '{}'", cleanId);
 
-        // ۱. حذف بر اساس UUID
         try {
             UUID uuid = UUID.fromString(cleanId);
             int count = drawingRepository.deleteByIdDirect(uuid);
@@ -126,7 +134,6 @@ public class DrawingService {
             }
         } catch (IllegalArgumentException ignored) {}
 
-        // ۲. حذف بر اساس ClientDrawingId
         int clientCount = drawingRepository.deleteByClientDrawingIdDirect(cleanId);
         if (clientCount > 0) {
             drawingRepository.flush();
@@ -134,7 +141,6 @@ public class DrawingService {
             return;
         }
 
-        // ۳. حذف قطعی با کوئری بومی PostgreSQL
         try {
             int nativeCount = drawingRepository.deleteByAnyIdNative(cleanId);
             drawingRepository.flush();
@@ -175,6 +181,9 @@ public class DrawingService {
                 .scaleY(d.getScaleY() != null ? d.getScaleY() : 1.0)
                 .rotation(d.getRotation() != null ? d.getRotation() : 0.0)
                 .text(d.getText())
+                .fontFamily(d.getFontFamily())
+                .fontStyle(d.getFontStyle())
+                .fontSize(d.getFontSize())
                 .points(d.getPoints())
                 .isGMLayer(d.getIsGMLayer())
                 .isVisible(d.getIsVisible())

@@ -28,7 +28,13 @@ public class DrawingResponse {
     private Double scaleX;
     private Double scaleY;
     private Double rotation;
+
+    // فیلدهای متن اضافه شدند
     private String text;
+    private String fontFamily;
+    private String fontStyle;
+    private Double fontSize;
+
     private Object points;
     private Boolean isGMLayer;
     private Boolean isVisible;

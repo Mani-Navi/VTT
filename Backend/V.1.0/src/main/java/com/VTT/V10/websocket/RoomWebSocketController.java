@@ -162,10 +162,30 @@ public class RoomWebSocketController {
 
         roomService.updateLastActive(roomId, principal.getName());
 
-        if (hasPermission(roomId, principal.getName(), "DRAWING")) {
+        DrawingEvent data = event.getData();
+        boolean isText = "text".equalsIgnoreCase(data.getType()) || "text".equalsIgnoreCase(data.getTool());
+
+        // دسترسی هم برای DRAWING و هم برای TEXT بررسی می‌شود
+        boolean allowed = isText
+                ? (hasPermission(roomId, principal.getName(), "TEXT") || hasPermission(roomId, principal.getName(), "DRAWING"))
+                : hasPermission(roomId, principal.getName(), "DRAWING");
+
+        if (allowed) {
             try {
-                if (event.getData().getSceneId() != null) {
-                    drawingService.saveOrUpdateDrawing(event.getData().getSceneId(), event.getData());
+                UUID sceneId = data.getSceneId();
+                if (sceneId == null) {
+                    var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+                    if (activeSceneOpt.isPresent()) {
+                        sceneId = activeSceneOpt.get().getId();
+                    } else {
+                        var scenes = sceneRepository.findByRoomId(roomId);
+                        if (!scenes.isEmpty()) {
+                            sceneId = scenes.get(0).getId();
+                        }
+                    }
+                }
+                if (sceneId != null) {
+                    drawingService.saveOrUpdateDrawing(sceneId, data);
                 }
             } catch (Exception e) {
                 log.warn("Drawing save/update in DB warning: {}", e.getMessage());
@@ -184,17 +204,30 @@ public class RoomWebSocketController {
 
         roomService.updateLastActive(roomId, principal.getName());
 
-        if (hasPermission(roomId, principal.getName(), "DRAWING")) {
-            try {
-                String targetId = event.getData().getClientDrawingId() != null
-                        ? event.getData().getClientDrawingId()
-                        : (event.getData().getId() != null ? event.getData().getId() : event.getData().getDrawingId());
+        DrawingEvent data = event.getData();
+        boolean isText = "text".equalsIgnoreCase(data.getType()) || "text".equalsIgnoreCase(data.getTool());
 
-                drawingService.deleteDrawing(event.getData().getSceneId(), targetId);
+        boolean allowed = isText
+                ? (hasPermission(roomId, principal.getName(), "TEXT") || hasPermission(roomId, principal.getName(), "DRAWING"))
+                : hasPermission(roomId, principal.getName(), "DRAWING");
+
+        if (allowed) {
+            try {
+                String targetId = data.getClientDrawingId() != null
+                        ? data.getClientDrawingId()
+                        : (data.getId() != null ? data.getId() : data.getDrawingId());
+
+                UUID sceneId = data.getSceneId();
+                if (sceneId == null) {
+                    var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+                    if (activeSceneOpt.isPresent()) {
+                        sceneId = activeSceneOpt.get().getId();
+                    }
+                }
+                drawingService.deleteDrawing(sceneId, targetId);
             } catch (Exception e) {
                 log.warn("Drawing delete DB error: {}", e.getMessage());
             }
-            // برادکست به همه اعضای اتاق
             messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
         }
     }
@@ -279,6 +312,7 @@ public class RoomWebSocketController {
             PlayerPermission perm = permOpt.get();
             return switch (action) {
                 case "DRAWING" -> Boolean.TRUE.equals(perm.getCanDrawing());
+                case "TEXT" -> Boolean.TRUE.equals(perm.getCanText());
                 case "FOG" -> Boolean.TRUE.equals(perm.getCanFog());
                 case "SCENE" -> Boolean.TRUE.equals(perm.getCanScene());
                 case "ASSETS" -> Boolean.TRUE.equals(perm.getCanAssets());

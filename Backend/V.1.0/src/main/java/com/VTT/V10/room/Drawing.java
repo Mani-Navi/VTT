@@ -38,7 +38,13 @@ public class Drawing {
     private Double width;
     private Double height;
     private Double radius;
+
+    // مشخصات کامل متن
+    @Column(columnDefinition = "TEXT")
     private String text;
+    private String fontFamily;
+    private String fontStyle;
+    private Double fontSize;
 
     @Builder.Default
     private Double scaleX = 1.0;
