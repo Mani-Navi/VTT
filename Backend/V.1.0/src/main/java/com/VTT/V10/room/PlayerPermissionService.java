@@ -3,20 +3,28 @@ package com.VTT.V10.room;
 import com.VTT.V10.room.dto.PermissionResponse;
 import com.VTT.V10.room.dto.UpdatePermissionRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlayerPermissionService {
     private final PlayerPermissionRepository permissionRepository;
+    private final RoomMemberRepository roomMemberRepository;
 
     @Transactional
     public void createDefaultPermissions(Room room, RoomMember member) {
+        if (member == null || room == null) return;
+        Optional<PlayerPermission> existing = permissionRepository.findByMemberId(member.getId());
+        if (existing.isPresent()) return;
+
         PlayerPermission permission = PlayerPermission.builder()
                 .room(room)
                 .member(member)
@@ -33,8 +41,28 @@ public class PlayerPermissionService {
 
     @Transactional
     public PermissionResponse updatePermissions(UpdatePermissionRequest request) {
-        PlayerPermission perm = permissionRepository.findByMemberId(request.getMemberId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "دسترسی برای این عضو یافت نشد"));
+        if (request == null || request.getMemberId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "شناسه عضو الزامی است");
+        }
+
+        UUID memberId = request.getMemberId();
+        PlayerPermission perm = permissionRepository.findByMemberId(memberId).orElseGet(() -> {
+            // ساخت خودکار در صورت نبود سطر قبلی
+            RoomMember member = roomMemberRepository.findById(memberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "عضو اتاق یافت نشد"));
+
+            return PlayerPermission.builder()
+                    .room(member.getRoom())
+                    .member(member)
+                    .canAssets(false)
+                    .canText(false)
+                    .canFog(false)
+                    .canDrawing(false)
+                    .canScene(false)
+                    .canRuler(true)
+                    .canEditToken(false)
+                    .build();
+        });
 
         if (request.getCanAssets() != null) perm.setCanAssets(request.getCanAssets());
         if (request.getCanFog() != null) perm.setCanFog(request.getCanFog());
@@ -44,14 +72,29 @@ public class PlayerPermissionService {
         if (request.getCanRuler() != null) perm.setCanRuler(request.getCanRuler());
         if (request.getCanEditToken() != null) perm.setCanEditToken(request.getCanEditToken());
 
-        permissionRepository.save(perm);
+        permissionRepository.saveAndFlush(perm);
         return convertToResponse(perm);
     }
 
     @Transactional(readOnly = true)
     public PermissionResponse getMemberPermissions(UUID memberId) {
-        PlayerPermission perm = permissionRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "دسترسی برای این عضو یافت نشد"));
+        PlayerPermission perm = permissionRepository.findByMemberId(memberId).orElseGet(() -> {
+            RoomMember member = roomMemberRepository.findById(memberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "عضو اتاق یافت نشد"));
+
+            return PlayerPermission.builder()
+                    .room(member.getRoom())
+                    .member(member)
+                    .canAssets(false)
+                    .canText(false)
+                    .canFog(false)
+                    .canDrawing(false)
+                    .canScene(false)
+                    .canRuler(true)
+                    .canEditToken(false)
+                    .build();
+        });
+
         return convertToResponse(perm);
     }
 
