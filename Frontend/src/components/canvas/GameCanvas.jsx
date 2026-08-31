@@ -29,6 +29,7 @@ import {
 export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const containerRef = useRef(null);
   const stageRef = useRef(null);
+  const textEditorInputRef = useRef(null);
 
   const [dimensions, setDimensions] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1920,
@@ -49,8 +50,19 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const drawStrokeWidth = useCanvasStore((state) => state.drawStrokeWidth);
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
   const isDrawGMLayer = useCanvasStore((state) => state.isDrawGMLayer);
+
+  // استیت‌های پیشرفته متن
+  const textFontFamily = useCanvasStore((state) => state.textFontFamily || "Vazirmatn");
   const textFontSize = useCanvasStore((state) => state.textFontSize || 24);
-  const textColor = useCanvasStore((state) => state.textColor || drawStrokeColor);
+  const textColor = useCanvasStore((state) => state.textColor || "#f59e0b");
+  const textIsBold = useCanvasStore((state) => state.textIsBold);
+  const textIsItalic = useCanvasStore((state) => state.textIsItalic);
+  const textHasStroke = useCanvasStore((state) => state.textHasStroke);
+  const textStrokeColor = useCanvasStore((state) => state.textStrokeColor || "#000000");
+  const textStrokeWidth = useCanvasStore((state) => state.textStrokeWidth || 2);
+  const pendingEmoji = useCanvasStore((state) => state.pendingEmoji);
+  const setPendingEmoji = useCanvasStore((state) => state.setPendingEmoji);
+
   const rulerType = useCanvasStore((state) => state.rulerType);
 
   const setZoom = useCanvasStore((state) => state.setZoom);
@@ -76,6 +88,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const [polygonVertices, setPolygonVertices] = useState([]);
   const [shapeStart, setShapeStart] = useState(null);
   const isInteracting = useRef(false);
+
+  // استیت ادیتور متن روی مپ
+  const [inlineTextEditor, setInlineTextEditor] = useState(null);
+  const isTextEditorOpenRef = useRef(false);
 
   const lastBroadcastTime = useRef(0);
   const lastLaserBroadcastTime = useRef(0);
@@ -153,6 +169,93 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       [removeDrawing, currentScene?.id]
   );
 
+  // پایان ویرایش متن و ثبت بدون پرش
+  const finishInlineText = useCallback(() => {
+    if (!inlineTextEditor) return;
+    const textVal = inlineTextEditor.text ? inlineTextEditor.text.trim() : "";
+
+    if (textVal) {
+      const uniqueId = inlineTextEditor.id || `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      let fontStyleStr = "normal";
+      if (textIsBold && textIsItalic) fontStyleStr = "italic bold";
+      else if (textIsBold) fontStyleStr = "bold";
+      else if (textIsItalic) fontStyleStr = "italic";
+
+      const textPayload = {
+        id: uniqueId,
+        clientDrawingId: uniqueId,
+        type: "text",
+        x: Math.round(inlineTextEditor.canvasX),
+        y: Math.round(inlineTextEditor.canvasY),
+        text: textVal,
+        fontSize: inlineTextEditor.fontSize || textFontSize || 24,
+        fontFamily: inlineTextEditor.fontFamily || textFontFamily || "Vazirmatn",
+        fontStyle: fontStyleStr,
+        fill: inlineTextEditor.fill || textColor || "#f59e0b",
+        stroke: textHasStroke ? textStrokeColor : undefined,
+        strokeWidth: textHasStroke ? textStrokeWidth : 0,
+        isGMLayer: isDrawGMLayer,
+        sceneId: currentScene?.id,
+      };
+
+      addDrawing(textPayload);
+      wsService.send("DRAWING_ADD", textPayload);
+    }
+
+    isTextEditorOpenRef.current = false;
+    setInlineTextEditor(null);
+  }, [
+    inlineTextEditor,
+    textIsBold,
+    textIsItalic,
+    textFontSize,
+    textFontFamily,
+    textColor,
+    textHasStroke,
+    textStrokeColor,
+    textStrokeWidth,
+    isDrawGMLayer,
+    currentScene?.id,
+    addDrawing,
+  ]);
+
+  useEffect(() => {
+    if (inlineTextEditor && !isTextEditorOpenRef.current) {
+      isTextEditorOpenRef.current = true;
+      setTimeout(() => {
+        if (textEditorInputRef.current) {
+          textEditorInputRef.current.focus();
+          const len = textEditorInputRef.current.value.length;
+          textEditorInputRef.current.setSelectionRange(len, len);
+        }
+      }, 10);
+    }
+  }, [inlineTextEditor]);
+
+  useEffect(() => {
+    if (pendingEmoji) {
+      if (inlineTextEditor) {
+        setInlineTextEditor((prev) => ({
+          ...prev,
+          text: (prev.text || "") + pendingEmoji,
+        }));
+      } else {
+        const centerX = (dimensions.width / 2 - stageX) / zoom;
+        const centerY = (dimensions.height / 2 - stageY) / zoom;
+        setInlineTextEditor({
+          canvasX: centerX,
+          canvasY: centerY,
+          text: pendingEmoji,
+          fontFamily: textFontFamily,
+          fontSize: textFontSize,
+          fill: textColor,
+        });
+      }
+      setPendingEmoji(null);
+    }
+  }, [pendingEmoji, inlineTextEditor, dimensions, stageX, stageY, zoom, textFontFamily, textFontSize, textColor, setPendingEmoji]);
+
   useEffect(() => {
     const handleEscapeKey = (e) => {
       if (e.key === "Escape") {
@@ -163,12 +266,16 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           endMeasurement();
           wsService.send("RULER_CLEAR", { userId: myIdentifier });
         }
+        if (inlineTextEditor) {
+          isTextEditorOpenRef.current = false;
+          setInlineTextEditor(null);
+        }
         isInteracting.current = false;
       }
     };
     window.addEventListener("keydown", handleEscapeKey);
     return () => window.removeEventListener("keydown", handleEscapeKey);
-  }, [activeTool, endMeasurement, myIdentifier]);
+  }, [activeTool, endMeasurement, myIdentifier, inlineTextEditor]);
 
   const handleWheel = (e) => {
     e.evt.preventDefault();
@@ -201,6 +308,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const handleMouseDown = (e) => {
     if (!hasActiveMap) return;
 
+    if (inlineTextEditor) {
+      finishInlineText();
+    }
+
     const isClickedOnEmpty = e.target === e.target.getStage() || e.target.name() === "map-background";
     if (isClickedOnEmpty) {
       clearSelection();
@@ -215,6 +326,20 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (isEraserActive) {
       isInteracting.current = true;
+      return;
+    }
+
+    // باز کردن ادیتور متن با تراز دقیق نقطه کلیک
+    if (activeTool === TOOLS.TEXT) {
+      isTextEditorOpenRef.current = false;
+      setInlineTextEditor({
+        canvasX: pos.x,
+        canvasY: pos.y,
+        text: "",
+        fontFamily: textFontFamily,
+        fontSize: textFontSize,
+        fill: textColor,
+      });
       return;
     }
 
@@ -357,7 +482,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       } else if (activeDrawShape === DRAW_MODES.LINE) {
         initialDraw = {
           type: DRAW_MODES.LINE,
-          points: [pos.x, pos.y, pos.x, pos.y],
+          points: [shapeStart.x, shapeStart.y, pos.x, pos.y],
           stroke: drawStrokeColor,
           strokeWidth: drawStrokeWidth,
           isGMLayer: isDrawGMLayer,
@@ -368,30 +493,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         liveDrawingRef.current = initialDraw;
         setLiveDrawing(initialDraw);
         wsService.send("DRAWING_LIVE", { ...initialDraw, sceneId: currentScene?.id });
-      }
-    }
-
-    if (activeTool === TOOLS.TEXT) {
-      const textContent = prompt("متن مورد نظر را وارد کنید:");
-      if (textContent && textContent.trim()) {
-        const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const newTextDraw = {
-          id: uniqueId,
-          clientDrawingId: uniqueId,
-          type: "text",
-          x: Math.round(pos.x),
-          y: Math.round(pos.y),
-          text: textContent.trim(),
-          fontSize: textFontSize || 22,
-          fontFamily: "Vazirmatn",
-          fill: textColor || drawStrokeColor,
-          stroke: textColor || drawStrokeColor,
-          strokeWidth: 1,
-          isGMLayer: isDrawGMLayer,
-          sceneId: currentScene?.id,
-        };
-        addDrawing(newTextDraw);
-        wsService.send("DRAWING_ADD", newTextDraw);
       }
     }
 
@@ -439,7 +540,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    // به‌روزرسانی و ارسال زنده خط‌کش
     if (activeTool === TOOLS.RULER && isInteracting.current) {
       updateMeasurement(pos.x, pos.y);
 
@@ -556,7 +656,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
   const handleMouseUp = () => {
     if (activeTool === TOOLS.RULER) {
-      return; // خط‌کش با کلیک‌های بعدی یا راست‌کلیک متوقف می‌شود
+      return;
     }
 
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
@@ -587,9 +687,9 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       isInteracting.current = false;
     }
 
-    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog) && shapeStart) {
+    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
       const pos = getPointerCanvasPos();
-      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
+      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE && shapeStart) {
         const w = pos.x - shapeStart.x;
         const h = pos.y - shapeStart.y;
         if (Math.abs(w) > 5 && Math.abs(h) > 5) {
@@ -680,7 +780,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       <div
           ref={containerRef}
           id="vtt-game-canvas-container"
-          className="relative w-full h-full overflow-hidden select-none"
+          dir="ltr"
+          className={`relative w-full h-full overflow-hidden select-none ${
+              activeTool === TOOLS.TEXT ? "cursor-text" : ""
+          }`}
           style={{
             background: "radial-gradient(circle at center, #111420 0%, #07080c 100%)",
           }}
@@ -693,6 +796,59 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
               backgroundSize: "60px 60px"
             }}
         />
+
+        {/* نوشتن متن با تایپ تمیز و بدون هیچ خط، کادر یا اسکرول‌بار */}
+        {inlineTextEditor && (
+            <div
+                className="absolute z-50 pointer-events-auto"
+                style={{
+                  left: `${stageX + inlineTextEditor.canvasX * zoom}px`,
+                  top: `${stageY + inlineTextEditor.canvasY * zoom}px`,
+                  transform: "translate(0, 0)",
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+            >
+              <input
+                  ref={textEditorInputRef}
+                  type="text"
+                  value={inlineTextEditor.text}
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setInlineTextEditor((prev) => (prev ? { ...prev, text: nextVal } : null));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      finishInlineText();
+                    } else if (e.key === "Escape") {
+                      isTextEditorOpenRef.current = false;
+                      setInlineTextEditor(null);
+                    }
+                  }}
+                  onBlur={finishInlineText}
+                  className="bg-transparent border-0 outline-0 p-0 m-0 shadow-none ring-0 focus:ring-0 focus:outline-none"
+                  style={{
+                    fontFamily: inlineTextEditor.fontFamily || textFontFamily,
+                    fontSize: `${Math.max(14, (inlineTextEditor.fontSize || textFontSize) * zoom)}px`,
+                    color: inlineTextEditor.fill || textColor,
+                    caretColor: inlineTextEditor.fill || textColor,
+                    fontWeight: textIsBold ? "bold" : "normal",
+                    fontStyle: textIsItalic ? "italic" : "normal",
+                    textShadow: textHasStroke ? `-1px -1px 0 ${textStrokeColor}, 1px -1px 0 ${textStrokeColor}, -1px 1px 0 ${textStrokeColor}, 1px 1px 0 ${textStrokeColor}` : "none",
+                    lineHeight: "1.0",
+                    height: "auto",
+                    width: `${Math.max(40, (inlineTextEditor.text.length + 2) * (inlineTextEditor.fontSize || textFontSize) * zoom * 0.75)}px`,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    boxShadow: "none",
+                    appearance: "none",
+                  }}
+              />
+            </div>
+        )}
 
         {!hasActiveMap && (
             <div
@@ -823,7 +979,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
           {hasActiveMap && (
               <>
-                {/* لایه ۲: ترسیمات و مه جنگ */}
+                {/* لایه ۲: ترسیمات، متن و مه جنگ */}
                 <Layer
                     id="layer-canvas-features"
                     clip={{ x: 0, y: 0, width: mapWidth, height: mapHeight }}
@@ -836,6 +992,18 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                       isGM={isGM}
                       permissions={permissions}
                       onErase={handleEraseDrawing}
+                      onDblClickText={(textShape) => {
+                        isTextEditorOpenRef.current = false;
+                        setInlineTextEditor({
+                          id: String(textShape.clientDrawingId || textShape.id || textShape.drawingId),
+                          canvasX: textShape.x || 0,
+                          canvasY: textShape.y || 0,
+                          text: textShape.text || "",
+                          fontFamily: textShape.fontFamily || "Vazirmatn",
+                          fontSize: textShape.fontSize || 24,
+                          fill: textShape.fill || textColor,
+                        });
+                      }}
                   />
                   <FogLayer
                       width={mapWidth}

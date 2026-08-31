@@ -15,6 +15,7 @@ const SingleDrawingShape = ({
                               onSelect = null,
                               onErase = null,
                               onUpdate = null,
+                              onDblClick = null,
                               isGM = false,
                             }) => {
   const shapeRef = useRef(null);
@@ -31,9 +32,9 @@ const SingleDrawingShape = ({
   if (draw.isGMLayer && !isGM) return null;
 
   const opacity = isLive ? 0.75 : draw.isGMLayer ? 0.65 : 1;
-  const type = draw.type || draw.tool || "marker";
+  const type = String(draw.type || draw.tool || "marker").toLowerCase();
   const stroke = draw.stroke || draw.color || "#f59e0b";
-  const strokeWidth = draw.strokeWidth || draw.lineWidth || 4;
+  const strokeWidth = draw.strokeWidth !== undefined ? Number(draw.strokeWidth) : (draw.stroke_width !== undefined ? Number(draw.stroke_width) : (draw.lineWidth || 4));
   const drawId = String(draw.clientDrawingId || draw.id || draw.drawingId || "");
 
   const scaleX = draw.scaleX !== undefined && draw.scaleX !== null ? Number(draw.scaleX) : 1;
@@ -64,6 +65,13 @@ const SingleDrawingShape = ({
       handleEraseAction(e);
     } else if (isSelectMode && canModify && onSelect) {
       onSelect(drawId);
+    }
+  };
+
+  const handleDoubleClick = (e) => {
+    if (e && e.cancelBubble !== undefined) e.cancelBubble = true;
+    if (onDblClick && canModify) {
+      onDblClick(draw);
     }
   };
 
@@ -108,6 +116,8 @@ const SingleDrawingShape = ({
     listening: isInteractive,
     onClick: handleClick,
     onTap: handleClick,
+    onDblClick: handleDoubleClick,
+    onDblTap: handleDoubleClick,
     onMouseDown: (e) => {
       if (isEraser && canModify) handleEraseAction(e);
     },
@@ -254,13 +264,33 @@ const SingleDrawingShape = ({
       break;
 
     case "text":
-    case "TEXT":
+      const resolvedFontFamily = draw.fontFamily || draw.font_family || "Vazirmatn";
+      const resolvedFontSize = Number(draw.fontSize || draw.font_size || 24);
+      const resolvedFill = draw.fill || draw.color || draw.textColor || stroke || "#f59e0b";
+
+      let rawFontStyle = String(draw.fontStyle || draw.font_style || "").toLowerCase().trim();
+      if (!rawFontStyle) {
+        const isB = Boolean(draw.isBold || draw.is_bold || draw.bold);
+        const isI = Boolean(draw.isItalic || draw.is_italic || draw.italic);
+        if (isB && isI) rawFontStyle = "italic bold";
+        else if (isB) rawFontStyle = "bold";
+        else if (isI) rawFontStyle = "italic";
+        else rawFontStyle = "normal";
+      }
+
+      const textStroke = (draw.stroke || draw.strokeColor || draw.textStrokeColor) && strokeWidth > 0 ? (draw.stroke || draw.strokeColor || draw.textStrokeColor) : undefined;
+      const textStrokeW = textStroke ? strokeWidth : 0;
+
       renderedElement = (
           <Text
               text={draw.text || ""}
-              fontSize={draw.fontSize || 22}
-              fontFamily="Vazirmatn"
-              fill={draw.fill || stroke}
+              fontSize={resolvedFontSize}
+              fontFamily={resolvedFontFamily}
+              fontStyle={rawFontStyle}
+              fill={resolvedFill}
+              stroke={textStroke}
+              strokeWidth={textStrokeW}
+              lineHeight={1.0}
               opacity={opacity}
               {...commonProps}
           />
@@ -278,7 +308,7 @@ const SingleDrawingShape = ({
             <Transformer
                 ref={trRef}
                 rotateEnabled={true}
-                keepRatio={type === DRAW_MODES.CIRCLE || type === "circle" || type === DRAW_MODES.TRIANGLE || type === DRAW_MODES.HEXAGON}
+                keepRatio={type === DRAW_MODES.CIRCLE || type === "circle" || type === DRAW_MODES.TRIANGLE || type === DRAW_MODES.HEXAGON || type === "text"}
                 boundBoxFunc={(oldBox, newBox) => {
                   if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) {
                     return oldBox;
@@ -304,6 +334,7 @@ export const DrawingLayer = ({
                                isGM = false,
                                permissions = {},
                                onErase = null,
+                               onDblClickText = null,
                              }) => {
   const currentScene = useSceneStore((state) => state.currentScene);
   const remoteLiveDrawing = useSceneStore((state) => state.remoteLiveDrawing);
@@ -312,8 +343,7 @@ export const DrawingLayer = ({
   const selectedDrawingId = useCanvasStore((state) => state.selectedDrawingId);
   const setSelectedDrawingId = useCanvasStore((state) => state.setSelectedDrawingId);
 
-  // محاسبه دسترسی با اولویت پراپ‌های ارسال‌شده از صفحه اصلی
-  const canModifyDrawings = Boolean(isGM || permissions?.canDrawing === true);
+  const canModifyDrawings = Boolean(isGM || permissions?.canDrawing === true || permissions?.canText === true);
 
   const drawings = currentScene?.drawings || [];
 
@@ -350,6 +380,11 @@ export const DrawingLayer = ({
                   onSelect={setSelectedDrawingId}
                   onErase={onErase}
                   onUpdate={handleUpdateDrawing}
+                  onDblClick={(shape) => {
+                    if (String(shape.type).toLowerCase() === "text") {
+                      if (onDblClickText) onDblClickText(shape);
+                    }
+                  }}
                   isGM={isGM}
               />
           );

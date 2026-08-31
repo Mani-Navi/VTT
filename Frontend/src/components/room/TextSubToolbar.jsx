@@ -5,55 +5,103 @@ import {
     Heading1,
     Heading2,
     Smile,
-    Type,
+    Palette,
+    Layers,
+    Check
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
-import { TOOLS, TEXT_FONTS } from "../../constants/tools";
+import { TOOLS } from "../../constants/tools";
 import { cn } from "../../utils/cn";
 
-const EMOJI_LIST = ["⚔️", "🛡️", "🐉", "💀", "🔥", "💎", "📜", "🏹", "✨", "🎲"];
+const EMOJI_LIST = [
+    "⚔️", "🛡️", "🐉", "💀", "🔥",
+    "💎", "📜", "🏹", "✨", "🎲",
+    "❤️", "☠️", "👑", "🗡️", "🪄"
+];
+
+const TEXT_FONTS_LIST = [
+    { id: "Vazirmatn", label: "وزیرمتن (اصلی)" },
+    { id: "Sahel", label: "ساحل" },
+    { id: "Shabnam", label: "شبنم" },
+    { id: "Lalezar", label: "لاله‌زار (عنوان)" },
+    { id: "Cinzel", label: "Cinzel (فانتزی)" },
+    { id: "Arial", label: "Arial" },
+];
+
+const PRESET_COLORS = [
+    "#f59e0b", // Amber
+    "#ef4444", // Red
+    "#10b981", // Green
+    "#38bdf8", // Blue
+    "#a855f7", // Purple
+    "#ffffff", // White
+    "#000000", // Black
+];
 
 export const TextSubToolbar = () => {
     const activeTool = useCanvasStore((state) => state.activeTool);
-    const drawStrokeColor = useCanvasStore((state) => state.drawStrokeColor);
-    const setDrawStrokeColor = useCanvasStore((state) => state.setDrawStrokeColor);
 
-    const [fontFamily, setFontFamily] = useState("Vazirmatn");
-    const [isBold, setIsBold] = useState(false);
-    const [isItalic, setIsItalic] = useState(false);
-    const [headingMode, setHeadingMode] = useState("normal"); // normal | h1 | h2
+    const textFontFamily = useCanvasStore((state) => state.textFontFamily);
+    const setTextFontFamily = useCanvasStore((state) => state.setTextFontFamily);
+
+    const textColor = useCanvasStore((state) => state.textColor);
+    const setTextColor = useCanvasStore((state) => state.setTextColor);
+
+    const textIsBold = useCanvasStore((state) => state.textIsBold);
+    const setTextIsBold = useCanvasStore((state) => state.setTextIsBold);
+
+    const textIsItalic = useCanvasStore((state) => state.textIsItalic);
+    const setTextIsItalic = useCanvasStore((state) => state.setTextIsItalic);
+
+    const textHeading = useCanvasStore((state) => state.textHeading);
+    const setTextHeading = useCanvasStore((state) => state.setTextHeading);
+
+    const textHasStroke = useCanvasStore((state) => state.textHasStroke);
+    const setTextHasStroke = useCanvasStore((state) => state.setTextHasStroke);
+
+    const textStrokeColor = useCanvasStore((state) => state.textStrokeColor);
+    const setTextStrokeColor = useCanvasStore((state) => state.setTextStrokeColor);
+
+    const textStrokeWidth = useCanvasStore((state) => state.textStrokeWidth);
+    const setTextStrokeWidth = useCanvasStore((state) => state.setTextStrokeWidth);
+
+    const setPendingEmoji = useCanvasStore((state) => state.setPendingEmoji);
+
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+    const [isColorOpen, setIsColorOpen] = useState(false);
+    const [isStrokeMenuOpen, setIsStrokeMenuOpen] = useState(false);
 
     if (activeTool !== TOOLS.TEXT) return null;
 
     return (
         <div
-            className="flex items-center gap-2 p-1.5 bg-zinc-900/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150 text-zinc-200"
+            className="flex items-center gap-1.5 p-1.5 bg-zinc-900/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150 text-zinc-200"
             dir="rtl"
         >
-            {/* انتخاب فونت */}
+            {/* ۱. انتخاب فونت */}
             <select
-                value={fontFamily}
-                onChange={(e) => setFontFamily(e.target.value)}
-                className="px-2 py-1 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+                value={textFontFamily}
+                onChange={(e) => setTextFontFamily(e.target.value)}
+                className="px-2.5 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+                style={{ fontFamily: textFontFamily }}
             >
-                {TEXT_FONTS.map((font) => (
-                    <option key={font.id} value={font.id}>
+                {TEXT_FONTS_LIST.map((font) => (
+                    <option key={font.id} value={font.id} style={{ fontFamily: font.id }}>
                         {font.label}
                     </option>
                 ))}
             </select>
 
-            <div className="h-5 w-px bg-zinc-800" />
+            <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* کنترل‌های سبک متن: Bold / Italic */}
+            {/* ۲. کنترل‌های سبک متن: Bold / Italic */}
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
                 <button
                     type="button"
-                    onClick={() => setIsBold(!isBold)}
+                    onClick={() => setTextIsBold(!textIsBold)}
                     className={cn(
                         "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
-                        isBold ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        textIsBold ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
                     )}
                     title="درشت (Bold)"
                 >
@@ -62,10 +110,10 @@ export const TextSubToolbar = () => {
 
                 <button
                     type="button"
-                    onClick={() => setIsItalic(!isItalic)}
+                    onClick={() => setTextIsItalic(!textIsItalic)}
                     className={cn(
                         "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
-                        isItalic ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        textIsItalic ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
                     )}
                     title="مورب (Italic)"
                 >
@@ -73,58 +121,192 @@ export const TextSubToolbar = () => {
                 </button>
             </div>
 
-            {/* تیترها: H1 / H2 */}
+            {/* ۳. تیترها: H1 / H2 */}
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
                 <button
                     type="button"
-                    onClick={() => setHeadingMode(headingMode === "h1" ? "normal" : "h1")}
+                    onClick={() => setTextHeading("h1")}
                     className={cn(
                         "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
-                        headingMode === "h1" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        textHeading === "h1" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
                     )}
-                    title="تیتر اصلی (H1)"
+                    title="تیتر بزرگ (H1)"
                 >
                     <Heading1 className="w-3.5 h-3.5" />
                 </button>
 
                 <button
                     type="button"
-                    onClick={() => setHeadingMode(headingMode === "h2" ? "normal" : "h2")}
+                    onClick={() => setTextHeading("h2")}
                     className={cn(
                         "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
-                        headingMode === "h2" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        textHeading === "h2" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400 hover:text-zinc-200"
                     )}
-                    title="تیتر فرعی (H2)"
+                    title="تیتر متوسط (H2)"
                 >
                     <Heading2 className="w-3.5 h-3.5" />
                 </button>
             </div>
 
-            <div className="h-5 w-px bg-zinc-800" />
+            <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* انتخاب ایموجی */}
+            {/* ۴. انتخاب رنگ نوشته */}
             <div className="relative">
                 <button
                     type="button"
-                    onClick={() => setIsEmojiOpen(!isEmojiOpen)}
-                    className="w-7 h-7 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center text-amber-400 hover:bg-zinc-800 cursor-pointer"
+                    onClick={() => {
+                        setIsColorOpen(!isColorOpen);
+                        setIsStrokeMenuOpen(false);
+                        setIsEmojiOpen(false);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer"
+                    title="انتخاب رنگ نوشته"
+                >
+                    <div
+                        className="w-4 h-4 rounded-full border border-zinc-700 shadow-sm"
+                        style={{ backgroundColor: textColor }}
+                    />
+                    <Palette className="w-3.5 h-3.5 text-zinc-400" />
+                </button>
+
+                {isColorOpen && (
+                    <div className="absolute bottom-11 right-0 p-2.5 bg-zinc-950/95 border border-zinc-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-2 min-w-[150px] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                        <span className="text-[10px] text-zinc-400 font-medium text-right">رنگ نوشته</span>
+                        <div className="grid grid-cols-4 gap-1.5">
+                            {PRESET_COLORS.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => {
+                                        setTextColor(c);
+                                        setIsColorOpen(false);
+                                    }}
+                                    className="w-6 h-6 rounded-lg border border-zinc-700 flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                                    style={{ backgroundColor: c }}
+                                >
+                                    {textColor === c && <Check className={cn("w-3 h-3", c === "#ffffff" ? "text-zinc-950" : "text-white")} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ۵. تنظیمات حاشیه (Stroke) */}
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setIsStrokeMenuOpen(!isStrokeMenuOpen);
+                        setIsColorOpen(false);
+                        setIsEmojiOpen(false);
+                    }}
+                    className={cn(
+                        "flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-zinc-950 border transition-all cursor-pointer",
+                        textHasStroke ? "border-amber-500/60 text-amber-400" : "border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                    )}
+                    title="حاشیه دور متن (Stroke)"
+                >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span className="text-xs font-semibold">حاشیه</span>
+                </button>
+
+                {isStrokeMenuOpen && (
+                    <div className="absolute bottom-11 right-0 p-3 bg-zinc-950/95 border border-zinc-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-3 min-w-[180px] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-zinc-200">حاشیه متن</span>
+                            <input
+                                type="checkbox"
+                                checked={textHasStroke}
+                                onChange={(e) => setTextHasStroke(e.target.checked)}
+                                className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                            />
+                        </div>
+
+                        {textHasStroke && (
+                            <>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[10px] text-zinc-400">رنگ حاشیه:</span>
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {PRESET_COLORS.map((c) => (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => setTextStrokeColor(c)}
+                                                className="w-6 h-6 rounded-lg border border-zinc-700 flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                                                style={{ backgroundColor: c }}
+                                            >
+                                                {textStrokeColor === c && <Check className={cn("w-3 h-3", c === "#ffffff" ? "text-zinc-950" : "text-white")} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex justify-between text-[10px] text-zinc-400">
+                                        <span>ضخامت حاشیه:</span>
+                                        <span>{textStrokeWidth}px</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="8"
+                                        value={textStrokeWidth}
+                                        onChange={(e) => setTextStrokeWidth(Number(e.target.value))}
+                                        className="w-full accent-amber-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="h-5 w-px bg-zinc-800 mx-0.5" />
+
+            {/* ۶. انتخاب ایموجی و درج مستقیم روی مپ */}
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setIsEmojiOpen(!isEmojiOpen);
+                        setIsColorOpen(false);
+                        setIsStrokeMenuOpen(false);
+                    }}
+                    className={cn(
+                        "w-7 h-7 rounded-xl bg-zinc-950 border flex items-center justify-center text-amber-400 transition-all cursor-pointer",
+                        isEmojiOpen ? "border-amber-500 bg-zinc-800" : "border-zinc-800 hover:bg-zinc-800"
+                    )}
                     title="درج ایموجی RPG"
                 >
                     <Smile className="w-3.5 h-3.5" />
                 </button>
 
                 {isEmojiOpen && (
-                    <div className="absolute bottom-10 right-0 p-2 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl grid grid-cols-5 gap-1.5 z-50">
-                        {EMOJI_LIST.map((emoji) => (
-                            <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => setIsEmojiOpen(false)}
-                                className="w-7 h-7 rounded hover:bg-zinc-800 flex items-center justify-center text-sm cursor-pointer"
-                            >
-                                {emoji}
-                            </button>
-                        ))}
+                    <div
+                        className="absolute bottom-11 -right-2 p-2.5 bg-zinc-950/95 border border-zinc-800 rounded-2xl shadow-2xl w-48 backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-100"
+                        dir="ltr"
+                    >
+                        <div className="text-[10px] text-zinc-400 font-medium mb-2 text-right px-1" dir="rtl">
+                            درج مستقیم ایموجی:
+                        </div>
+                        <div className="grid grid-cols-5 gap-1.5 justify-items-center">
+                            {EMOJI_LIST.map((emoji) => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        setPendingEmoji(emoji);
+                                        try { navigator.clipboard.writeText(emoji); } catch (e) {}
+                                        setIsEmojiOpen(false);
+                                    }}
+                                    className="w-7 h-7 rounded-lg bg-zinc-900/60 hover:bg-amber-500/20 hover:scale-110 border border-zinc-800/80 flex items-center justify-center text-base cursor-pointer transition-all active:scale-95"
+                                    title="درج ایموجی"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
