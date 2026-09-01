@@ -324,4 +324,32 @@ public class RoomWebSocketController {
             return false;
         }
     }
+
+    @MessageMapping("/room/{roomId}/fog/global-reveal")
+    public void handleFogGlobalReveal(
+            @DestinationVariable UUID roomId,
+            @Payload SocketEvent<Map<String, Object>> event,
+            Principal principal
+    ) {
+        if (principal == null || event == null || event.getData() == null) return;
+        roomService.updateLastActive(roomId, principal.getName());
+
+        try {
+            Map<String, Object> data = event.getData();
+            Boolean isRevealed = (Boolean) data.get("isRevealed");
+            String sceneIdStr = (String) data.get("sceneId");
+
+            if (sceneIdStr != null && isRevealed != null) {
+                UUID sceneId = UUID.fromString(sceneIdStr);
+                sceneRepository.findById(sceneId).ifPresent(scene -> {
+                    scene.setIsFogRevealed(isRevealed);
+                    sceneRepository.save(scene);
+                });
+            }
+        } catch (Exception e) {
+            log.warn("Error saving global reveal in DB: {}", e.getMessage());
+        }
+
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+    }
 }

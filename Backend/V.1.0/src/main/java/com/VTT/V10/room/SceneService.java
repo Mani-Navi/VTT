@@ -64,6 +64,7 @@ public class SceneService {
                 .gridColor("#000000")
                 .gridOpacity(0.35)
                 .availableConditions(new ArrayList<>())
+                .isFogRevealed(false)
                 .build();
 
         sceneRepository.save(scene);
@@ -183,6 +184,7 @@ public class SceneService {
                 .gridColor(scene.getGridColor())
                 .gridOpacity(scene.getGridOpacity())
                 .availableConditions(scene.getAvailableConditions() != null ? scene.getAvailableConditions() : new ArrayList<>())
+                .isFogRevealed(scene.getIsFogRevealed() != null ? scene.getIsFogRevealed() : false)
                 .build();
     }
 }

@@ -77,4 +77,8 @@ public class Scene {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(name = "is_fog_revealed")
+    private Boolean isFogRevealed = false;
 }

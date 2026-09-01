@@ -29,4 +29,8 @@ public class SceneResponse {
     // لیست وضعیت‌های پایدار فعال در صحنه
     @Builder.Default
     private List<String> availableConditions = new ArrayList<>();
+
+    // وضعیت پایدار آشکارساز مه جنگ
+    @Builder.Default
+    private Boolean isFogRevealed = false;
 }
