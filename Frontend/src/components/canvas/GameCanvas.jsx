@@ -26,6 +26,17 @@ import {
   Scroll
 } from "lucide-react";
 
+const generateUUID = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const containerRef = useRef(null);
   const stageRef = useRef(null);
@@ -51,7 +62,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
   const isDrawGMLayer = useCanvasStore((state) => state.isDrawGMLayer);
 
-  // استیت‌های متن
   const textFontFamily = useCanvasStore((state) => state.textFontFamily || "Vazirmatn");
   const textFontSize = useCanvasStore((state) => state.textFontSize || 24);
   const textColor = useCanvasStore((state) => state.textColor || "#f59e0b");
@@ -384,7 +394,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // ابزار چندضلعی در نقاشی
+    // چندضلعی نقاشی
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
       if (e.evt.button === 2) {
         setPolygonVertices([]);
@@ -446,7 +456,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // ابزار چندضلعی / خودنویس در مه جنگ
+    // چندضلعی مه جنگ
     if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON) {
       if (e.evt.button === 2) {
         setFogPolygonVertices([]);
@@ -474,7 +484,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
 
         if (distToStart < 25 && fogPolygonVertices.length >= 6) {
-          const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const uniqueFogId = generateUUID();
           const finalFogShape = {
             id: uniqueFogId,
             type: "polygon",
@@ -645,7 +655,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    // خطوط راهنمای زنده نقاشی چندضلعی
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length > 0) {
       const polyPreview = {
         type: DRAW_MODES.POLYGON,
@@ -660,7 +669,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // خطوط راهنمای خط‌چین زنده خودنویس مه جنگ
     if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length > 0) {
       const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
       const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
@@ -817,17 +825,21 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     if (activeTool === TOOLS.FOG && canUseFog && shapeStart) {
       const finalFogShape = liveFogRef.current;
       if (finalFogShape) {
-        const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const uniqueFogId = generateUUID();
         const isCoverAction = finalFogShape.isCover === true;
         const fogPayload = {
           ...finalFogShape,
           id: uniqueFogId,
           sceneId: currentScene?.id,
           type: isCoverAction ? "HIDE" : "REVEAL",
-          points: finalFogShape,
+          points: {
+            ...finalFogShape,
+            id: uniqueFogId,
+            isCover: isCoverAction,
+          },
         };
 
-        addFogShape(finalFogShape);
+        addFogShape(fogPayload);
         wsService.send("FOG_UPDATE", fogPayload);
       }
 
@@ -876,7 +888,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length >= 6) {
       const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
       const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
-      const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const uniqueFogId = generateUUID();
 
       const finalFogShape = {
         id: uniqueFogId,

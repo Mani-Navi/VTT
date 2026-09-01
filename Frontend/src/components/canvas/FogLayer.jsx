@@ -1,8 +1,10 @@
-import React from "react";
-import { Group, Shape, Line, Circle } from "react-konva";
+import React, { useRef, useEffect } from "react";
+import { Group, Shape, Line, Circle as KonvaCircle, Rect as KonvaRect, Transformer } from "react-konva";
 import { useSceneStore } from "../../store/scene.store";
 import { useCanvasStore } from "../../store/canvas.store";
 import { usePermissions } from "../../hooks/usePermissions";
+import { TOOLS } from "../../constants/tools";
+import { wsService } from "../../services/websocket.service";
 
 const drawPolygonPath = (context, points) => {
     if (!points || points.length < 4) return;
@@ -23,18 +25,48 @@ const drawRegularPolygon = (context, x, y, radius, sides) => {
     context.closePath();
 };
 
+// محاسبه نقاط چندضلعی منتظم برای اشکال مثلث و شش‌ضلعی
+const getRegularPolygonPoints = (radius, sides) => {
+    const points = [];
+    for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides;
+        points.push(radius * Math.cos(angle), radius * Math.sin(angle));
+    }
+    return points;
+};
+
 export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonVertices = [] }) => {
     const currentScene = useSceneStore((state) => state.currentScene);
     const remoteLiveFog = useSceneStore((state) => state.remoteLiveFog);
+    const updateFogShape = useSceneStore((state) => state.updateFogShape);
+
+    const activeTool = useCanvasStore((state) => state.activeTool);
+    const selectedFogId = useCanvasStore((state) => state.selectedFogId);
+    const setSelectedFogId = useCanvasStore((state) => state.setSelectedFogId);
     const isFogRevealedGlobally = useCanvasStore((state) => state.isFogRevealedGlobally);
+
     const { isGM } = usePermissions();
 
-    if (!currentScene) {
-        return null;
-    }
+    const transformerRef = useRef(null);
+    const shapeRefs = useRef(new Map());
+    const lastBroadcastTime = useRef(0);
+    const draggingFogId = useRef(null);
 
-    // اگر آشکارساز سراسری فعال شده باشد، مه موقتاً رندر نمی‌شود
-    if (isFogRevealedGlobally) {
+    const isSelectMode = activeTool === TOOLS.SELECT && isGM;
+
+    useEffect(() => {
+        if (!transformerRef.current) return;
+        if (selectedFogId && shapeRefs.current.has(selectedFogId)) {
+            const node = shapeRefs.current.get(selectedFogId);
+            transformerRef.current.nodes([node]);
+            transformerRef.current.getLayer()?.batchDraw();
+        } else {
+            transformerRef.current.nodes([]);
+            transformerRef.current.getLayer()?.batchDraw();
+        }
+    }, [selectedFogId, isSelectMode]);
+
+    if (!currentScene || isFogRevealedGlobally) {
         return null;
     }
 
@@ -42,7 +74,6 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
     const isFilledByDefault = currentScene.fogFilled === true;
     const activeLiveFog = liveFog || remoteLiveFog;
 
-    // اگر کل صفحه پر نیست و شکلی هم وجود ندارد، رندر نشود
     if (!isFilledByDefault && fogShapes.length === 0 && !activeLiveFog) {
         return null;
     }
@@ -54,23 +85,104 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
         const shapeType = fog.type || (fog.radius ? "circle" : "rect");
         if (shapeType === "circle") {
             const rad = Math.max(5, fog.radius || 60);
-            context.arc(fog.x, fog.y, rad, 0, Math.PI * 2, false);
+            context.arc(fog.x || 0, fog.y || 0, rad, 0, Math.PI * 2, false);
         } else if (shapeType === "rect") {
             const w = fog.width || 100;
             const h = fog.height || 100;
-            context.rect(fog.x, fog.y, w, h);
+            context.rect(fog.x || 0, fog.y || 0, w, h);
         } else if (shapeType === "triangle") {
-            drawRegularPolygon(context, fog.x, fog.y, fog.radius || 60, 3);
+            drawRegularPolygon(context, fog.x || 0, fog.y || 0, fog.radius || 60, 3);
         } else if (shapeType === "hexagon") {
-            drawRegularPolygon(context, fog.x, fog.y, fog.radius || 60, 6);
+            drawRegularPolygon(context, fog.x || 0, fog.y || 0, fog.radius || 60, 6);
         } else if ((shapeType === "polygon" || shapeType === "freehand" || shapeType === "slice") && fog.points) {
             drawPolygonPath(context, fog.points);
         }
     };
 
+    const handleShapeDragStart = (fog) => {
+        draggingFogId.current = String(fog.id);
+    };
+
+    const handleShapeDragMove = (e, fog) => {
+        const node = e.target;
+        const newX = Math.round(node.x());
+        const newY = Math.round(node.y());
+
+        updateFogShape(fog.id, { x: newX, y: newY });
+
+        const now = Date.now();
+        if (now - lastBroadcastTime.current > 30) {
+            lastBroadcastTime.current = now;
+            wsService.send("FOG_LIVE", {
+                ...fog,
+                x: newX,
+                y: newY,
+                sceneId: currentScene.id,
+            });
+        }
+    };
+
+    const handleShapeDragEnd = (e, fog) => {
+        draggingFogId.current = null;
+        const node = e.target;
+        const newX = Math.round(node.x());
+        const newY = Math.round(node.y());
+
+        const finalFog = {
+            ...fog,
+            id: String(fog.id),
+            x: newX,
+            y: newY,
+        };
+
+        updateFogShape(fog.id, { x: newX, y: newY });
+
+        wsService.send("FOG_UPDATE", {
+            ...finalFog,
+            id: String(fog.id),
+            sceneId: currentScene.id,
+            type: finalFog.isCover ? "HIDE" : "REVEAL",
+            points: finalFog,
+        });
+
+        wsService.send("FOG_LIVE_END", { sceneId: currentScene.id });
+    };
+
+    const handleShapeTransformEnd = (e, fog) => {
+        const node = e.target;
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+
+        node.scaleX(1);
+        node.scaleY(1);
+
+        let finalFog = { ...fog, id: String(fog.id), x: Math.round(node.x()), y: Math.round(node.y()) };
+
+        if (fog.type === "rect") {
+            finalFog.width = Math.round(Math.max(20, (fog.width || 100) * scaleX));
+            finalFog.height = Math.round(Math.max(20, (fog.height || 100) * scaleY));
+        } else if (fog.type === "circle" || fog.type === "triangle" || fog.type === "hexagon") {
+            finalFog.radius = Math.round(Math.max(10, (fog.radius || 60) * Math.max(Math.abs(scaleX), Math.abs(scaleY))));
+        }
+
+        updateFogShape(fog.id, finalFog);
+
+        wsService.send("FOG_UPDATE", {
+            ...finalFog,
+            id: String(fog.id),
+            sceneId: currentScene.id,
+            type: finalFog.isCover ? "HIDE" : "REVEAL",
+            points: finalFog,
+        });
+
+        wsService.send("FOG_LIVE_END", { sceneId: currentScene.id });
+    };
+
     return (
-        <Group listening={false} id="fog-main-layer">
+        <Group id="fog-main-layer">
+            {/* ۱. لایه رندرینگ گرافیکی مه */}
             <Shape
+                listening={false}
                 opacity={fogOpacity}
                 sceneFunc={(context, shape) => {
                     context.save();
@@ -104,7 +216,7 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
                         context.fill();
                     });
 
-                    if (activeLiveFog) {
+                    if (activeLiveFog && !draggingFogId.current) {
                         const isCutLive =
                             activeLiveFog.isCover === false ||
                             activeLiveFog.mode === "reveal" ||
@@ -128,8 +240,112 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
                 }}
             />
 
+            {/* ۲. لایه نودهای تعاملی با سایز دقیق برای اتصال ترنسفورمر به دور شکل */}
+            {isSelectMode && (
+                <Group id="fog-interactive-nodes">
+                    {fogShapes.map((fog) => {
+                        const shapeType = fog.type || (fog.radius ? "circle" : "rect");
+                        const fogIdStr = String(fog.id);
+
+                        const commonProps = {
+                            key: `fog-node-${fogIdStr}`,
+                            ref: (el) => {
+                                if (el) shapeRefs.current.set(fogIdStr, el);
+                                else shapeRefs.current.delete(fogIdStr);
+                            },
+                            x: fog.x || 0,
+                            y: fog.y || 0,
+                            draggable: isSelectMode,
+                            fill: "rgba(0,0,0,0.001)", // کاملاً شفاف با حفظ قابلیت کلیک
+                            stroke: "transparent",
+                            hitStrokeWidth: 20,
+                            onClick: (e) => {
+                                e.cancelBubble = true;
+                                setSelectedFogId(fogIdStr);
+                            },
+                            onDragStart: () => handleShapeDragStart(fog),
+                            onDragMove: (e) => handleShapeDragMove(e, fog),
+                            onDragEnd: (e) => handleShapeDragEnd(e, fog),
+                            onTransformEnd: (e) => handleShapeTransformEnd(e, fog),
+                        };
+
+                        if (shapeType === "circle") {
+                            return (
+                                <KonvaCircle
+                                    {...commonProps}
+                                    radius={fog.radius || 60}
+                                />
+                            );
+                        } else if (shapeType === "rect") {
+                            return (
+                                <KonvaRect
+                                    {...commonProps}
+                                    width={fog.width || 100}
+                                    height={fog.height || 100}
+                                />
+                            );
+                        } else if (shapeType === "triangle") {
+                            return (
+                                <Line
+                                    {...commonProps}
+                                    points={getRegularPolygonPoints(fog.radius || 60, 3)}
+                                    closed={true}
+                                />
+                            );
+                        } else if (shapeType === "hexagon") {
+                            return (
+                                <Line
+                                    {...commonProps}
+                                    points={getRegularPolygonPoints(fog.radius || 60, 6)}
+                                    closed={true}
+                                />
+                            );
+                        } else if (fog.points && fog.points.length >= 4) {
+                            return (
+                                <Line
+                                    {...commonProps}
+                                    points={fog.points}
+                                    closed={true}
+                                />
+                            );
+                        }
+
+                        return null;
+                    })}
+
+                    <Transformer
+                        ref={transformerRef}
+                        borderStroke="#f59e0b"
+                        borderStrokeWidth={1.5}
+                        borderDash={[5, 4]}
+                        anchorFill="#f59e0b"
+                        anchorStroke="#090a0f"
+                        anchorStrokeWidth={1.5}
+                        anchorSize={9}
+                        anchorCornerRadius={2}
+                        rotateAnchorOffset={24}
+                        rotateEnabled={true}
+                        boundBoxFunc={(oldBox, newBox) => {
+                            if (newBox.width < 20 || newBox.height < 20) return oldBox;
+                            return newBox;
+                        }}
+                        enabledAnchors={[
+                            "top-left",
+                            "top-right",
+                            "bottom-left",
+                            "bottom-right",
+                            "middle-left",
+                            "middle-right",
+                            "top-center",
+                            "bottom-center",
+                        ]}
+                    />
+                </Group>
+            )}
+
+            {/* ۳. خطوط راهنمای چندضلعی حین رسم */}
             {polygonVertices && polygonVertices.length >= 2 && (
-                <Group id="fog-polygon-guidelines">
+                <Group id="fog-polygon-guidelines" listening={false}>
                     <Line
                         points={polygonVertices}
                         stroke="#f59e0b"
@@ -145,7 +361,7 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
                         const y = polygonVertices[idx * 2 + 1];
                         const isStart = idx === 0;
                         return (
-                            <Circle
+                            <KonvaCircle
                                 key={`fog-node-${idx}`}
                                 x={x}
                                 y={y}

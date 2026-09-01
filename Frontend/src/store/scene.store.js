@@ -35,16 +35,37 @@ const matchDrawingId = (a, b) => {
     return false;
 };
 
+const matchFogId = (a, b) => {
+    if (!a || !b) return false;
+    const idA = String(a.id || a.fogId || (typeof a.points === "object" ? a.points?.id : "") || "").trim().toLowerCase();
+    const idB = String(b.id || b.fogId || (typeof b.points === "object" ? b.points?.id : "") || "").trim().toLowerCase();
+    return Boolean(idA && idB && idA === idB);
+};
+
+// حل‌کننده دقیق ساختار مه در دیتابیس و سوکت
 const normalizeFogRegion = (fog) => {
     if (!fog) return null;
+
+    let shapeObj = fog;
     if (fog.points && typeof fog.points === "object" && !Array.isArray(fog.points)) {
-        return {
+        shapeObj = {
             ...fog.points,
             id: fog.id || fog.points.id,
             isCover: fog.type === "HIDE" || fog.points.isCover,
         };
     }
-    return fog;
+
+    const isCover =
+        shapeObj.isCover !== undefined
+            ? Boolean(shapeObj.isCover)
+            : String(fog.type).toUpperCase() === "HIDE";
+
+    return {
+        ...shapeObj,
+        id: String(shapeObj.id || fog.id || `fog-${Date.now()}`),
+        isCover: isCover,
+        type: shapeObj.type || (shapeObj.radius ? "circle" : "rect"),
+    };
 };
 
 export const useSceneStore = create((set, get) => ({
@@ -161,7 +182,7 @@ export const useSceneStore = create((set, get) => ({
                 tokens: loadedTokens,
                 drawings: fullState.drawings || [],
                 fogShapes: normalizedFog,
-                fogEnabled: normalizedFog.length > 0,
+                fogEnabled: normalizedFog.length > 0 || Boolean(sceneData.fogFilled),
                 fogFilled: Boolean(sceneData.fogFilled),
                 isFogRevealed: isRevealedSaved,
                 grid: {
@@ -505,14 +526,39 @@ export const useSceneStore = create((set, get) => ({
 
         set((state) => {
             if (!state.currentScene) return state;
-            const fogShapes = state.currentScene.fogShapes ? [...state.currentScene.fogShapes, normalized] : [normalized];
+            const existing = state.currentScene.fogShapes || [];
+            const existsIndex = existing.findIndex((f) => matchFogId(f, normalized));
+
+            let nextFog;
+            if (existsIndex !== -1) {
+                nextFog = existing.map((f, i) => (i === existsIndex ? { ...f, ...normalized } : f));
+            } else {
+                nextFog = [...existing, normalized];
+            }
+
             return {
                 currentScene: {
                     ...state.currentScene,
-                    fogShapes,
+                    fogShapes: nextFog,
                     fogEnabled: true,
                 },
                 remoteLiveFog: null,
+            };
+        });
+    },
+
+    updateFogShape: (fogId, updates) => {
+        set((state) => {
+            if (!state.currentScene || !state.currentScene.fogShapes) return state;
+            const targetId = String(fogId).trim().toLowerCase();
+            const nextFog = state.currentScene.fogShapes.map((f) =>
+                String(f.id).trim().toLowerCase() === targetId ? { ...f, ...updates } : f
+            );
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    fogShapes: nextFog,
+                },
             };
         });
     },
@@ -590,7 +636,7 @@ export const useSceneStore = create((set, get) => ({
                 tokens: loadedTokens,
                 drawings: fullState.drawings || [],
                 fogShapes: normalizedFog,
-                fogEnabled: normalizedFog.length > 0,
+                fogEnabled: normalizedFog.length > 0 || Boolean(sceneData.fogFilled),
                 fogFilled: Boolean(sceneData.fogFilled),
                 isFogRevealed: isRevealedSaved,
                 grid: {
