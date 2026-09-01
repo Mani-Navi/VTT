@@ -244,7 +244,19 @@ public class RoomWebSocketController {
 
         if (hasPermission(roomId, principal.getName(), "FOG")) {
             try {
-                fogService.handleFogUpdate(event.getData());
+                FogEvent data = event.getData();
+                if (data.getSceneId() == null) {
+                    var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+                    if (activeSceneOpt.isPresent()) {
+                        data.setSceneId(activeSceneOpt.get().getId());
+                    } else {
+                        var scenes = sceneRepository.findByRoomId(roomId);
+                        if (!scenes.isEmpty()) {
+                            data.setSceneId(scenes.get(0).getId());
+                        }
+                    }
+                }
+                fogService.handleFogUpdate(data);
             } catch (Exception e) {
                 log.warn("Fog save in DB warning: {}", e.getMessage());
             }

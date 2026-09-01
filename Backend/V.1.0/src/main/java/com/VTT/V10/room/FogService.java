@@ -11,7 +11,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -47,7 +46,6 @@ public class FogService {
             return;
         }
 
-        // اگر پوینت‌ها نال باشد و نوع دستور شکل خاصی نباشد، ثبت نشود تا دیتابیس ارور ندهد
         if (event.getPoints() == null) {
             return;
         }
@@ -59,35 +57,52 @@ public class FogService {
             fogType = FogRegion.FogType.HIDE;
         }
 
-        UUID targetId = null;
+        // استخراج شناسه ارسال شده از سمت کلاینت
+        String incomingId = null;
         if (event.getPoints() instanceof Map) {
             Object rawId = ((Map<?, ?>) event.getPoints()).get("id");
             if (rawId != null) {
-                try {
-                    targetId = UUID.fromString(rawId.toString().trim());
-                } catch (Exception ignored) {}
+                incomingId = rawId.toString().trim();
             }
         }
 
-        FogRegion region = null;
-        if (targetId != null) {
-            Optional<FogRegion> existing = fogRepository.findById(targetId);
-            if (existing.isPresent()) {
-                region = existing.get();
-                region.setPoints(event.getPoints());
-                region.setType(fogType);
+        List<FogRegion> existingRegions = fogRepository.findBySceneId(event.getSceneId());
+        FogRegion matchedRegion = null;
+
+        if (incomingId != null && !incomingId.isBlank()) {
+            for (FogRegion r : existingRegions) {
+                // ۱. بررسی تطابق با شناسه اصلی دیتابیس
+                if (r.getId() != null && r.getId().toString().equalsIgnoreCase(incomingId)) {
+                    matchedRegion = r;
+                    break;
+                }
+                // ۲. بررسی تطابق با شناسه ذخیره شده داخل جیسون پوینت‌ها
+                if (r.getPoints() instanceof Map) {
+                    Object storedId = ((Map<?, ?>) r.getPoints()).get("id");
+                    if (storedId != null && storedId.toString().trim().equalsIgnoreCase(incomingId)) {
+                        matchedRegion = r;
+                        break;
+                    }
+                }
             }
         }
 
-        if (region == null) {
-            region = FogRegion.builder()
-                    .scene(scene)
-                    .points(event.getPoints())
-                    .type(fogType)
-                    .build();
+        // اگر شکل قبلاً وجود داشت، دقیقا همان رکورد را آپدیت کن (جلوگیری از ساخت کپی)
+        if (matchedRegion != null) {
+            matchedRegion.setPoints(event.getPoints());
+            matchedRegion.setType(fogType);
+            fogRepository.save(matchedRegion);
+            return;
         }
 
-        fogRepository.save(region);
+        // اگر شکل جدید است، رکورد جدید بساز
+        FogRegion newRegion = FogRegion.builder()
+                .scene(scene)
+                .points(event.getPoints())
+                .type(fogType)
+                .build();
+
+        fogRepository.save(newRegion);
     }
 
     @Transactional(readOnly = true)
