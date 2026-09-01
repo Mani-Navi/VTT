@@ -33,4 +33,7 @@ public class SceneResponse {
     // وضعیت پایدار آشکارساز مه جنگ
     @Builder.Default
     private Boolean isFogRevealed = false;
+
+    @Builder.Default
+    private Boolean fogFilled = false;
 }

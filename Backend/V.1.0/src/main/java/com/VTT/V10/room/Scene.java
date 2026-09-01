@@ -81,4 +81,8 @@ public class Scene {
     @Builder.Default
     @Column(name = "is_fog_revealed")
     private Boolean isFogRevealed = false;
+
+    @Builder.Default
+    @Column(name = "fog_filled")
+    private Boolean fogFilled = false;
 }

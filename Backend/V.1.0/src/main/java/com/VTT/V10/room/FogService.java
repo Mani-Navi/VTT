@@ -26,17 +26,35 @@ public class FogService {
     public void handleFogUpdate(FogEvent event) {
         if (event == null || event.getType() == null) return;
 
-        if ("CLEAR_ALL".equalsIgnoreCase(event.getType())) {
-            fogRepository.deleteBySceneId(event.getSceneId());
-            return;
-        }
-
         Scene scene = sceneRepository.findById(event.getSceneId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
+        String eventType = event.getType().trim();
+
+        // ۱. پاک‌کردن کل مه (CLEAR_ALL)
+        if ("CLEAR_ALL".equalsIgnoreCase(eventType)) {
+            fogRepository.deleteBySceneId(event.getSceneId());
+            scene.setFogFilled(false);
+            sceneRepository.save(scene);
+            return;
+        }
+
+        // ۲. پر کردن کل نقشه (FILL_ALL یا fill_all)
+        if ("FILL_ALL".equalsIgnoreCase(eventType) || "fill_all".equalsIgnoreCase(eventType)) {
+            fogRepository.deleteBySceneId(event.getSceneId());
+            scene.setFogFilled(true);
+            sceneRepository.save(scene);
+            return;
+        }
+
+        // اگر پوینت‌ها نال باشد و نوع دستور شکل خاصی نباشد، ثبت نشود تا دیتابیس ارور ندهد
+        if (event.getPoints() == null) {
+            return;
+        }
+
         FogRegion.FogType fogType;
         try {
-            fogType = FogRegion.FogType.valueOf(event.getType().trim().toUpperCase());
+            fogType = FogRegion.FogType.valueOf(eventType.toUpperCase());
         } catch (IllegalArgumentException e) {
             fogType = FogRegion.FogType.HIDE;
         }
@@ -61,7 +79,6 @@ public class FogService {
             }
         }
 
-        // اگر رکورد وجود نداشت، بدون تنظیم دستی ID ساخته می‌شود تا Hibernate آن را Insert کند
         if (region == null) {
             region = FogRegion.builder()
                     .scene(scene)

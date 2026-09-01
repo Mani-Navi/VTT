@@ -65,6 +65,7 @@ public class SceneService {
                 .gridOpacity(0.35)
                 .availableConditions(new ArrayList<>())
                 .isFogRevealed(false)
+                .fogFilled(false)
                 .build();
 
         sceneRepository.save(scene);
@@ -185,6 +186,7 @@ public class SceneService {
                 .gridOpacity(scene.getGridOpacity())
                 .availableConditions(scene.getAvailableConditions() != null ? scene.getAvailableConditions() : new ArrayList<>())
                 .isFogRevealed(scene.getIsFogRevealed() != null ? scene.getIsFogRevealed() : false)
+                .fogFilled(scene.getFogFilled() != null ? scene.getFogFilled() : false)
                 .build();
     }
 }
