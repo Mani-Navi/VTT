@@ -24,12 +24,44 @@ import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../../utils/cn";
 import { wsService } from "../../services/websocket.service";
 
+const FIT_OPTIONS = [
+    {
+        key: "fit",
+        label: "Fit (انطباق با نقشه)",
+        shortLabel: "Fit",
+        icon: Maximize2,
+        colorClass: "text-amber-400",
+    },
+    {
+        key: "trim",
+        label: "Trim (برش اضافات)",
+        shortLabel: "Trim",
+        icon: Crop,
+        colorClass: "text-cyan-400",
+    },
+    {
+        key: "join",
+        label: "Join (ادغام نواحی)",
+        shortLabel: "Join",
+        icon: Minimize2,
+        colorClass: "text-emerald-400",
+    },
+    {
+        key: "overlay",
+        label: "Overlay (لایه رویی)",
+        shortLabel: "Overlay",
+        icon: Layers,
+        colorClass: "text-purple-400",
+    },
+];
+
 export const FogSubToolbar = () => {
     const activeTool = useCanvasStore((state) => state.activeTool);
     const fogAction = useCanvasStore((state) => state.fogAction);
     const fogBrushShape = useCanvasStore((state) => state.fogBrushShape);
     const fogBrushRadius = useCanvasStore((state) => state.fogBrushRadius);
     const isFogRevealedGlobally = useCanvasStore((state) => state.isFogRevealedGlobally);
+    const selectedFogId = useCanvasStore((state) => state.selectedFogId);
 
     const setFogAction = useCanvasStore((state) => state.setFogAction);
     const setFogBrushShape = useCanvasStore((state) => state.setFogBrushShape);
@@ -38,13 +70,16 @@ export const FogSubToolbar = () => {
 
     const currentScene = useSceneStore((state) => state.currentScene);
     const setScene = useSceneStore((state) => state.setScene);
+    const updateFogShape = useSceneStore((state) => state.updateFogShape);
 
     const [isFitMenuOpen, setIsFitMenuOpen] = useState(false);
-    const [selectedFitOption, setSelectedFitOption] = useState("overlay");
+    const [selectedFitOptionKey, setSelectedFitOptionKey] = useState("fit");
 
     if (activeTool !== TOOLS.FOG) return null;
 
     const isFogFilled = Boolean(currentScene?.fogFilled);
+    const currentOption = FIT_OPTIONS.find((o) => o.key === selectedFitOptionKey) || FIT_OPTIONS[0];
+    const CurrentOptionIcon = currentOption.icon;
 
     const handleToggleGlobalReveal = () => {
         const nextState = !isFogRevealedGlobally;
@@ -56,12 +91,10 @@ export const FogSubToolbar = () => {
         });
     };
 
-    // تاگل کردن پر بودن کل صفحه با مه
     const handleToggleFillFog = () => {
         if (!currentScene) return;
 
         if (isFogFilled) {
-            // حالت دوم: اگر پر بود، کل مه خالی می‌شود
             const updated = {
                 ...currentScene,
                 fogEnabled: false,
@@ -72,9 +105,9 @@ export const FogSubToolbar = () => {
             wsService.send("FOG_CLEAR", {
                 sceneId: currentScene.id,
                 type: "CLEAR_ALL",
+                points: {},
             });
         } else {
-            // حالت اول: اگر پر نبود، کل صفحه مه می‌شود
             const updated = {
                 ...currentScene,
                 fogEnabled: true,
@@ -84,9 +117,11 @@ export const FogSubToolbar = () => {
             setScene(updated);
             wsService.send("FOG_UPDATE", {
                 sceneId: currentScene.id,
-                type: "HIDE",
+                type: "FILL_ALL",
+                fogFilled: true,
                 isCover: true,
                 mode: "fill_all",
+                points: { mode: "fill_all" },
             });
         }
     };
@@ -106,18 +141,72 @@ export const FogSubToolbar = () => {
         });
     };
 
+    // اجرای عملیات بر اساس گزینه انتخابی و بررسی داشتن شکل انتخاب شده یا نه
     const handleFitOptionSelect = (optionKey) => {
-        setSelectedFitOption(optionKey);
+        setSelectedFitOptionKey(optionKey);
         setIsFitMenuOpen(false);
 
+        const mapWidth = currentScene?.mapWidth || 2000;
+        const mapHeight = currentScene?.mapHeight || 1500;
+        const fogShapes = currentScene?.fogShapes || [];
+        const selectedShape = fogShapes.find((f) => String(f.id) === String(selectedFogId));
+
         if (optionKey === "fit") {
-            handleToggleFillFog();
+            if (selectedShape) {
+                // حالت الف: اگر شکلی انتخاب شده، به ابعاد کل نقشه فیت می‌شود
+                const fittedShape = {
+                    ...selectedShape,
+                    type: "rect",
+                    x: 0,
+                    y: 0,
+                    width: mapWidth,
+                    height: mapHeight,
+                };
+                updateFogShape(selectedShape.id, fittedShape);
+                wsService.send("FOG_UPDATE", {
+                    ...fittedShape,
+                    sceneId: currentScene.id,
+                    type: fittedShape.isCover ? "HIDE" : "REVEAL",
+                    points: fittedShape,
+                });
+            } else {
+                // حالت ب: اگر شکلی انتخاب نشده، کل نقشه پوشانده می‌شود
+                handleToggleFillFog();
+            }
         } else if (optionKey === "trim") {
-            setFogAction(FOG_ACTIONS.SLICE);
-            setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
+            if (selectedShape) {
+                // حالت الف: شکل انتخاب شده به حاشیه مپ محدود (Trim) می‌شود
+                const trimmedX = Math.max(0, selectedShape.x || 0);
+                const trimmedY = Math.max(0, selectedShape.y || 0);
+                const trimmedW = Math.min(mapWidth - trimmedX, selectedShape.width || mapWidth);
+                const trimmedH = Math.min(mapHeight - trimmedY, selectedShape.height || mapHeight);
+
+                const trimmedShape = {
+                    ...selectedShape,
+                    x: trimmedX,
+                    y: trimmedY,
+                    width: Math.max(20, trimmedW),
+                    height: Math.max(20, trimmedH),
+                };
+                updateFogShape(selectedShape.id, trimmedShape);
+                wsService.send("FOG_UPDATE", {
+                    ...trimmedShape,
+                    sceneId: currentScene.id,
+                    type: trimmedShape.isCover ? "HIDE" : "REVEAL",
+                    points: trimmedShape,
+                });
+            } else {
+                // حالت ب: ابزار برش مستطیلی فعال می‌شود
+                setFogAction(FOG_ACTIONS.SLICE);
+                setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
+            }
         } else if (optionKey === "join") {
+            // ادغام کلیه بخش‌های مه به عنوان یک لایه پیوسته
             setFogAction(FOG_ACTIONS.HIDE);
             setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
+        } else if (optionKey === "overlay") {
+            // سوئیچ به لایه رویی استاندارد
+            setFogAction(FOG_ACTIONS.HIDE);
         }
     };
 
@@ -126,7 +215,7 @@ export const FogSubToolbar = () => {
             className="relative flex items-center gap-1.5 px-3 py-1.5 bg-zinc-950/90 border border-zinc-800 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150 text-zinc-200"
             dir="rtl"
         >
-            {/* انتخاب اکشن مه: تاگل آشکارسازی سراسری موقت / پوشاندن / برش (Slice) */}
+            {/* انتخاب اکشن مه: تاگل آشکارسازی سراسری / پوشاندن / برش (Slice) */}
             <div className="flex items-center gap-1 p-0.5 bg-zinc-900 rounded-xl border border-zinc-800">
                 <Tooltip
                     content={isFogRevealedGlobally ? "Disable Global Reveal" : "Enable Global Reveal"}
@@ -299,67 +388,38 @@ export const FogSubToolbar = () => {
                 </button>
             </Tooltip>
 
-            {/* منوی بازشونده Fit Fog */}
+            {/* منوی بازشونده Fit Fog با عنوان و آیکون داینامیک */}
             <div className="relative">
                 <button
                     type="button"
                     onClick={() => setIsFitMenuOpen((prev) => !prev)}
                     className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-amber-500/40 hover:border-amber-500 text-amber-400 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm"
                 >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span>Fit Fog</span>
+                    <CurrentOptionIcon className={cn("w-3.5 h-3.5", currentOption.colorClass)} />
+                    <span>{currentOption.shortLabel} Fog</span>
                     <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isFitMenuOpen ? "rotate-180" : "")} />
                 </button>
 
                 {isFitMenuOpen && (
-                    <div className="absolute bottom-full mb-2 right-0 w-48 bg-zinc-950/95 border border-zinc-800 rounded-2xl p-1.5 shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
-                        <button
-                            type="button"
-                            onClick={() => handleFitOptionSelect("fit")}
-                            className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-900 text-zinc-200 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Maximize2 className="w-4 h-4 text-amber-400" />
-                                <span>Fit (انطباق با نقشه)</span>
-                            </div>
-                            {selectedFitOption === "fit" && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleFitOptionSelect("trim")}
-                            className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-900 text-zinc-200 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Crop className="w-4 h-4 text-cyan-400" />
-                                <span>Trim (برش اضافات)</span>
-                            </div>
-                            {selectedFitOption === "trim" && <Check className="w-3.5 h-3.5 text-cyan-400" />}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleFitOptionSelect("join")}
-                            className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-900 text-zinc-200 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Minimize2 className="w-4 h-4 text-emerald-400" />
-                                <span>Join (ادغام نواحی)</span>
-                            </div>
-                            {selectedFitOption === "join" && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleFitOptionSelect("overlay")}
-                            className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-900 text-zinc-200 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Layers className="w-4 h-4 text-purple-400" />
-                                <span>Overlay (لایه رویی)</span>
-                            </div>
-                            {selectedFitOption === "overlay" && <Check className="w-3.5 h-3.5 text-purple-400" />}
-                        </button>
+                    <div className="absolute bottom-full mb-2 right-0 w-52 bg-zinc-950/95 border border-zinc-800 rounded-2xl p-1.5 shadow-2xl backdrop-blur-xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                        {FIT_OPTIONS.map((opt) => {
+                            const OptionIcon = opt.icon;
+                            const isSelected = selectedFitOptionKey === opt.key;
+                            return (
+                                <button
+                                    key={opt.key}
+                                    type="button"
+                                    onClick={() => handleFitOptionSelect(opt.key)}
+                                    className="flex items-center justify-between w-full px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-zinc-900 text-zinc-200 transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <OptionIcon className={cn("w-4 h-4", opt.colorClass)} />
+                                        <span>{opt.label}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>

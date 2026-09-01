@@ -93,7 +93,19 @@ export function useWebSocket(roomId, onMessage = null) {
 
     // ۵. مه جنگ (Fog of War)
     const unsubFog = wsService.on("FOG_UPDATE", (data) => {
-      if (data) useSceneStore.getState().addFogShape(data);
+      if (!data) return;
+      const store = useSceneStore.getState();
+      const current = store.currentScene;
+
+      if (data.mode === "fill_all" || data.type === "fill_all" || data.type === "FILL_ALL" || data.fogFilled === true) {
+        if (current) {
+          useSceneStore.setState({
+            currentScene: { ...current, fogFilled: true, fogEnabled: true, fogShapes: [] },
+          });
+        }
+      } else {
+        store.addFogShape(data);
+      }
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
