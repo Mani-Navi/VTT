@@ -62,7 +62,7 @@ const normalizeFogRegion = (fog) => {
 
     return {
         ...shapeObj,
-        id: String(shapeObj.id || fog.id || `fog-${Date.now()}`),
+        id: String(fog.id || shapeObj.id || `fog-${Date.now()}`),
         isCover: isCover,
         type: shapeObj.type || (shapeObj.radius ? "circle" : "rect"),
     };
