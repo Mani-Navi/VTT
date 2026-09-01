@@ -51,7 +51,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
   const isDrawGMLayer = useCanvasStore((state) => state.isDrawGMLayer);
 
-  // استیت‌های پیشرفته متن
+  // استیت‌های متن
   const textFontFamily = useCanvasStore((state) => state.textFontFamily || "Vazirmatn");
   const textFontSize = useCanvasStore((state) => state.textFontSize || 24);
   const textColor = useCanvasStore((state) => state.textColor || "#f59e0b");
@@ -84,16 +84,20 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
   const [liveDrawing, setLiveDrawing] = useState(null);
   const liveDrawingRef = useRef(null);
+  const [liveFog, setLiveFog] = useState(null);
+  const liveFogRef = useRef(null);
+
   const [currentLinePoints, setCurrentLinePoints] = useState([]);
   const [polygonVertices, setPolygonVertices] = useState([]);
+  const [fogPolygonVertices, setFogPolygonVertices] = useState([]);
   const [shapeStart, setShapeStart] = useState(null);
   const isInteracting = useRef(false);
 
-  // استیت ادیتور متن روی مپ
   const [inlineTextEditor, setInlineTextEditor] = useState(null);
   const isTextEditorOpenRef = useRef(false);
 
   const lastBroadcastTime = useRef(0);
+  const lastFogBroadcastTime = useRef(0);
   const lastLaserBroadcastTime = useRef(0);
   const lastRulerBroadcastTime = useRef(0);
 
@@ -107,6 +111,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.ERASER);
 
   const isSelectMode = activeTool === TOOLS.SELECT;
+  const canUseFog = isGM || Boolean(permissions?.canFog);
 
   const myIdentifier = String(user?.id || user?.userId || user?.username || "player-1");
 
@@ -169,7 +174,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       [removeDrawing, currentScene?.id]
   );
 
-  // پایان ویرایش متن و ثبت بدون پرش
   const finishInlineText = useCallback(() => {
     if (!inlineTextEditor) return;
     const textVal = inlineTextEditor.text ? inlineTextEditor.text.trim() : "";
@@ -260,8 +264,11 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     const handleEscapeKey = (e) => {
       if (e.key === "Escape") {
         setPolygonVertices([]);
+        setFogPolygonVertices([]);
         setLiveDrawing(null);
         liveDrawingRef.current = null;
+        setLiveFog(null);
+        liveFogRef.current = null;
         if (activeTool === TOOLS.RULER) {
           endMeasurement();
           wsService.send("RULER_CLEAR", { userId: myIdentifier });
@@ -329,7 +336,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // باز کردن ادیتور متن با تراز دقیق نقطه کلیک
     if (activeTool === TOOLS.TEXT) {
       isTextEditorOpenRef.current = false;
       setInlineTextEditor({
@@ -343,7 +349,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    // خط‌کش اندازه‌گیری
     if (activeTool === TOOLS.RULER) {
       if (e.evt.button === 0) {
         if (!isInteracting.current) {
@@ -379,6 +384,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
+    // ابزار چندضلعی در نقاشی
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
       if (e.evt.button === 2) {
         setPolygonVertices([]);
@@ -440,6 +446,71 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
+    // ابزار چندضلعی / خودنویس در مه جنگ
+    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON) {
+      if (e.evt.button === 2) {
+        setFogPolygonVertices([]);
+        setLiveFog(null);
+        liveFogRef.current = null;
+        return;
+      }
+
+      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+
+      if (fogPolygonVertices.length === 0) {
+        setFogPolygonVertices([pos.x, pos.y]);
+        const initFogPoly = {
+          type: "polygon",
+          mode: modeName,
+          points: [pos.x, pos.y, pos.x, pos.y],
+          isCover: isCoverAction,
+        };
+        liveFogRef.current = initFogPoly;
+        setLiveFog(initFogPoly);
+      } else {
+        const startX = fogPolygonVertices[0];
+        const startY = fogPolygonVertices[1];
+        const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
+
+        if (distToStart < 25 && fogPolygonVertices.length >= 6) {
+          const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const finalFogShape = {
+            id: uniqueFogId,
+            type: "polygon",
+            mode: modeName,
+            points: fogPolygonVertices,
+            isCover: isCoverAction,
+            sceneId: currentScene?.id,
+          };
+
+          addFogShape(finalFogShape);
+          wsService.send("FOG_UPDATE", {
+            ...finalFogShape,
+            type: isCoverAction ? "HIDE" : "REVEAL",
+            points: finalFogShape,
+          });
+
+          setFogPolygonVertices([]);
+          setLiveFog(null);
+          liveFogRef.current = null;
+        } else {
+          const nextPoints = [...fogPolygonVertices, pos.x, pos.y];
+          setFogPolygonVertices(nextPoints);
+          const currentFogPoly = {
+            type: "polygon",
+            mode: modeName,
+            points: [...nextPoints, pos.x, pos.y],
+            isCover: isCoverAction,
+          };
+          liveFogRef.current = currentFogPoly;
+          setLiveFog(currentFogPoly);
+        }
+      }
+      return;
+    }
+
+    // سایر اشکال نقاشی
     if (activeTool === TOOLS.DRAW) {
       isInteracting.current = true;
       setShapeStart(pos);
@@ -482,7 +553,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       } else if (activeDrawShape === DRAW_MODES.LINE) {
         initialDraw = {
           type: DRAW_MODES.LINE,
-          points: [shapeStart.x, shapeStart.y, pos.x, pos.y],
+          points: [pos.x, pos.y, pos.x, pos.y],
           stroke: drawStrokeColor,
           strokeWidth: drawStrokeWidth,
           isGMLayer: isDrawGMLayer,
@@ -494,28 +565,43 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         setLiveDrawing(initialDraw);
         wsService.send("DRAWING_LIVE", { ...initialDraw, sceneId: currentScene?.id });
       }
+      return;
     }
 
-    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
+    // اشکال هندسی مه جنگ
+    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape !== FOG_BRUSH_SHAPES.POLYGON) {
       isInteracting.current = true;
       setShapeStart(pos);
 
-      if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE) {
-        const fogShape = {
-          id: `fog-${Date.now()}`,
-          type: "circle",
-          x: Math.round(pos.x),
-          y: Math.round(pos.y),
-          radius: fogBrushRadius || 70,
-          isCover: fogAction === FOG_ACTIONS.HIDE,
+      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+
+      let initialFog = null;
+      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
+        initialFog = {
+          type: "rect",
+          mode: modeName,
+          x: pos.x,
+          y: pos.y,
+          width: 0,
+          height: 0,
+          isCover: isCoverAction,
         };
-        addFogShape(fogShape);
-        wsService.send("FOG_UPDATE", {
-          ...fogShape,
-          sceneId: currentScene?.id,
-        });
-      } else if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND) {
-        setCurrentLinePoints([pos.x, pos.y]);
+      } else if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE || fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE || fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON) {
+        initialFog = {
+          type: fogBrushShape,
+          mode: modeName,
+          x: pos.x,
+          y: pos.y,
+          radius: 0,
+          isCover: isCoverAction,
+        };
+      }
+
+      if (initialFog) {
+        liveFogRef.current = initialFog;
+        setLiveFog(initialFog);
+        wsService.send("FOG_LIVE", { ...initialFog, sceneId: currentScene?.id });
       }
     }
   };
@@ -559,6 +645,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
+    // خطوط راهنمای زنده نقاشی چندضلعی
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length > 0) {
       const polyPreview = {
         type: DRAW_MODES.POLYGON,
@@ -570,6 +657,21 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       };
       liveDrawingRef.current = polyPreview;
       setLiveDrawing(polyPreview);
+      return;
+    }
+
+    // خطوط راهنمای خط‌چین زنده خودنویس مه جنگ
+    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length > 0) {
+      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+      const fogPolyPreview = {
+        type: "polygon",
+        mode: modeName,
+        points: [...fogPolygonVertices, pos.x, pos.y],
+        isCover: isCoverAction,
+      };
+      liveFogRef.current = fogPolyPreview;
+      setLiveFog(fogPolyPreview);
       return;
     }
 
@@ -601,19 +703,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
         };
-      } else if (activeDrawShape === DRAW_MODES.CIRCLE) {
-        const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
-        updatedDraw = {
-          type: DRAW_MODES.CIRCLE,
-          x: shapeStart.x,
-          y: shapeStart.y,
-          radius: radius,
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          fill: drawFillColor,
-          isGMLayer: isDrawGMLayer,
-        };
-      } else if (activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
+      } else if (activeDrawShape === DRAW_MODES.CIRCLE || activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
         const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
         updatedDraw = {
           type: activeDrawShape,
@@ -647,9 +737,42 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
     }
 
-    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
-      if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND) {
-        setCurrentLinePoints((prev) => [...prev, pos.x, pos.y]);
+    if (activeTool === TOOLS.FOG && canUseFog && shapeStart && fogBrushShape !== FOG_BRUSH_SHAPES.POLYGON) {
+      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+      let updatedFog = null;
+
+      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
+        updatedFog = {
+          type: "rect",
+          mode: modeName,
+          x: Math.min(shapeStart.x, pos.x),
+          y: Math.min(shapeStart.y, pos.y),
+          width: Math.abs(pos.x - shapeStart.x),
+          height: Math.abs(pos.y - shapeStart.y),
+          isCover: isCoverAction,
+        };
+      } else if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE || fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE || fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON) {
+        const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
+        updatedFog = {
+          type: fogBrushShape,
+          mode: modeName,
+          x: shapeStart.x,
+          y: shapeStart.y,
+          radius: radius,
+          isCover: isCoverAction,
+        };
+      }
+
+      if (updatedFog) {
+        liveFogRef.current = updatedFog;
+        setLiveFog(updatedFog);
+
+        const now = Date.now();
+        if (now - lastFogBroadcastTime.current > 30) {
+          lastFogBroadcastTime.current = now;
+          wsService.send("FOG_LIVE", { ...updatedFog, sceneId: currentScene?.id });
+        }
       }
     }
   };
@@ -660,6 +783,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
+      return;
+    }
+
+    if (activeTool === TOOLS.FOG && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON) {
       return;
     }
 
@@ -687,41 +814,26 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       isInteracting.current = false;
     }
 
-    if (activeTool === TOOLS.FOG && (isGM || permissions?.canFog)) {
-      const pos = getPointerCanvasPos();
-      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE && shapeStart) {
-        const w = pos.x - shapeStart.x;
-        const h = pos.y - shapeStart.y;
-        if (Math.abs(w) > 5 && Math.abs(h) > 5) {
-          const fogShape = {
-            id: `fog-${Date.now()}`,
-            type: "rect",
-            x: Math.min(shapeStart.x, pos.x),
-            y: Math.min(shapeStart.y, pos.y),
-            width: Math.abs(w),
-            height: Math.abs(h),
-            isCover: fogAction === FOG_ACTIONS.HIDE,
-          };
-          addFogShape(fogShape);
-          wsService.send("FOG_UPDATE", {
-            ...fogShape,
-            sceneId: currentScene?.id,
-          });
-        }
-      } else if (fogBrushShape === FOG_BRUSH_SHAPES.FREEHAND && currentLinePoints.length >= 4) {
-        const fogShape = {
-          id: `fog-${Date.now()}`,
-          type: "freehand",
-          points: currentLinePoints,
-          isCover: fogAction === FOG_ACTIONS.HIDE,
-        };
-        addFogShape(fogShape);
-        wsService.send("FOG_UPDATE", {
-          ...fogShape,
+    if (activeTool === TOOLS.FOG && canUseFog && shapeStart) {
+      const finalFogShape = liveFogRef.current;
+      if (finalFogShape) {
+        const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const isCoverAction = finalFogShape.isCover === true;
+        const fogPayload = {
+          ...finalFogShape,
+          id: uniqueFogId,
           sceneId: currentScene?.id,
-        });
+          type: isCoverAction ? "HIDE" : "REVEAL",
+          points: finalFogShape,
+        };
+
+        addFogShape(finalFogShape);
+        wsService.send("FOG_UPDATE", fogPayload);
       }
 
+      wsService.send("FOG_LIVE_END", { sceneId: currentScene?.id });
+      liveFogRef.current = null;
+      setLiveFog(null);
       setCurrentLinePoints([]);
       setShapeStart(null);
       isInteracting.current = false;
@@ -761,6 +873,33 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
+    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length >= 6) {
+      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+      const uniqueFogId = `fog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      const finalFogShape = {
+        id: uniqueFogId,
+        type: "polygon",
+        mode: modeName,
+        points: fogPolygonVertices,
+        isCover: isCoverAction,
+        sceneId: currentScene?.id,
+      };
+
+      addFogShape(finalFogShape);
+      wsService.send("FOG_UPDATE", {
+        ...finalFogShape,
+        type: isCoverAction ? "HIDE" : "REVEAL",
+        points: finalFogShape,
+      });
+
+      setFogPolygonVertices([]);
+      setLiveFog(null);
+      liveFogRef.current = null;
+      return;
+    }
+
     if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.PAN) return;
     if (e.target.findAncestor?.("#tokens-layer-group")) return;
 
@@ -797,7 +936,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             }}
         />
 
-        {/* نوشتن متن با تایپ تمیز و بدون هیچ خط، کادر یا اسکرول‌بار */}
         {inlineTextEditor && (
             <div
                 className="absolute z-50 pointer-events-auto"
@@ -1008,6 +1146,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                   <FogLayer
                       width={mapWidth}
                       height={mapHeight}
+                      liveFog={liveFog}
+                      polygonVertices={fogPolygonVertices.length > 0 ? (liveFog?.points || fogPolygonVertices) : []}
                   />
                   <RulerLayer />
                   <PingLayer />

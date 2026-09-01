@@ -9,7 +9,7 @@ export const useCanvasStore = create((set, get) => ({
     drawFillColor: "rgba(245, 158, 11, 0.2)",
     isDrawGMLayer: false,
 
-    // تنظیمات پیشرفته متن
+    // تنظیمات متن
     textFontFamily: "Vazirmatn",
     textFontSize: 24,
     textColor: "#f59e0b",
@@ -19,11 +19,13 @@ export const useCanvasStore = create((set, get) => ({
     textHasStroke: false,
     textStrokeColor: "#000000",
     textStrokeWidth: 2,
-    pendingEmoji: null, // درج مستقیم ایموجی
+    pendingEmoji: null,
 
+    // تنظیمات مه جنگ
     fogBrushShape: FOG_BRUSH_SHAPES.CIRCLE,
-    fogAction: FOG_ACTIONS.REVEAL,
+    fogAction: FOG_ACTIONS.HIDE,
     fogBrushRadius: 75,
+    isFogRevealedGlobally: false,
 
     zoom: 1.0,
     stageX: 0,
@@ -31,6 +33,7 @@ export const useCanvasStore = create((set, get) => ({
 
     selectedTokenIds: [],
     selectedDrawingId: null,
+    selectedFogId: null, // استیت انتخاب شکل مه
     isTokenEditorOpen: false,
     editingTokenId: null,
 
@@ -41,21 +44,20 @@ export const useCanvasStore = create((set, get) => ({
     laserPosition: null,
     remoteLasers: {},
 
-    // تنظیمات خط‌کش اندازه‌گیری
+    // تنظیمات خط‌کش
     rulerType: "dnd5e_5105",
     rulerUnit: "ft",
     measurement: null,
     remoteMeasurements: {},
 
-    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null, laserPosition: null }),
-    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null, laserPosition: null })),
-    setActiveDrawShape: (shape) => set({ activeDrawShape: shape, selectedDrawingId: null }),
+    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null }),
+    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null })),
+    setActiveDrawShape: (shape) => set({ activeDrawShape: shape, selectedDrawingId: null, selectedFogId: null }),
     setDrawStrokeColor: (color) => set({ drawStrokeColor: color }),
     setDrawStrokeWidth: (width) => set({ drawStrokeWidth: width }),
     setDrawFillColor: (color) => set({ drawFillColor: color }),
     setIsDrawGMLayer: (isGM) => set({ isDrawGMLayer: isGM }),
 
-    // متدهای تنظیمات متن
     setTextFontFamily: (fontFamily) => set({ textFontFamily }),
     setTextFontSize: (size) => set({ textFontSize: size }),
     setTextColor: (color) => set({ textColor: color }),
@@ -78,6 +80,8 @@ export const useCanvasStore = create((set, get) => ({
     setFogBrushShape: (shape) => set({ fogBrushShape: shape }),
     setFogAction: (action) => set({ fogAction: action }),
     setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
+    toggleFogGlobalReveal: () => set((state) => ({ isFogRevealedGlobally: !state.isFogRevealedGlobally })),
+    setFogGlobalReveal: (val) => set({ isFogRevealedGlobally: Boolean(val) }),
 
     setRulerType: (type) => set({ rulerType: type }),
     setRulerUnit: (unit) => set({ rulerUnit: unit }),
@@ -146,14 +150,16 @@ export const useCanvasStore = create((set, get) => ({
                         ? state.selectedTokenIds.filter((id) => id !== tokenId)
                         : [...state.selectedTokenIds, tokenId],
                     selectedDrawingId: null,
+                    selectedFogId: null,
                 };
             }
-            return { selectedTokenIds: [tokenId], selectedDrawingId: null };
+            return { selectedTokenIds: [tokenId], selectedDrawingId: null, selectedFogId: null };
         });
     },
 
-    setSelectedDrawingId: (id) => set({ selectedDrawingId: id, selectedTokenIds: [] }),
-    clearSelection: () => set({ selectedTokenIds: [], selectedDrawingId: null }),
+    setSelectedDrawingId: (id) => set({ selectedDrawingId: id, selectedTokenIds: [], selectedFogId: null }),
+    setSelectedFogId: (id) => set({ selectedFogId: id, selectedDrawingId: null, selectedTokenIds: [] }),
+    clearSelection: () => set({ selectedTokenIds: [], selectedDrawingId: null, selectedFogId: null }),
 
     openTokenEditor: (tokenId) => set({ isTokenEditorOpen: true, editingTokenId: tokenId }),
     closeTokenEditor: () => set({ isTokenEditorOpen: false, editingTokenId: null }),
@@ -173,7 +179,6 @@ export const useCanvasStore = create((set, get) => ({
         });
     },
 
-    // خط‌کش لوکال
     startMeasurement: (x, y) => {
         set({
             measurement: {
@@ -213,7 +218,6 @@ export const useCanvasStore = create((set, get) => ({
 
     endMeasurement: () => set({ measurement: null }),
 
-    // خط‌کش سایر بازیکنان
     updateRemoteMeasurement: (data) => {
         if (!data || !data.userId) return;
         const key = String(data.userId);

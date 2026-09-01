@@ -49,7 +49,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۳.۲. رسم زنده
+    // ۳.۲. رسم زنده نقاشی
     const unsubDrawLive = wsService.on("DRAWING_LIVE", (data) => {
       if (data) {
         useSceneStore.getState().setRemoteLiveDrawing(data);
@@ -91,13 +91,34 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
     });
 
-    // ۵. مه جنگ
+    // ۵. مه جنگ (Fog of War)
     const unsubFog = wsService.on("FOG_UPDATE", (data) => {
       if (data) useSceneStore.getState().addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۵.۱. تنظیمات گرید و سیستم اندازه‌گیری
+    const unsubFogLive = wsService.on("FOG_LIVE", (data) => {
+      if (data) {
+        useSceneStore.getState().setRemoteLiveFog(data);
+      }
+    });
+
+    const unsubFogLiveEnd = wsService.on("FOG_LIVE_END", () => {
+      useSceneStore.getState().setRemoteLiveFog(null);
+    });
+
+    const unsubFogClear = wsService.on("FOG_CLEAR", () => {
+      useSceneStore.getState().clearFog();
+    });
+
+    // ۵.۱. آشکارسازی سراسری بلادرنگ مه
+    const unsubFogGlobalReveal = wsService.on("FOG_GLOBAL_REVEAL", (data) => {
+      if (data && data.isRevealed !== undefined) {
+        useCanvasStore.getState().setFogGlobalReveal(Boolean(data.isRevealed));
+      }
+    });
+
+    // ۵.۲. تنظیمات گرید و سیستم اندازه‌گیری
     const unsubSettings = wsService.on("SETTINGS_UPDATE", (data) => {
       if (data && data.measurementType) {
         useCanvasStore.getState().setRulerType(data.measurementType);
@@ -198,6 +219,10 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubRulerClear();
       unsubPerm();
       unsubFog();
+      unsubFogLive();
+      unsubFogLiveEnd();
+      unsubFogClear();
+      unsubFogGlobalReveal();
       unsubSettings();
       unsubGrid();
       unsubDice();

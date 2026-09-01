@@ -158,8 +158,14 @@ class WebSocketService {
         action = type;
         break;
       case "FOG_UPDATE":
+      case "FOG_CLEAR":
         destination = `/app/room/${this.currentRoomId}/fog`;
-        action = "UPDATE";
+        action = type;
+        break;
+      case "FOG_LIVE":
+      case "FOG_LIVE_END":
+        destination = `/app/room/${this.currentRoomId}/event`;
+        action = type;
         break;
       case "DICE_ROLL":
         destination = `/app/room/${this.currentRoomId}/dice`;
@@ -168,6 +174,10 @@ class WebSocketService {
       case "SETTINGS_UPDATE":
         destination = `/app/room/${this.currentRoomId}/settings`;
         action = "UPDATE";
+        break;
+      case "FOG_GLOBAL_REVEAL":
+        destination = `/app/room/${this.currentRoomId}/fog/global-reveal`;
+        action = "FOG_GLOBAL_REVEAL";
         break;
       default:
         action = type;
@@ -233,8 +243,17 @@ class WebSocketService {
       this.trigger("CONDITION_POOL_UPDATE", eventData);
     } else if (action === "ROLL" || action === "DICE_ROLL") {
       this.trigger("DICE_ROLL", eventData);
-    } else if (action === "FOG_UPDATE" || (action === "UPDATE" && eventData && eventData.isCover !== undefined)) {
+    } else if (
+        action === "FOG_UPDATE" ||
+        (action === "UPDATE" && (eventData?.isCover !== undefined || eventData?.points !== undefined))
+    ) {
       this.trigger("FOG_UPDATE", eventData);
+    } else if (action === "FOG_CLEAR" || (eventData && eventData.type === "CLEAR_ALL")) {
+      this.trigger("FOG_CLEAR", eventData);
+    } else if (action === "FOG_LIVE") {
+      this.trigger("FOG_LIVE", eventData);
+    } else if (action === "FOG_LIVE_END") {
+      this.trigger("FOG_LIVE_END", eventData);
     } else if (action) {
       this.trigger(action, eventData);
     }

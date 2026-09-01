@@ -44,6 +44,7 @@ export const FOG_BRUSH_SHAPES = {
   RECTANGLE: "rect",
   TRIANGLE: "triangle",
   HEXAGON: "hexagon",
+  POLYGON: "polygon",
   FREEHAND: "freehand",
 };
 
@@ -57,7 +58,6 @@ export const FOG_MODES = {
   CLEAR_ALL: "clear_all",
 };
 
-// ثابت گرید مورد نیاز سیستم و رندرینگ تاکتیکال
 export const GRID_TYPES = {
   SQUARE: "square",
   HEX_H: "hex_h",

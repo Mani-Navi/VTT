@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { sceneApi } from "../api/scene.api";
 import { tokenApi } from "../api/token.api";
 import { wsService } from "../services/websocket.service";
+import { useCanvasStore } from "./canvas.store";
 
 const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
     const S = Number(gridSize) || 60;
@@ -24,7 +25,6 @@ const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
     }
 };
 
-// حل‌کننده دقیق شناسه یکتای شکل
 const matchDrawingId = (a, b) => {
     if (!a || !b) return false;
     const idA = String(a.clientDrawingId || a.id || a.drawingId || "").trim();
@@ -35,11 +35,24 @@ const matchDrawingId = (a, b) => {
     return false;
 };
 
+const normalizeFogRegion = (fog) => {
+    if (!fog) return null;
+    if (fog.points && typeof fog.points === "object" && !Array.isArray(fog.points)) {
+        return {
+            ...fog.points,
+            id: fog.id || fog.points.id,
+            isCover: fog.type === "HIDE" || fog.points.isCover,
+        };
+    }
+    return fog;
+};
+
 export const useSceneStore = create((set, get) => ({
     currentScene: null,
     scenes: [],
     pings: [],
     remoteLiveDrawing: null,
+    remoteLiveFog: null,
     isLoading: false,
 
     availableConditions: [],
@@ -50,6 +63,10 @@ export const useSceneStore = create((set, get) => ({
 
     setRemoteLiveDrawing: (drawData) => {
         set({ remoteLiveDrawing: drawData });
+    },
+
+    setRemoteLiveFog: (fogData) => {
+        set({ remoteLiveFog: fogData });
     },
 
     addAvailableCondition: (conditionId, shouldBroadcast = true) => {
@@ -129,6 +146,12 @@ export const useSceneStore = create((set, get) => ({
                 }
             }
 
+            const rawFogRegions = fullState.fogRegions || sceneData.fogShapes || [];
+            const normalizedFog = rawFogRegions.map(normalizeFogRegion).filter(Boolean);
+
+            const isRevealedSaved = Boolean(sceneData.isFogRevealed || fullState.isFogRevealed);
+            useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
+
             const sceneWithState = {
                 ...sceneData,
                 assetUrl: finalMapUrl,
@@ -137,9 +160,10 @@ export const useSceneStore = create((set, get) => ({
                 mapHeight: sceneData.mapHeight || 1500,
                 tokens: loadedTokens,
                 drawings: fullState.drawings || [],
-                fogShapes: fullState.fogRegions || [],
-                fogEnabled: false,
-                fogFilled: false,
+                fogShapes: normalizedFog,
+                fogEnabled: normalizedFog.length > 0,
+                fogFilled: Boolean(sceneData.fogFilled),
+                isFogRevealed: isRevealedSaved,
                 grid: {
                     enabled: true,
                     type: "square",
@@ -416,7 +440,6 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
-    // ثبت یا به‌روزرسانی بدون ایجاد آبجکت‌های تکراری
     addDrawing: (drawing) => {
         set((state) => {
             if (!state.currentScene) return state;
@@ -477,10 +500,35 @@ export const useSceneStore = create((set, get) => ({
     },
 
     addFogShape: (shapeData) => {
+        const normalized = normalizeFogRegion(shapeData);
+        if (!normalized) return;
+
         set((state) => {
             if (!state.currentScene) return state;
-            const fogShapes = state.currentScene.fogShapes ? [...state.currentScene.fogShapes, shapeData] : [shapeData];
-            return { currentScene: { ...state.currentScene, fogShapes, fogEnabled: true } };
+            const fogShapes = state.currentScene.fogShapes ? [...state.currentScene.fogShapes, normalized] : [normalized];
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    fogShapes,
+                    fogEnabled: true,
+                },
+                remoteLiveFog: null,
+            };
+        });
+    },
+
+    clearFog: () => {
+        set((state) => {
+            if (!state.currentScene) return state;
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    fogShapes: [],
+                    fogEnabled: false,
+                    fogFilled: false,
+                },
+                remoteLiveFog: null,
+            };
         });
     },
 
@@ -525,6 +573,12 @@ export const useSceneStore = create((set, get) => ({
                 allowPlayerSize: t.allowPlayerSize !== undefined ? Boolean(t.allowPlayerSize) : true,
             }));
 
+            const rawFogRegions = fullState.fogRegions || sceneData.fogShapes || [];
+            const normalizedFog = rawFogRegions.map(normalizeFogRegion).filter(Boolean);
+
+            const isRevealedSaved = Boolean(sceneData.isFogRevealed || fullState.isFogRevealed);
+            useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
+
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];
 
             const sceneWithState = {
@@ -535,8 +589,10 @@ export const useSceneStore = create((set, get) => ({
                 mapHeight: sceneData.mapHeight || 1500,
                 tokens: loadedTokens,
                 drawings: fullState.drawings || [],
-                fogShapes: fullState.fogRegions || [],
-                fogEnabled: false,
+                fogShapes: normalizedFog,
+                fogEnabled: normalizedFog.length > 0,
+                fogFilled: Boolean(sceneData.fogFilled),
+                isFogRevealed: isRevealedSaved,
                 grid: {
                     enabled: true,
                     type: "square",
