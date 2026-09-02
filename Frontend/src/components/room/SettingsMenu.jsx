@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Sliders,
   Palette,
+  Save,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -20,6 +21,24 @@ import { MEASUREMENT_TYPES } from "../../constants/measurementTypes";
 import { wsService } from "../../services/websocket.service";
 import { Button } from "../ui/Button";
 import { cn } from "../../utils/cn";
+
+const DEFAULT_SETTINGS = {
+  zoomSensitivity: 1.0,
+  overlayEffect: "GLASS",
+  gmFogBlend: 0.5,
+  colorTheme: "DARK",
+  inputMode: "AUTO",
+  shapeSnapSensitivity: 0.5,
+  gridSnapSensitivity: 0.5,
+  gridType: "square",
+  lineType: "solid",
+  measurementType: "dnd5e_5105",
+  gridSize: 60,
+  gridOpacity: 0.35,
+  lineWidth: 1.5,
+  gridColor: "#000000",
+  isGridSnapping: true,
+};
 
 export const SettingsMenu = ({ isGM = false }) => {
   const { roomId } = useParams();
@@ -38,26 +57,11 @@ export const SettingsMenu = ({ isGM = false }) => {
 
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("grid"); // grid | room | camera
 
   // استیت‌های تنظیمات اتاق
-  const [settings, setSettings] = useState({
-    zoomSensitivity: 1.0,
-    overlayEffect: "GLASS",
-    gmFogBlend: 0.5,
-    colorTheme: "DARK",
-    inputMode: "AUTO",
-    shapeSnapSensitivity: 0.5,
-    gridSnapSensitivity: 0.5,
-    gridType: "square",
-    lineType: "solid",
-    measurementType: "dnd5e_5105",
-    gridSize: 60,
-    gridOpacity: 0.35,
-    lineWidth: 1.5,
-    gridColor: "#000000",
-    isGridSnapping: true,
-  });
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
   useEffect(() => {
     if (isSettingsOpen && roomId && isGM) {
@@ -65,7 +69,7 @@ export const SettingsMenu = ({ isGM = false }) => {
           .getSettings(roomId)
           .then((data) => {
             if (data) {
-              setSettings(data);
+              setSettings((prev) => ({ ...prev, ...data }));
               if (data.measurementType) setRulerType(data.measurementType);
             }
           })
@@ -101,7 +105,8 @@ export const SettingsMenu = ({ isGM = false }) => {
     );
   }
 
-  const handleUpdate = async (patch) => {
+  // تغییرات لحظه‌ای در فرم (پیش‌نمایش زنده در استور)
+  const handleChange = (patch) => {
     const updated = { ...settings, ...patch };
     setSettings(updated);
 
@@ -109,38 +114,91 @@ export const SettingsMenu = ({ isGM = false }) => {
       setRulerType(patch.measurementType);
     }
 
-    if (roomId) {
-      try {
-        await settingsApi.updateSettings(roomId, updated);
-      } catch (err) {
-        console.error("خطا در ذخیره تنظیمات:", err);
-      }
-    }
-
-    // همگام‌سازی گرید با استور صحنه
     if (currentScene) {
-      const updatedGrid = {
+      const liveGrid = {
         enabled: true,
         type: updated.gridType,
         lineType: updated.lineType,
-        size: updated.gridSize,
+        size: Number(updated.gridSize),
         color: updated.gridColor,
-        opacity: updated.gridOpacity,
-        lineWidth: updated.lineWidth,
-        snapToGrid: updated.isGridSnapping,
+        opacity: Number(updated.gridOpacity),
+        lineWidth: Number(updated.lineWidth),
+        snapToGrid: updated.isGridSnapping !== false,
       };
-      useSceneStore.setState({ currentScene: { ...currentScene, grid: updatedGrid } });
-      wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: updatedGrid });
+      useSceneStore.setState({ currentScene: { ...currentScene, grid: liveGrid } });
     }
   };
 
+  // ذخیره نهایی و پایدار در دیتابیس با دکمه Save
+  const handleSaveSettings = async () => {
+    if (!roomId) return;
+    setIsSaving(true);
+    try {
+      await settingsApi.updateSettings(roomId, settings);
+
+      if (currentScene) {
+        const finalGrid = {
+          enabled: true,
+          type: settings.gridType,
+          lineType: settings.lineType,
+          size: Number(settings.gridSize),
+          color: settings.gridColor,
+          opacity: Number(settings.gridOpacity),
+          lineWidth: Number(settings.lineWidth),
+          snapToGrid: settings.isGridSnapping !== false,
+        };
+        useSceneStore.setState({ currentScene: { ...currentScene, grid: finalGrid } });
+        wsService.send("SETTINGS_UPDATE", settings);
+        wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: finalGrid });
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err) {
+      console.error("خطا در ذخیره تنظیمات اتاق:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // بازنشانی به پیش‌فرض
   const handleResetToDefault = async () => {
     if (!roomId) return;
     setIsSaving(true);
     try {
-      const defaults = await settingsApi.resetSettings(roomId);
-      setSettings(defaults);
-      if (defaults.measurementType) setRulerType(defaults.measurementType);
+      let defaults = null;
+      try {
+        defaults = await settingsApi.resetSettings(roomId);
+      } catch (e) {
+        defaults = null;
+      }
+
+      const finalDefaults = defaults || DEFAULT_SETTINGS;
+      setSettings(finalDefaults);
+
+      if (finalDefaults.measurementType) {
+        setRulerType(finalDefaults.measurementType);
+      }
+
+      if (currentScene) {
+        const resetGrid = {
+          enabled: true,
+          type: finalDefaults.gridType || "square",
+          lineType: finalDefaults.lineType || "solid",
+          size: Number(finalDefaults.gridSize || 60),
+          color: finalDefaults.gridColor || "#000000",
+          opacity: Number(finalDefaults.gridOpacity || 0.35),
+          lineWidth: Number(finalDefaults.lineWidth || 1.5),
+          snapToGrid: finalDefaults.isGridSnapping !== false,
+        };
+        useSceneStore.setState({ currentScene: { ...currentScene, grid: resetGrid } });
+        wsService.send("SETTINGS_UPDATE", finalDefaults);
+        wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: resetGrid });
+      }
+
+      await settingsApi.updateSettings(roomId, finalDefaults);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
       console.error("خطا در بازنشانی تنظیمات:", err);
     } finally {
@@ -222,7 +280,7 @@ export const SettingsMenu = ({ isGM = false }) => {
         </div>
 
         {/* محتوای تب‌ها */}
-        <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-3.5 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
           {/* ۱. تب تنظیمات گرید */}
           {activeTab === "grid" && (
               <div className="space-y-3">
@@ -239,7 +297,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                         <button
                             key={type.id}
                             type="button"
-                            onClick={() => handleUpdate({ gridType: type.id })}
+                            onClick={() => handleChange({ gridType: type.id })}
                             className={cn(
                                 "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                                 settings.gridType === type.id
@@ -265,7 +323,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                         <button
                             key={lt.id}
                             type="button"
-                            onClick={() => handleUpdate({ lineType: lt.id })}
+                            onClick={() => handleChange({ lineType: lt.id })}
                             className={cn(
                                 "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                                 settings.lineType === lt.id
@@ -284,7 +342,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                   <label className="text-xs text-zinc-400 mb-1.5 block">سیستم اندازه‌گیری فاصله (Measurement):</label>
                   <select
                       value={settings.measurementType}
-                      onChange={(e) => handleUpdate({ measurementType: e.target.value })}
+                      onChange={(e) => handleChange({ measurementType: e.target.value })}
                       className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
                   >
                     <option value="dnd5e_5105">قانون Chessboard D&D 5e (۵، ۱۰، ۱۵، ۲۰ فوت)</option>
@@ -306,7 +364,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={150}
                       step={5}
                       value={settings.gridSize}
-                      onChange={(e) => handleUpdate({ gridSize: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ gridSize: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -323,7 +381,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={1}
                       step={0.05}
                       value={settings.gridOpacity}
-                      onChange={(e) => handleUpdate({ gridOpacity: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ gridOpacity: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -340,7 +398,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={5}
                       step={0.5}
                       value={settings.lineWidth}
-                      onChange={(e) => handleUpdate({ lineWidth: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ lineWidth: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -350,7 +408,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                   <span className="text-xs text-zinc-300 font-bold">چسبیدن خودکار به خانه‌ها (Snapping):</span>
                   <button
                       type="button"
-                      onClick={() => handleUpdate({ isGridSnapping: !settings.isGridSnapping })}
+                      onClick={() => handleChange({ isGridSnapping: !settings.isGridSnapping })}
                       className={cn(
                           "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
                           settings.isGridSnapping ? "bg-amber-500" : "bg-zinc-800"
@@ -387,7 +445,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                         <button
                             key={mode}
                             type="button"
-                            onClick={() => handleUpdate({ inputMode: mode })}
+                            onClick={() => handleChange({ inputMode: mode })}
                             className={cn(
                                 "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                                 settings.inputMode === mode
@@ -412,7 +470,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                         <button
                             key={eff.id}
                             type="button"
-                            onClick={() => handleUpdate({ overlayEffect: eff.id })}
+                            onClick={() => handleChange({ overlayEffect: eff.id })}
                             className={cn(
                                 "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                                 settings.overlayEffect === eff.id
@@ -438,7 +496,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={2.0}
                       step={0.1}
                       value={settings.zoomSensitivity}
-                      onChange={(e) => handleUpdate({ zoomSensitivity: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ zoomSensitivity: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -455,7 +513,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={1.0}
                       step={0.1}
                       value={settings.shapeSnapSensitivity}
-                      onChange={(e) => handleUpdate({ shapeSnapSensitivity: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ shapeSnapSensitivity: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -472,7 +530,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                       max={1.0}
                       step={0.05}
                       value={settings.gmFogBlend}
-                      onChange={(e) => handleUpdate({ gmFogBlend: Number(e.target.value) })}
+                      onChange={(e) => handleChange({ gmFogBlend: Number(e.target.value) })}
                       className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
                 </div>
@@ -522,17 +580,40 @@ export const SettingsMenu = ({ isGM = false }) => {
           )}
         </div>
 
-        {/* فوتر: دکمه بازگشت به پیش‌فرض (Reset to Default UCS-01) */}
-        <div className="pt-3 mt-3 border-t border-zinc-800 flex justify-end">
+        {/* فوتر: دکمه‌های ذخیره و بازنشانی پیش‌فرض */}
+        <div className="pt-3 mt-3 border-t border-zinc-800 flex items-center justify-between gap-2">
           <Button
               size="sm"
               variant="ghost"
               className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
-              isLoading={isSaving}
+              disabled={isSaving}
               onClick={handleResetToDefault}
           >
             <RotateCcw className="w-3.5 h-3.5 ml-1" />
-            بازنشانی به حالت پیش‌فرض (Reset to Default)
+            بازنشانی به پیش‌فرض
+          </Button>
+
+          <Button
+              size="sm"
+              variant={saveSuccess ? "outline" : "amber"}
+              className={cn(
+                  "text-xs font-bold cursor-pointer shadow-md transition-all",
+                  saveSuccess ? "border-emerald-500 text-emerald-400 bg-emerald-500/10" : "shadow-amber-500/20"
+              )}
+              isLoading={isSaving}
+              onClick={handleSaveSettings}
+          >
+            {saveSuccess ? (
+                <>
+                  <Check className="w-3.5 h-3.5 ml-1 text-emerald-400" />
+                  ذخیره شد
+                </>
+            ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 ml-1" />
+                  ذخیره تنظیمات
+                </>
+            )}
           </Button>
         </div>
       </div>

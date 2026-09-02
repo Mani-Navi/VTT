@@ -1,32 +1,107 @@
 import { GRID_TYPES } from "../constants/tools.js";
 
-export function snapToGrid(x, y, gridSize = 50, gridType = "square", tokenSize = 1) {
-  if (gridSize <= 0 || gridType === (GRID_TYPES?.NONE || "none")) {
-    return { x, y };
+export function snapToGrid(x, y, gridSize = 60, gridType = "square", tokenSize = 1, snapEnabled = true) {
+  if (!snapEnabled || gridSize <= 0 || gridType === (GRID_TYPES?.NONE || "none") || gridType === "none") {
+    return { x: Math.round(x), y: Math.round(y) };
   }
 
-  const isSquare = gridType === (GRID_TYPES?.SQUARE || "square");
-  const isHexH = gridType === (GRID_TYPES?.HEX_H || "hex_h");
-  const isHexV = gridType === (GRID_TYPES?.HEX_V || "hex_v");
+  const S = Number(gridSize) || 60;
+  const size = Number(tokenSize) || 1;
+  const type = String(gridType || "square").toLowerCase();
 
-  if (isSquare) {
-    const halfGrid = (gridSize * tokenSize) / 2;
-    const snappedX = Math.round((x - halfGrid) / gridSize) * gridSize + halfGrid;
-    const snappedY = Math.round((y - halfGrid) / gridSize) * gridSize + halfGrid;
+  // ۱. گرید مربعی (Square)
+  if (type === "square" || type === (GRID_TYPES?.SQUARE || "square")) {
+    if (size % 2 === 1) {
+      const cellX = Math.floor(x / S);
+      const cellY = Math.floor(y / S);
+      return {
+        x: cellX * S + S / 2,
+        y: cellY * S + S / 2,
+      };
+    } else {
+      const snappedX = Math.round(x / S) * S;
+      const snappedY = Math.round(y / S) * S;
+      return {
+        x: snappedX,
+        y: snappedY,
+      };
+    }
+  }
+
+  // ۲. گرید لوزی / ایزومتریک (Isometric / Diamond)
+  if (type === "isometric" || type === "diamond" || type === (GRID_TYPES?.DIMETRIC || "isometric")) {
+    const u = x - y;
+    const v = x + y;
+    const uCenter = Math.floor(u / S) * S + S / 2;
+    const vCenter = Math.floor(v / S) * S + S / 2;
+    const snappedX = Math.round((uCenter + vCenter) / 2);
+    const snappedY = Math.round((vCenter - uCenter) / 2);
     return { x: snappedX, y: snappedY };
   }
 
-  if (isHexH || isHexV) {
-    const rowHeight = gridSize * 0.866;
-    const colWidth = gridSize * 0.75;
-    const snappedX = Math.round(x / colWidth) * colWidth;
-    const snappedY = Math.round(y / rowHeight) * rowHeight;
-    return { x: snappedX, y: snappedY };
+  // ۳. گرید شش‌ضلعی افقی (Hex Horizontal)
+  if (type === "hex_h" || type === (GRID_TYPES?.HEX_H || "hex_h")) {
+    const radius = S / 2;
+    const colStep = S * 0.75;
+    const rowStep = S * 0.866;
+
+    const minCol = Math.max(0, Math.floor((x - radius) / colStep) - 1);
+    const maxCol = minCol + 3;
+    const minRow = Math.max(0, Math.floor((y - radius) / rowStep) - 1);
+    const maxRow = minRow + 3;
+
+    let bestDist = Infinity;
+    let bestX = x;
+    let bestY = y;
+
+    for (let c = minCol; c <= maxCol; c++) {
+      const candX = radius + c * colStep;
+      const yOffset = (c % 2) * (rowStep / 2);
+      for (let r = minRow; r <= maxRow; r++) {
+        const candY = radius + yOffset + r * rowStep;
+        const distSq = (x - candX) ** 2 + (y - candY) ** 2;
+        if (distSq < bestDist) {
+          bestDist = distSq;
+          bestX = candX;
+          bestY = candY;
+        }
+      }
+    }
+    return { x: Math.round(bestX), y: Math.round(bestY) };
   }
 
-  const snappedX = Math.round(x / gridSize) * gridSize;
-  const snappedY = Math.round(y / gridSize) * gridSize;
-  return { x: snappedX, y: snappedY };
+  // ۴. گرید شش‌ضلعی عمودی (Hex Vertical)
+  if (type === "hex_v" || type === (GRID_TYPES?.HEX_V || "hex_v")) {
+    const radius = S / 2;
+    const colStep = S * 0.866;
+    const rowStep = S * 0.75;
+
+    const minCol = Math.max(0, Math.floor((x - radius) / colStep) - 1);
+    const maxCol = minCol + 3;
+    const minRow = Math.max(0, Math.floor((y - radius) / rowStep) - 1);
+    const maxRow = minRow + 3;
+
+    let bestDist = Infinity;
+    let bestX = x;
+    let bestY = y;
+
+    for (let c = minCol; c <= maxCol; c++) {
+      const candX = radius + c * colStep;
+      const yOffset = (c % 2) * (rowStep / 2);
+      for (let r = minRow; r <= maxRow; r++) {
+        const candY = radius + yOffset + r * rowStep;
+        const distSq = (x - candX) ** 2 + (y - candY) ** 2;
+        if (distSq < bestDist) {
+          bestDist = distSq;
+          bestX = candX;
+          bestY = candY;
+        }
+      }
+    }
+    return { x: Math.round(bestX), y: Math.round(bestY) };
+  }
+
+  return { x: Math.round(x), y: Math.round(y) };
 }
 
 export function getHexPoints(radius, isHorizontal = true) {

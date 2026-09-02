@@ -8,6 +8,7 @@ import { CONDITION_MAP } from "../../constants/conditions";
 import { getAssetUrl } from "../../api/asset.api";
 import { useAuthStore } from "../../store/auth.store";
 import { useRoomStore } from "../../store/room.store";
+import { snapToGrid } from "../../utils/grid";
 
 const tokenImageCache = new Map();
 
@@ -31,30 +32,11 @@ const DND_CONDITION_EMOJIS = {
     bleeding: "🩸",
 };
 
-const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
-    const S = Number(gridSize) || 60;
-    const size = Number(tokenSize) || 1;
-
-    if (size % 2 === 1) {
-        const cellX = Math.floor(rawX / S);
-        const cellY = Math.floor(rawY / S);
-        return {
-            x: cellX * S + S / 2,
-            y: cellY * S + S / 2,
-        };
-    } else {
-        const snappedX = Math.round(rawX / S) * S;
-        const snappedY = Math.round(rawY / S) * S;
-        return {
-            x: snappedX,
-            y: snappedY,
-        };
-    }
-};
-
 const SingleToken = ({
                          token,
                          gridSize,
+                         gridType = "square",
+                         snapEnabled = true,
                          isSelected,
                          canControl,
                          canEdit,
@@ -164,7 +146,14 @@ const SingleToken = ({
         const rawX = e.target.x();
         const rawY = e.target.y();
 
-        const { x: snappedX, y: snappedY } = snapToCellCenter(rawX, rawY, gridSize, token.size || 1);
+        const { x: snappedX, y: snappedY } = snapToGrid(
+            rawX,
+            rawY,
+            gridSize,
+            gridType,
+            token.size || 1,
+            snapEnabled
+        );
 
         if (groupRef.current) {
             groupRef.current.position({ x: snappedX, y: snappedY });
@@ -521,6 +510,8 @@ export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
     if (!currentScene || !currentScene.tokens) return null;
 
     const userTokens = currentScene.tokens;
+    const gridType = currentScene.grid?.type || "square";
+    const snapEnabled = currentScene.grid?.snapToGrid !== false;
 
     // دسته‌بندی توکن‌ها بر اساس سلول گرید جهت چینش چندتوکنی
     const cellGroups = {};
@@ -606,6 +597,8 @@ export const TokenLayer = ({ gridSize = 60, isGM: propIsGM }) => {
                         key={token.id}
                         token={token}
                         gridSize={gridSize}
+                        gridType={gridType}
+                        snapEnabled={snapEnabled}
                         isSelected={selectedTokenIds.includes(token.id)}
                         canControl={canControl}
                         canEdit={canEdit}

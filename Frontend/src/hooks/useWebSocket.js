@@ -130,18 +130,43 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۵.۲. تنظیمات گرید و سیستم اندازه‌گیری
-    const unsubSettings = wsService.on("SETTINGS_UPDATE", (data) => {
-      if (data && data.measurementType) {
+    // ۵.۲. اعمال بلادرنگ تنظیمات گرید و اتاق برای همه بازیکنان
+    const handleSettingsPayload = (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
+      if (!data) return;
+
+      if (data.measurementType) {
         useCanvasStore.getState().setRulerType(data.measurementType);
       }
-    });
 
-    const unsubGrid = wsService.on("SCENE_GRID_UPDATE", (data) => {
+      const store = useSceneStore.getState();
+      const current = store.currentScene;
+      if (current) {
+        const updatedGrid = {
+          ...current.grid,
+          enabled: true,
+          type: data.gridType || current.grid?.type || "square",
+          lineType: data.lineType || current.grid?.lineType || "solid",
+          size: Number(data.gridSize || current.grid?.size || 60),
+          color: data.gridColor || current.grid?.color || "#000000",
+          opacity: data.gridOpacity !== undefined ? Number(data.gridOpacity) : (current.grid?.opacity ?? 0.35),
+          lineWidth: data.lineWidth !== undefined ? Number(data.lineWidth) : (current.grid?.lineWidth ?? 1.5),
+          snapToGrid: data.isGridSnapping !== undefined ? Boolean(data.isGridSnapping) : (current.grid?.snapToGrid ?? true),
+        };
+        useSceneStore.setState({ currentScene: { ...current, grid: updatedGrid } });
+      }
+    };
+
+    const unsubSettings = wsService.on("SETTINGS_UPDATE", handleSettingsPayload);
+
+    const unsubGrid = wsService.on("SCENE_GRID_UPDATE", (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
       if (data && data.grid) {
         const current = useSceneStore.getState().currentScene;
-        if (current && current.id === data.sceneId) {
-          useSceneStore.setState({ currentScene: { ...current, grid: data.grid } });
+        if (current) {
+          useSceneStore.setState({ currentScene: { ...current, grid: { ...current.grid, ...data.grid } } });
         }
       }
     });

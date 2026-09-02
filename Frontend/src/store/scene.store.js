@@ -1,29 +1,10 @@
 import { create } from "zustand";
 import { sceneApi } from "../api/scene.api";
 import { tokenApi } from "../api/token.api";
+import { settingsApi } from "../api/settings.api";
 import { wsService } from "../services/websocket.service";
 import { useCanvasStore } from "./canvas.store";
-
-const snapToCellCenter = (rawX, rawY, gridSize = 60, tokenSize = 1) => {
-    const S = Number(gridSize) || 60;
-    const size = Number(tokenSize) || 1;
-
-    if (size % 2 === 1) {
-        const cellX = Math.floor(rawX / S);
-        const cellY = Math.floor(rawY / S);
-        return {
-            x: cellX * S + S / 2,
-            y: cellY * S + S / 2,
-        };
-    } else {
-        const snappedX = Math.round(rawX / S) * S;
-        const snappedY = Math.round(rawY / S) * S;
-        return {
-            x: snappedX,
-            y: snappedY,
-        };
-    }
-};
+import { snapToGrid } from "../utils/grid";
 
 const matchDrawingId = (a, b) => {
     if (!a || !b) return false;
@@ -123,7 +104,10 @@ export const useSceneStore = create((set, get) => ({
         if (!roomId) return;
         set({ isLoading: true });
         try {
-            let scenes = await sceneApi.getScenes(roomId);
+            let [scenes, roomSettings] = await Promise.all([
+                sceneApi.getScenes(roomId),
+                settingsApi.getSettings(roomId).catch(() => null),
+            ]);
 
             if (!scenes || scenes.length === 0) {
                 const defaultScene = await sceneApi.createScene({
@@ -173,6 +157,10 @@ export const useSceneStore = create((set, get) => ({
             const isRevealedSaved = Boolean(sceneData.isFogRevealed || fullState.isFogRevealed);
             useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
 
+            if (roomSettings?.measurementType) {
+                useCanvasStore.getState().setRulerType(roomSettings.measurementType);
+            }
+
             const sceneWithState = {
                 ...sceneData,
                 assetUrl: finalMapUrl,
@@ -187,11 +175,13 @@ export const useSceneStore = create((set, get) => ({
                 isFogRevealed: isRevealedSaved,
                 grid: {
                     enabled: true,
-                    type: "square",
-                    size: sceneData.gridSize || 60,
-                    color: sceneData.gridColor || "#000000",
-                    opacity: 0.35,
-                    snapToGrid: true,
+                    type: roomSettings?.gridType || sceneData.gridType || "square",
+                    size: Number(roomSettings?.gridSize || sceneData.gridSize || 60),
+                    color: roomSettings?.gridColor || sceneData.gridColor || "#000000",
+                    opacity: roomSettings?.gridOpacity !== undefined ? Number(roomSettings.gridOpacity) : 0.35,
+                    lineWidth: roomSettings?.lineWidth !== undefined ? Number(roomSettings.lineWidth) : 1.5,
+                    lineType: roomSettings?.lineType || "solid",
+                    snapToGrid: roomSettings?.isGridSnapping !== undefined ? Boolean(roomSettings.isGridSnapping) : true,
                 },
             };
 
@@ -371,8 +361,12 @@ export const useSceneStore = create((set, get) => ({
         const rawX = tokenData.x !== undefined ? tokenData.x : defaultCenterX;
         const rawY = tokenData.y !== undefined ? tokenData.y : defaultCenterY;
 
-        const gridSize = state.currentScene.grid?.size || 60;
-        const centerPos = snapToCellCenter(rawX, rawY, gridSize, tokenData.size || 1);
+        const grid = state.currentScene.grid || {};
+        const gridSize = grid.size || 60;
+        const gridType = grid.type || "square";
+        const snapEnabled = grid.snapToGrid !== false;
+
+        const centerPos = snapToGrid(rawX, rawY, gridSize, gridType, tokenData.size || 1, snapEnabled);
         const tokenName = tokenData.name || tokenData.label || "توکن";
 
         const isValidUUID = (uuid) => {
@@ -641,7 +635,7 @@ export const useSceneStore = create((set, get) => ({
                 isFogRevealed: isRevealedSaved,
                 grid: {
                     enabled: true,
-                    type: "square",
+                    type: sceneData.gridType || "square",
                     size: sceneData.gridSize || 60,
                     color: sceneData.gridColor || "#000000",
                     opacity: 0.35,

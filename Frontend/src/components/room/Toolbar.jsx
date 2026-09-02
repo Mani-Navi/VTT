@@ -6,7 +6,6 @@ import {
   EyeOff,
   Ruler,
   Crosshair,
-  Dices,
   Image as ImageIcon,
   Settings,
   ZoomIn,
@@ -37,7 +36,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
 
   const isAssetOpen = useCanvasStore((state) => state.isAssetMenuOpen);
   const isSettingsOpen = useCanvasStore((state) => state.isSettingsMenuOpen);
-  const isDiceOpen = useCanvasStore((state) => state.isDiceRollerOpen);
 
   const currentScene = useSceneStore((state) => state.currentScene);
   const addToken = useSceneStore((state) => state.addToken);
@@ -305,21 +303,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
             )}
 
             <div className="h-6 w-px bg-zinc-800 mx-1" />
-
-            <Tooltip content="Dice Tray" subContent="سینی پرتاب تاس سه‌بعدی" shortcut="Space">
-              <button
-                  type="button"
-                  onClick={() => toggleMenu("dice")}
-                  className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
-                      isDiceOpen
-                          ? "bg-amber-500 text-zinc-950 font-bold shadow-md shadow-amber-500/20"
-                          : "text-amber-400 hover:bg-amber-500/10"
-                  )}
-              >
-                <Dices className="w-5 h-5" />
-              </button>
-            </Tooltip>
 
             {(isGM || permissions?.canAssets) && (
                 <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها" shortcut="A">
