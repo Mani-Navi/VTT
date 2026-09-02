@@ -44,6 +44,7 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
     const selectedFogId = useCanvasStore((state) => state.selectedFogId);
     const setSelectedFogId = useCanvasStore((state) => state.setSelectedFogId);
     const isFogRevealedGlobally = useCanvasStore((state) => state.isFogRevealedGlobally);
+    const gmFogBlend = useCanvasStore((state) => state.gmFogBlend) ?? 0.45;
 
     const { isGM } = usePermissions();
 
@@ -78,7 +79,8 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
         return null;
     }
 
-    const fogOpacity = isGM ? 0.45 : 1.0;
+    // شفافیت داینامیک برای GM بر اساس تنظیمات Room Settings
+    const fogOpacity = isGM ? Math.max(0.05, Math.min(1.0, gmFogBlend)) : 1.0;
     const fogColor = currentScene.fogColor || "#090a0f";
 
     const renderSingleShape = (context, fog) => {
@@ -256,7 +258,7 @@ export const FogLayer = ({ width = 2400, height = 1800, liveFog = null, polygonV
                             x: fog.x || 0,
                             y: fog.y || 0,
                             draggable: isSelectMode,
-                            fill: "rgba(0,0,0,0.001)", // کاملاً شفاف با حفظ قابلیت کلیک
+                            fill: "rgba(0,0,0,0.001)",
                             stroke: "transparent",
                             hitStrokeWidth: 20,
                             onClick: (e) => {

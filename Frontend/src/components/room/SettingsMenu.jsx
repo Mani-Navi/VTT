@@ -4,14 +4,11 @@ import {
   Settings,
   X,
   Grid,
-  Copy,
   Check,
   RefreshCw,
   Share2,
   Lock,
   RotateCcw,
-  Sliders,
-  Palette,
   Save,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
@@ -25,7 +22,7 @@ import { cn } from "../../utils/cn";
 const DEFAULT_SETTINGS = {
   zoomSensitivity: 1.0,
   overlayEffect: "GLASS",
-  gmFogBlend: 0.5,
+  gmFogBlend: 0.45,
   colorTheme: "DARK",
   inputMode: "AUTO",
   shapeSnapSensitivity: 0.5,
@@ -53,14 +50,17 @@ export const SettingsMenu = ({ isGM = false }) => {
   const rulerType = useCanvasStore((state) => state.rulerType);
   const setRulerType = useCanvasStore((state) => state.setRulerType);
 
+  const setInputMode = useCanvasStore((state) => state.setInputMode);
+  const setZoomSensitivity = useCanvasStore((state) => state.setZoomSensitivity);
+  const setShapeSnapSensitivity = useCanvasStore((state) => state.setShapeSnapSensitivity);
+  const setGmFogBlend = useCanvasStore((state) => state.setGmFogBlend);
+
   const currentScene = useSceneStore((state) => state.currentScene);
 
-  const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("grid"); // grid | room | camera
 
-  // استیت‌های تنظیمات اتاق
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
   useEffect(() => {
@@ -71,15 +71,18 @@ export const SettingsMenu = ({ isGM = false }) => {
             if (data) {
               setSettings((prev) => ({ ...prev, ...data }));
               if (data.measurementType) setRulerType(data.measurementType);
+              if (data.inputMode) setInputMode(data.inputMode);
+              if (data.zoomSensitivity) setZoomSensitivity(data.zoomSensitivity);
+              if (data.shapeSnapSensitivity) setShapeSnapSensitivity(data.shapeSnapSensitivity);
+              if (data.gmFogBlend !== undefined) setGmFogBlend(data.gmFogBlend);
             }
           })
           .catch((err) => console.error("خطا در دریافت تنظیمات اتاق:", err));
     }
-  }, [isSettingsOpen, roomId, isGM, setRulerType]);
+  }, [isSettingsOpen, roomId, isGM, setRulerType, setInputMode, setZoomSensitivity, setShapeSnapSensitivity, setGmFogBlend]);
 
   if (!isSettingsOpen) return null;
 
-  // دسترسی منحصراً برای GM است
   if (!isGM) {
     return (
         <div
@@ -105,14 +108,16 @@ export const SettingsMenu = ({ isGM = false }) => {
     );
   }
 
-  // تغییرات لحظه‌ای در فرم (پیش‌نمایش زنده در استور)
+  // تغییرات زنده در فرم
   const handleChange = (patch) => {
     const updated = { ...settings, ...patch };
     setSettings(updated);
 
-    if (patch.measurementType) {
-      setRulerType(patch.measurementType);
-    }
+    if (patch.measurementType) setRulerType(patch.measurementType);
+    if (patch.inputMode) setInputMode(patch.inputMode);
+    if (patch.zoomSensitivity !== undefined) setZoomSensitivity(patch.zoomSensitivity);
+    if (patch.shapeSnapSensitivity !== undefined) setShapeSnapSensitivity(patch.shapeSnapSensitivity);
+    if (patch.gmFogBlend !== undefined) setGmFogBlend(patch.gmFogBlend);
 
     if (currentScene) {
       const liveGrid = {
@@ -129,7 +134,7 @@ export const SettingsMenu = ({ isGM = false }) => {
     }
   };
 
-  // ذخیره نهایی و پایدار در دیتابیس با دکمه Save
+  // ذخیره پایدار نهایی با دکمه Save
   const handleSaveSettings = async () => {
     if (!roomId) return;
     setIsSaving(true);
@@ -176,9 +181,11 @@ export const SettingsMenu = ({ isGM = false }) => {
       const finalDefaults = defaults || DEFAULT_SETTINGS;
       setSettings(finalDefaults);
 
-      if (finalDefaults.measurementType) {
-        setRulerType(finalDefaults.measurementType);
-      }
+      if (finalDefaults.measurementType) setRulerType(finalDefaults.measurementType);
+      if (finalDefaults.inputMode) setInputMode(finalDefaults.inputMode);
+      if (finalDefaults.zoomSensitivity) setZoomSensitivity(finalDefaults.zoomSensitivity);
+      if (finalDefaults.shapeSnapSensitivity) setShapeSnapSensitivity(finalDefaults.shapeSnapSensitivity);
+      if (finalDefaults.gmFogBlend !== undefined) setGmFogBlend(finalDefaults.gmFogBlend);
 
       if (currentScene) {
         const resetGrid = {
@@ -204,12 +211,6 @@ export const SettingsMenu = ({ isGM = false }) => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSyncView = () => {
@@ -428,15 +429,6 @@ export const SettingsMenu = ({ isGM = false }) => {
           {/* ۲. تب تنظیمات عمومی اتاق */}
           {activeTab === "room" && (
               <div className="space-y-3">
-                {/* اشتراک‌گذاری */}
-                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
-                  <span className="text-xs text-zinc-300 font-bold block">لینک دعوت به ماجراجویی:</span>
-                  <Button size="sm" variant="outline" className="w-full text-xs cursor-pointer" onClick={handleCopyLink}>
-                    {copied ? <Check className="w-3.5 h-3.5 ml-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 ml-1" />}
-                    کپی لینک مستقیم دعوت
-                  </Button>
-                </div>
-
                 {/* حالت ورودی ماوس */}
                 <div>
                   <label className="text-xs text-zinc-400 mb-1.5 block">حالت کنترل ورودی (Input Mode):</label>
@@ -454,31 +446,6 @@ export const SettingsMenu = ({ isGM = false }) => {
                             )}
                         >
                           {mode === "AUTO" ? "خودکار" : mode === "MOUSE" ? "ماوس" : "ترک‌پد"}
-                        </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* جلوه بصری Overlay Effect */}
-                <div>
-                  <label className="text-xs text-zinc-400 mb-1.5 block">استایل پنجره‌ها (Overlay Effect):</label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {[
-                      { id: "GLASS", label: "شیشه‌ای (Glass)" },
-                      { id: "TRANSPARENT", label: "شفاف (Transparent)" },
-                    ].map((eff) => (
-                        <button
-                            key={eff.id}
-                            type="button"
-                            onClick={() => handleChange({ overlayEffect: eff.id })}
-                            className={cn(
-                                "p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
-                                settings.overlayEffect === eff.id
-                                    ? "bg-amber-500/15 border-amber-500 text-amber-300"
-                                    : "bg-zinc-950 border-zinc-800 text-zinc-400"
-                            )}
-                        >
-                          {eff.label}
                         </button>
                     ))}
                   </div>

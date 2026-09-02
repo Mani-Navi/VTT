@@ -9,6 +9,12 @@ export const useCanvasStore = create((set, get) => ({
     drawFillColor: "rgba(245, 158, 11, 0.2)",
     isDrawGMLayer: false,
 
+    // تنظیمات ورودی و دوربین
+    inputMode: "AUTO", // AUTO, MOUSE, TRACKPAD
+    zoomSensitivity: 1.0,
+    shapeSnapSensitivity: 0.5,
+    gmFogBlend: 0.45,
+
     // تنظیمات متن
     textFontFamily: "Vazirmatn",
     textFontSize: 24,
@@ -33,7 +39,7 @@ export const useCanvasStore = create((set, get) => ({
 
     selectedTokenIds: [],
     selectedDrawingId: null,
-    selectedFogId: null, // استیت انتخاب شکل مه
+    selectedFogId: null,
     isTokenEditorOpen: false,
     editingTokenId: null,
 
@@ -49,6 +55,11 @@ export const useCanvasStore = create((set, get) => ({
     rulerUnit: "ft",
     measurement: null,
     remoteMeasurements: {},
+
+    setInputMode: (mode) => set({ inputMode: mode }),
+    setZoomSensitivity: (val) => set({ zoomSensitivity: Number(val) || 1.0 }),
+    setShapeSnapSensitivity: (val) => set({ shapeSnapSensitivity: Number(val) || 0.5 }),
+    setGmFogBlend: (val) => set({ gmFogBlend: Number(val) || 0.45 }),
 
     setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null }),
     toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null })),

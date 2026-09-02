@@ -53,10 +53,13 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const activeDrawShape = useCanvasStore((state) => state.activeDrawShape);
   const fogBrushShape = useCanvasStore((state) => state.fogBrushShape);
   const fogAction = useCanvasStore((state) => state.fogAction);
-  const fogBrushRadius = useCanvasStore((state) => state.fogBrushRadius);
   const zoom = useCanvasStore((state) => state.zoom);
   const stageX = useCanvasStore((state) => state.stageX);
   const stageY = useCanvasStore((state) => state.stageY);
+  const inputMode = useCanvasStore((state) => state.inputMode || "AUTO");
+  const zoomSensitivity = useCanvasStore((state) => state.zoomSensitivity || 1.0);
+  const shapeSnapSensitivity = useCanvasStore((state) => state.shapeSnapSensitivity || 0.5);
+
   const drawStrokeColor = useCanvasStore((state) => state.drawStrokeColor);
   const drawStrokeWidth = useCanvasStore((state) => state.drawStrokeWidth);
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
@@ -148,17 +151,30 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const mapWidth = currentMapDimensions.width || currentScene?.mapWidth || 2000;
   const mapHeight = currentMapDimensions.height || currentScene?.mapHeight || 1500;
 
+  // محاسبه موقعیت ماوس با احتساب حساسیت اسنپ اشکال
   const getPointerCanvasPos = useCallback(() => {
     const stage = stageRef.current;
     if (!stage) return { x: 0, y: 0 };
     const pointer = stage.getPointerPosition();
     if (!pointer) return { x: 0, y: 0 };
 
-    return {
-      x: (pointer.x - stage.x()) / stage.scaleX(),
-      y: (pointer.y - stage.y()) / stage.scaleY(),
-    };
-  }, []);
+    let rawX = (pointer.x - stage.x()) / stage.scaleX();
+    let rawY = (pointer.y - stage.y()) / stage.scaleY();
+
+    // اگر اسنپ فعال باشد، نقاط را به خطوط گرید نزدیک می‌کند
+    const gridSize = currentScene?.grid?.size || 60;
+    const snapThreshold = 18 * shapeSnapSensitivity;
+
+    if (currentScene?.grid?.snapToGrid !== false && snapThreshold > 3) {
+      const nearGridX = Math.round(rawX / gridSize) * gridSize;
+      const nearGridY = Math.round(rawY / gridSize) * gridSize;
+
+      if (Math.abs(rawX - nearGridX) < snapThreshold) rawX = nearGridX;
+      if (Math.abs(rawY - nearGridY) < snapThreshold) rawY = nearGridY;
+    }
+
+    return { x: rawX, y: rawY };
+  }, [currentScene?.grid, shapeSnapSensitivity]);
 
   const handleEraseDrawing = useCallback(
       async (drawId) => {
@@ -294,16 +310,30 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     return () => window.removeEventListener("keydown", handleEscapeKey);
   }, [activeTool, endMeasurement, myIdentifier, inlineTextEditor]);
 
+  // هندلینگ هوشمند حالت‌های ورودی (MOUSE, TRACKPAD, AUTO) و ضریب حساسیت زوم
   const handleWheel = (e) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
     if (!stage) return;
 
+    const isPinch = e.evt.ctrlKey;
+    const isTrackpadScroll = inputMode === "TRACKPAD" || (inputMode === "AUTO" && (Math.abs(e.evt.deltaX) > 0 || !Number.isInteger(e.evt.deltaY)));
+
+    // اگر حالت ترک‌پد باشد و کلید Ctrl فشرده نباشد، نقشه جابجا (Pan) می‌شود
+    if (isTrackpadScroll && !isPinch && inputMode !== "MOUSE") {
+      const nextX = stage.x() - e.evt.deltaX;
+      const nextY = stage.y() - e.evt.deltaY;
+      setStagePos(nextX, nextY);
+      return;
+    }
+
+    // در غیر این صورت عمل زوم با احتساب ضریب حساسیت (zoomSensitivity) انجام می‌شود
     const oldScale = stage.scaleX();
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
-    const scaleBy = 1.08;
+    const baseFactor = 0.08 * zoomSensitivity;
+    const scaleBy = 1 + Math.max(0.02, Math.min(0.3, baseFactor));
     const direction = e.evt.deltaY < 0 ? 1 : -1;
     const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
     const clampedScale = Math.min(Math.max(newScale, 0.2), 3.5);
