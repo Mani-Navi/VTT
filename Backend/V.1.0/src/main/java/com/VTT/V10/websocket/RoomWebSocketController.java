@@ -165,7 +165,6 @@ public class RoomWebSocketController {
         DrawingEvent data = event.getData();
         boolean isText = "text".equalsIgnoreCase(data.getType()) || "text".equalsIgnoreCase(data.getTool());
 
-        // دسترسی هم برای DRAWING و هم برای TEXT بررسی می‌شود
         boolean allowed = isText
                 ? (hasPermission(roomId, principal.getName(), "TEXT") || hasPermission(roomId, principal.getName(), "DRAWING"))
                 : hasPermission(roomId, principal.getName(), "DRAWING");
@@ -249,11 +248,6 @@ public class RoomWebSocketController {
                     var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
                     if (activeSceneOpt.isPresent()) {
                         data.setSceneId(activeSceneOpt.get().getId());
-                    } else {
-                        var scenes = sceneRepository.findByRoomId(roomId);
-                        if (!scenes.isEmpty()) {
-                            data.setSceneId(scenes.get(0).getId());
-                        }
                     }
                 }
                 fogService.handleFogUpdate(data);
@@ -287,10 +281,19 @@ public class RoomWebSocketController {
 
         roomService.updateLastActive(roomId, principal.getName());
 
-        var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, principal.getName());
-        if (memberOpt.isPresent() && (memberOpt.get().getRole() == RoomMember.Role.ADMIN || isHost(roomId, principal.getName()))) {
+        if (isHost(roomId, principal.getName()) || hasAdminRole(roomId, principal.getName())) {
             roomSettingsService.updateSettings(roomId, event.getData());
             messagingTemplate.convertAndSend("/topic/room/" + roomId + "/settings", event);
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, event);
+        }
+    }
+
+    private boolean hasAdminRole(UUID roomId, String email) {
+        try {
+            var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
+            return memberOpt.isPresent() && memberOpt.get().getRole() == RoomMember.Role.ADMIN;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 

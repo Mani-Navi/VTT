@@ -13,11 +13,11 @@ import java.util.UUID;
 public class RoomSettings {
 
     @Id
+    @Column(name = "room_id", nullable = false)
     private UUID roomId;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "room_id")
+    @JoinColumn(name = "room_id", insertable = false, updatable = false)
     private Room room;
 
     // تنظیمات عمومی (General Settings UCS-01)

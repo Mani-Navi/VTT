@@ -22,11 +22,7 @@ public class RoomSettingsService {
 
     @Transactional
     public RoomSettings createDefaultSettings(UUID roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("اتاق یافت نشد"));
-
         RoomSettings settings = RoomSettings.builder()
-                .room(room)
                 .roomId(roomId)
                 .zoomSensitivity(1.0)
                 .overlayEffect("GLASS")
@@ -76,11 +72,7 @@ public class RoomSettingsService {
 
     @Transactional
     public RoomSettingsResponse resetToDefault(UUID roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("اتاق یافت نشد"));
-
         RoomSettings settings = RoomSettings.builder()
-                .room(room)
                 .roomId(roomId)
                 .zoomSensitivity(1.0)
                 .overlayEffect("GLASS")
