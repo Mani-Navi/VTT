@@ -130,7 +130,7 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۵.۲. اعمال بلادرنگ تنظیمات گرید و اتاق برای همه بازیکنان
+    // ۵.۲. اعمال بلادرنگ تنظیمات گرید و اتاق
     const handleSettingsPayload = (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -168,6 +168,16 @@ export function useWebSocket(roomId, onMessage = null) {
         if (current) {
           useSceneStore.setState({ currentScene: { ...current, grid: { ...current.grid, ...data.grid } } });
         }
+      }
+    });
+
+    // ۵.۳. همگام‌سازی بلادرنگ زاویه دید و زوم دوربین (Sync View)
+    const unsubViewportSync = wsService.on("VIEWPORT_SYNC", (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
+      if (data && data.zoom !== undefined && data.stageX !== undefined && data.stageY !== undefined) {
+        useCanvasStore.getState().setZoom(Number(data.zoom));
+        useCanvasStore.getState().setStagePos(Number(data.stageX), Number(data.stageY));
       }
     });
 
@@ -262,6 +272,7 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubFogGlobalReveal();
       unsubSettings();
       unsubGrid();
+      unsubViewportSync();
       unsubDice();
       unsubScene();
       unsubSceneDelete();

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { TOOLS, DRAW_MODES, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../constants/tools";
+import { useSceneStore } from "./scene.store";
 
 export const useCanvasStore = create((set, get) => ({
     activeTool: TOOLS.SELECT,
@@ -100,9 +101,8 @@ export const useCanvasStore = create((set, get) => ({
     setZoom: (zoom) => set((state) => ({ zoom: typeof zoom === "function" ? zoom(state.zoom) : zoom })),
     setStagePos: (stageX, stageY) => set({ stageX, stageY }),
 
-    resetView: () => set({ zoom: 1.0, stageX: 0, stageY: 0 }),
-
-    fitToMap: (mapW = 2000, mapH = 1500, containerW = null, containerH = null) => {
+    // انطباق کامل و قرار دادن مپ در مرکز صفحه
+    fitToMap: (mapW = null, mapH = null, containerW = null, containerH = null) => {
         let screenW = containerW;
         let screenH = containerH;
 
@@ -120,8 +120,9 @@ export const useCanvasStore = create((set, get) => ({
             screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
         }
 
-        const safeW = (mapW && Number(mapW) > 50) ? Number(mapW) : 2000;
-        const safeH = (mapH && Number(mapH) > 50) ? Number(mapH) : 1500;
+        const sceneState = useSceneStore.getState().currentScene;
+        const targetW = (mapW && Number(mapW) > 50) ? Number(mapW) : (sceneState?.mapWidth || 2000);
+        const targetH = (mapH && Number(mapH) > 50) ? Number(mapH) : (sceneState?.mapHeight || 1500);
 
         const paddingX = Math.min(screenW * 0.08, 90);
         const paddingY = Math.min(screenH * 0.10, 90);
@@ -129,19 +130,24 @@ export const useCanvasStore = create((set, get) => ({
         const availW = Math.max(screenW - paddingX * 2, 200);
         const availH = Math.max(screenH - paddingY * 2, 200);
 
-        const scaleX = availW / safeW;
-        const scaleY = availH / safeH;
+        const scaleX = availW / targetW;
+        const scaleY = availH / targetH;
         const optimalScale = Math.min(scaleX, scaleY);
         const clampedScale = Math.max(0.15, Math.min(optimalScale, 2.5));
 
-        const stageX = (screenW - safeW * clampedScale) / 2;
-        const stageY = (screenH - safeH * clampedScale) / 2;
+        const stageX = (screenW - targetW * clampedScale) / 2;
+        const stageY = (screenH - targetH * clampedScale) / 2;
 
         set({
             zoom: Number(clampedScale.toFixed(3)),
             stageX: Math.round(stageX),
             stageY: Math.round(stageY),
         });
+    },
+
+    // بازنشانی دوربین به مرکز نقشه
+    resetView: () => {
+        get().fitToMap();
     },
 
     focusOnCoordinates: (targetX, targetY) => {

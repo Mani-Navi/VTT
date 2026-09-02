@@ -175,6 +175,10 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/settings`;
         action = "UPDATE";
         break;
+      case "VIEWPORT_SYNC":
+        destination = `/app/room/${this.currentRoomId}/event`;
+        action = "VIEWPORT_SYNC";
+        break;
       case "FOG_GLOBAL_REVEAL":
         destination = `/app/room/${this.currentRoomId}/fog/global-reveal`;
         action = "FOG_GLOBAL_REVEAL";
@@ -243,6 +247,8 @@ class WebSocketService {
       this.trigger("CONDITION_POOL_UPDATE", eventData);
     } else if (action === "ROLL" || action === "DICE_ROLL") {
       this.trigger("DICE_ROLL", eventData);
+    } else if (action === "VIEWPORT_SYNC") {
+      this.trigger("VIEWPORT_SYNC", eventData);
     } else if (
         action === "FOG_UPDATE" ||
         (action === "UPDATE" && (eventData?.isCover !== undefined || eventData?.points !== undefined))
