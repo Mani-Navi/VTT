@@ -18,7 +18,6 @@ import {
   Users,
   Mic,
   MicOff,
-  Radio,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { useClipboard } from "../../hooks/useClipboard";
@@ -87,8 +86,6 @@ export const PlayerMenu = ({
   const {
     isMicEnabled,
     isConnected: isVoiceConnected,
-    isConnecting: isVoiceConnecting,
-    error: voiceError,
     speakingMap,
     toggleMicrophone,
   } = useVoice(roomId, isSelfMutedByGM);
@@ -214,7 +211,6 @@ export const PlayerMenu = ({
     const memberActualId = member.id || member.memberId || member.userId;
     const nextMuteState = !member.isMuted;
 
-    // ۱. آپدیت فوری استیت لوکال
     setMembersList((prev) =>
         prev.map((m) =>
             m.id === memberActualId || m.userId === memberActualId
@@ -223,7 +219,6 @@ export const PlayerMenu = ({
         )
     );
 
-    // ۲. ارسال فوری رویداد به سرور وب‌سوکت
     wsService.send("MEMBER_MUTE_TOGGLED", {
       memberId: memberActualId,
       userId: member.userId,
@@ -231,7 +226,6 @@ export const PlayerMenu = ({
       isMuted: nextMuteState,
     });
 
-    // ۳. درخواست پایداری در بک‌اند
     try {
       await roomApi.muteMember(roomId, memberActualId);
     } catch (err) {
@@ -616,36 +610,15 @@ export const PlayerMenu = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div
-                  className="flex items-center gap-1 px-2 py-1 bg-zinc-950/80 border border-zinc-800 rounded-xl"
-                  title={isVoiceConnected ? "چت صوتی متصل است" : isVoiceConnecting ? "در حال اتصال به سرور صدا..." : "صدا غیرفعال است"}
-              >
-                <Radio
-                    className={cn(
-                        "w-3 h-3",
-                        isVoiceConnected
-                            ? "text-emerald-400 animate-pulse"
-                            : isVoiceConnecting
-                                ? "text-amber-400 animate-spin"
-                                : "text-zinc-600"
-                    )}
-                />
-                <span className="text-[10px] font-mono text-zinc-400">
-                {isVoiceConnected ? "Voice" : isVoiceConnecting ? "..." : "Off"}
-              </span>
-              </div>
-
-              <button
-                  type="button"
-                  onClick={() => setIsOpen(!isOpen)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
-              >
-                <Users className="w-3.5 h-3.5 text-amber-400" />
-                <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
-                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
+              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
@@ -695,13 +668,11 @@ export const PlayerMenu = ({
               {/* بخش سوییچ میکروفون یا وضعیت Mute توسط GM */}
               <div className="pt-2 border-t border-zinc-800/80">
                 {isSelfMutedByGM ? (
-                    // حذف کامل دکمه میکروفون و نمایش بنر اخطار
                     <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in select-none">
                       <VolumeX className="w-4 h-4 text-rose-400" />
                       <span>شما توسط دانجن‌مستر (GM) بی‌صدا شدید</span>
                     </div>
                 ) : (
-                    // نمایش دکمه تاگل میکروفون
                     <>
                       <button
                           type="button"
