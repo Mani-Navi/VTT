@@ -1,4 +1,3 @@
 package com.VTT.V10.voice.dto;
 
-public class VoiceTokenResponse {
-}
+public record VoiceTokenResponse(String token, String url) {}
