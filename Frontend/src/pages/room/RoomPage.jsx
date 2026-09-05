@@ -93,7 +93,6 @@ export const RoomPage = () => {
                 }
             }
 
-            // به‌روزرسانی آنی پرمیشن در نوار ابزار بازیکن بدون نیاز به ریلود
             if (action === "PERMISSION_UPDATED" && data) {
                 const currentUname = String(user?.username || "").toLowerCase().trim();
                 const incomingUname = String(data.username || "").toLowerCase().trim();
@@ -189,16 +188,16 @@ export const RoomPage = () => {
                 dir="ltr"
             >
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-xl text-[11px]">
-          <span
-              className={`w-2 h-2 rounded-full ${
-                  isConnected
-                      ? "bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse"
-                      : "bg-amber-500"
-              }`}
-          />
+                    <span
+                        className={`w-2 h-2 rounded-full ${
+                            isConnected
+                                ? "bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse"
+                                : "bg-amber-500"
+                        }`}
+                    />
                     <span className="text-zinc-300 font-mono text-[10px]">
-            {isConnected ? "Live Sync" : "Connecting..."}
-          </span>
+                        {isConnected ? "Live Sync" : "Connecting..."}
+                    </span>
                 </div>
 
                 <button
@@ -244,7 +243,7 @@ export const RoomPage = () => {
             {/* بوم بازی */}
             <GameCanvas isGM={isGM} permissions={userPermissions} />
 
-            {/* نوار ابزار اصلی (دریافت زنده پرمیشن‌ها) */}
+            {/* نوار ابزار اصلی */}
             <Toolbar isGM={isGM} permissions={userPermissions} />
 
             {/* پنل‌ها */}
@@ -307,7 +306,7 @@ export const RoomPage = () => {
                                 <span className="text-zinc-400">راست کلیک روی توکن</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>پرتاب سریع تاس:</span>
+                                <span>مکالمه صوتی (PTT):</span>
                                 <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">Space</kbd>
                             </div>
                         </div>

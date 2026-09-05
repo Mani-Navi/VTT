@@ -16,9 +16,13 @@ import {
   Settings2,
   Sliders,
   Users,
+  Mic,
+  MicOff,
+  Radio,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { useClipboard } from "../../hooks/useClipboard";
+import { useVoice } from "../../hooks/useVoice";
 import { roomApi } from "../../api/room.api";
 import { wsService } from "../../services/websocket.service";
 import { Badge } from "../ui/Badge";
@@ -50,6 +54,16 @@ export const PlayerMenu = ({
                            }) => {
   const currentUser = useAuthStore((state) => state.user);
   const { copy, copied } = useClipboard();
+
+  // اتصال به سیستم صوت با قابلیت Toggle Mute/Unmute
+  const {
+    isMicEnabled,
+    isConnected: isVoiceConnected,
+    isConnecting: isVoiceConnecting,
+    error: voiceError,
+    speakingMap,
+    toggleMicrophone,
+  } = useVoice(roomId);
 
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState(null);
@@ -164,11 +178,9 @@ export const PlayerMenu = ({
     }
   };
 
-  // تاگل آنی (Optimistic UI) و ارسال به سرور
   const handlePermissionToggle = async (memberId, permissionKey, currentValue) => {
     const nextVal = !currentValue;
 
-    // ۱. آپدیت فوری استیت لوکال جهت تغییر رنگ سوئیچ
     setMembersList((prev) =>
         prev.map((m) => {
           if (m.id === memberId || m.userId === memberId) {
@@ -184,7 +196,6 @@ export const PlayerMenu = ({
         })
     );
 
-    // ۲. ارسال درخواست به سرور
     try {
       const payload = {
         memberId: memberId,
@@ -193,7 +204,6 @@ export const PlayerMenu = ({
       await roomApi.updatePermissions(payload);
     } catch (err) {
       console.error("خطا در آپدیت پرمیشن:", err);
-      // در صورت خطا، استیت برگردانده شود
       setMembersList((prev) =>
           prev.map((m) => {
             if (m.id === memberId || m.userId === memberId) {
@@ -231,14 +241,19 @@ export const PlayerMenu = ({
     const targetType = isMemberGM ? "HOST" : "PLAYER";
     const availablePresets = isMemberGM ? HOST_ROLE_PRESETS : PLAYER_ROLE_PRESETS;
 
+    const memberUid = String(member.userId || member.id || "");
+    const isSpeaking = Boolean(speakingMap[memberUid] || (isSelf && isMicEnabled));
+
     return (
         <div
             key={memberActualId}
             className={cn(
                 "rounded-2xl border transition-all duration-200 overflow-hidden",
-                isExpanded
-                    ? "bg-zinc-950/95 border-amber-500/40 shadow-lg ring-1 ring-amber-500/20"
-                    : "bg-zinc-900/60 hover:bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700"
+                isSpeaking
+                    ? "bg-amber-500/10 border-amber-500/50 shadow-md ring-1 ring-amber-500/30"
+                    : isExpanded
+                        ? "bg-zinc-950/95 border-amber-500/40 shadow-lg ring-1 ring-amber-500/20"
+                        : "bg-zinc-900/60 hover:bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700"
             )}
         >
           <div className="flex items-center justify-between p-3">
@@ -246,7 +261,10 @@ export const PlayerMenu = ({
               <div className="relative">
                 <div
                     className={cn(
-                        "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-inner transition-transform",
+                        "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-inner transition-all duration-150",
+                        isSpeaking
+                            ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-zinc-950 scale-105"
+                            : "",
                         isMemberGM
                             ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                             : "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
@@ -259,7 +277,12 @@ export const PlayerMenu = ({
 
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-zinc-100 truncate max-w-[120px]">
+                <span
+                    className={cn(
+                        "text-xs font-bold truncate max-w-[120px] transition-colors",
+                        isSpeaking ? "text-amber-400 font-black" : "text-zinc-100"
+                    )}
+                >
                   {member.username}
                 </span>
                   {isSelf && (
@@ -270,7 +293,7 @@ export const PlayerMenu = ({
                   {member.isMuted && <VolumeX className="w-3.5 h-3.5 text-rose-400" />}
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                 <span
                     className={cn(
                         "text-[10px] font-semibold",
@@ -279,6 +302,14 @@ export const PlayerMenu = ({
                 >
                   {displayTitle}
                 </span>
+
+                  {isSpeaking && (
+                      <div className="flex items-center gap-[2px] pr-1">
+                        <div className="w-[2px] h-2.5 bg-amber-400 rounded-full animate-pulse" />
+                        <div className="w-[2px] h-3.5 bg-amber-400 rounded-full animate-bounce" />
+                        <div className="w-[2px] h-2 bg-amber-400 rounded-full animate-pulse" />
+                      </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -416,7 +447,6 @@ export const PlayerMenu = ({
                         </button>
                       </div>
 
-                      {/* تاگل‌های پرمیشن ابزارها */}
                       <div className="p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
                           <Sliders className="w-3.5 h-3.5" />
@@ -511,21 +541,49 @@ export const PlayerMenu = ({
               </div>
             </div>
 
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
-            >
-              <Users className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
-              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-2">
+              <div
+                  className="flex items-center gap-1 px-2 py-1 bg-zinc-950/80 border border-zinc-800 rounded-xl"
+                  title={isVoiceConnected ? "چت صوتی متصل است" : isVoiceConnecting ? "در حال اتصال به سرور صدا..." : "صدا غیرفعال است"}
+              >
+                <Radio
+                    className={cn(
+                        "w-3 h-3",
+                        isVoiceConnected
+                            ? "text-emerald-400 animate-pulse"
+                            : isVoiceConnecting
+                                ? "text-amber-400 animate-spin"
+                                : "text-zinc-600"
+                    )}
+                />
+                <span className="text-[10px] font-mono text-zinc-400">
+                {isVoiceConnected ? "Voice" : isVoiceConnecting ? "..." : "Off"}
+              </span>
+              </div>
+
+              <button
+                  type="button"
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
+                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
         {isOpen && (
             <div className="w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 border-t-0 rounded-b-3xl shadow-2xl backdrop-blur-2xl p-3.5 pt-1 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-              <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1 custom-scrollbar">
+
+              {voiceError && (
+                  <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+                    <span className="text-[11px] text-rose-400">{voiceError}</span>
+                  </div>
+              )}
+
+              <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
                 {membersList.length === 0 ? (
                     <div className="text-center py-6 text-zinc-500 text-xs">
                       هیچ کاربری آنلاین نیست
@@ -535,10 +593,10 @@ export const PlayerMenu = ({
                       {hostMembers.length > 0 && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <Crown className="w-3.5 h-3.5" />
-                        <span>— {hostTitle} ({hostMembers.length}) —</span>
-                      </span>
+                          <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5" />
+                            <span>— {hostTitle} ({hostMembers.length}) —</span>
+                          </span>
                             </div>
                             {hostMembers.map(renderMemberCard)}
                           </div>
@@ -547,15 +605,52 @@ export const PlayerMenu = ({
                       {playerMembers.length > 0 && (
                           <div className="space-y-2 pt-1">
                             <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" />
-                        <span>— {playerTitle} ({playerMembers.length}) —</span>
-                      </span>
+                          <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5" />
+                            <span>— {playerTitle} ({playerMembers.length}) —</span>
+                          </span>
                             </div>
                             {playerMembers.map(renderMemberCard)}
                           </div>
                       )}
                     </>
+                )}
+              </div>
+
+              {/* بخش سوییچ میکروفون (Toggle Mute/Unmute دیسکورد) */}
+              <div className="pt-2 border-t border-zinc-800/80">
+                <button
+                    type="button"
+                    disabled={!isVoiceConnected}
+                    onClick={toggleMicrophone}
+                    className={cn(
+                        "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
+                        isMicEnabled
+                            ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
+                            : isVoiceConnected
+                                ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
+                                : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
+                    )}
+                >
+                  {isMicEnabled ? (
+                      <>
+                        <Mic className="w-4 h-4 text-zinc-950" />
+                        <span>میکروفون متصل است (کلیک یا Space برای قطع)</span>
+                      </>
+                  ) : (
+                      <>
+                        <MicOff className="w-4 h-4 text-zinc-400" />
+                        <span>{isVoiceConnected ? "میکروفون بسته است (کلیک یا Space برای وصل)" : "چت صوتی غیرفعال"}</span>
+                      </>
+                  )}
+                </button>
+                {isVoiceConnected && (
+                    <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
+                      <span>کلید تاگل سریع:</span>
+                      <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
+                        Space
+                      </kbd>
+                    </div>
                 )}
               </div>
             </div>
