@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Room, RoomEvent, ConnectionState, Track } from "livekit-client";
 import { getVoiceToken } from "../api/voice.api";
 
-export function useVoice(roomId) {
+export function useVoice(roomId, isMutedByGM = false) {
     const [participants, setParticipants] = useState([]);
     const [isMicEnabled, setIsMicEnabled] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
@@ -54,7 +54,6 @@ export function useVoice(roomId) {
     }, []);
 
     const connect = useCallback(async () => {
-        // جلوگیری از ایجاد کانکشن تکراری اگر از قبل در حال اتصال یا متصل هستیم
         if (!roomId) return;
         if (
             isConnectingRef.current ||
@@ -83,7 +82,6 @@ export function useVoice(roomId) {
                 },
             });
 
-            // مدیریت اتصال مدیا و استریم صدا
             room.on(RoomEvent.TrackSubscribed, (track) => {
                 if (track.kind === Track.Kind.Audio) {
                     const audioElement = track.attach();
@@ -100,7 +98,6 @@ export function useVoice(roomId) {
             room.on(RoomEvent.ParticipantConnected, () => refreshParticipants(room));
             room.on(RoomEvent.ParticipantDisconnected, () => refreshParticipants(room));
 
-            // مدیریت هوشمند بازیابی اتصال (Auto-Reconnect)
             room.on(RoomEvent.Reconnecting, () => {
                 setIsConnecting(true);
             });
@@ -130,7 +127,6 @@ export function useVoice(roomId) {
 
             await room.connect(url, token);
 
-            // میکروفون در ابتدای ورود قطع است
             await room.localParticipant.setMicrophoneEnabled(false);
             isMicEnabledRef.current = false;
             setIsMicEnabled(false);
@@ -140,7 +136,6 @@ export function useVoice(roomId) {
             refreshParticipants(room);
         } catch (err) {
             console.error("[Voice] Connection failed:", err);
-            // فقط در صورتی که واقعاً اتصال قطع شده خطا نمایش داده شود
             if (!livekitRoom.current || livekitRoom.current.state === ConnectionState.Disconnected) {
                 setError("عدم برقراری ارتباط با سرور صدا");
             }
@@ -150,8 +145,20 @@ export function useVoice(roomId) {
         }
     }, [roomId, refreshParticipants]);
 
-    // تاگل کردن میکروفون
+    // واکنش آنی به Mute شدن توسط GM: قطع قطعی صدا
+    useEffect(() => {
+        if (isMutedByGM && livekitRoom.current && isMicEnabledRef.current) {
+            isMicEnabledRef.current = false;
+            setIsMicEnabled(false);
+            livekitRoom.current.localParticipant.setMicrophoneEnabled(false);
+            refreshParticipants(livekitRoom.current);
+        }
+    }, [isMutedByGM, refreshParticipants]);
+
     const toggleMicrophone = useCallback(async () => {
+        // اگر توسط GM میوت شده باشد، اجازه روشن کردن میکروفون را ندارد
+        if (isMutedByGM) return;
+
         const room = livekitRoom.current;
         if (!room || room.state !== ConnectionState.Connected) return;
 
@@ -164,16 +171,15 @@ export function useVoice(roomId) {
         } catch (err) {
             console.error("[Voice] Toggle microphone error:", err);
         }
-    }, [refreshParticipants]);
+    }, [isMutedByGM, refreshParticipants]);
 
     useEffect(() => {
         connect();
         return () => {
             disconnect();
         };
-    }, [roomId]); // اتصال فقط وابسته به roomId است تا با رندرهای مجدد ریست نشود
+    }, [roomId]);
 
-    // کلید Space برای Mute/Unmute
     useEffect(() => {
         const isTypingContext = () => {
             const activeEl = document.activeElement;
@@ -189,8 +195,10 @@ export function useVoice(roomId) {
 
         const handleKeyDown = (e) => {
             if (e.code === "Space" && !e.repeat && isConnected && !isTypingContext()) {
-                e.preventDefault();
-                toggleMicrophone();
+                if (!isMutedByGM) {
+                    e.preventDefault();
+                    toggleMicrophone();
+                }
             }
         };
 
@@ -198,7 +206,7 @@ export function useVoice(roomId) {
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [isConnected, toggleMicrophone]);
+    }, [isConnected, isMutedByGM, toggleMicrophone]);
 
     return {
         participants,

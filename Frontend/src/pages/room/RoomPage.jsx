@@ -87,6 +87,11 @@ export const RoomPage = () => {
                 wsService.trigger("ROLE_TITLE_UPDATE", data);
             }
 
+            // ارسال آنی رویداد Mute به لیسنرهای فرانت‌اند
+            if (action === "MEMBER_MUTE_TOGGLED") {
+                wsService.trigger("MEMBER_MUTE_TOGGLED", data);
+            }
+
             if (action === "CONDITION_POOL_UPDATE") {
                 if (data?.availableConditions) {
                     setAvailableConditions(data.availableConditions);
@@ -306,7 +311,7 @@ export const RoomPage = () => {
                                 <span className="text-zinc-400">راست کلیک روی توکن</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>مکالمه صوتی (PTT):</span>
+                                <span>وصل/قطع میکروفون:</span>
                                 <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">Space</kbd>
                             </div>
                         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dices,
   Crown,
@@ -55,16 +55,6 @@ export const PlayerMenu = ({
   const currentUser = useAuthStore((state) => state.user);
   const { copy, copied } = useClipboard();
 
-  // اتصال به سیستم صوت با قابلیت Toggle Mute/Unmute
-  const {
-    isMicEnabled,
-    isConnected: isVoiceConnected,
-    isConnecting: isVoiceConnecting,
-    error: voiceError,
-    speakingMap,
-    toggleMicrophone,
-  } = useVoice(roomId);
-
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState(null);
   const [membersList, setMembersList] = useState(propOnlineMembers);
@@ -72,6 +62,36 @@ export const PlayerMenu = ({
   useEffect(() => {
     setMembersList(propOnlineMembers);
   }, [propOnlineMembers]);
+
+  // بررسی زنده و بدون تاخیر وضعیت میوت بودن خود کاربر جاری
+  const isSelfMutedByGM = useMemo(() => {
+    if (isGM) return false;
+    const myUid = String(currentUser?.id || currentUser?.userId || "").toLowerCase().trim();
+    const myUname = String(currentUser?.username || "").toLowerCase().trim();
+
+    const myRecord = membersList.find((m) => {
+      const targetId = String(m.id || m.memberId || m.userId || "").toLowerCase().trim();
+      const targetUid = String(m.userId || "").toLowerCase().trim();
+      const targetUname = String(m.username || "").toLowerCase().trim();
+
+      return (
+          (myUid && (targetId === myUid || targetUid === myUid)) ||
+          (myUname && targetUname === myUname)
+      );
+    });
+
+    return Boolean(myRecord?.isMuted);
+  }, [membersList, currentUser, isGM]);
+
+  // اتصال وویس با پارامتر قفل هوشمند GM
+  const {
+    isMicEnabled,
+    isConnected: isVoiceConnected,
+    isConnecting: isVoiceConnecting,
+    error: voiceError,
+    speakingMap,
+    toggleMicrophone,
+  } = useVoice(roomId, isSelfMutedByGM);
 
   const [hostTitle, setHostTitle] = useState(() => {
     return roomData?.hostRoleTitle || localStorage.getItem(`room_${roomId}_host_title`) || "میزبان";
@@ -117,9 +137,37 @@ export const PlayerMenu = ({
       }
     });
 
+    // دریافت بلادرنگ رویداد Mute از سرور و آپدیت لحظه‌ای لیست
+    const unsubMute = wsService.on("MEMBER_MUTE_TOGGLED", (data) => {
+      if (data) {
+        const targetMemberId = String(data.memberId || "").toLowerCase().trim();
+        const targetUserId = String(data.userId || "").toLowerCase().trim();
+        const targetUsername = String(data.username || "").toLowerCase().trim();
+
+        setMembersList((prev) =>
+            prev.map((m) => {
+              const currentId = String(m.id || m.memberId || "").toLowerCase().trim();
+              const currentUid = String(m.userId || "").toLowerCase().trim();
+              const currentUname = String(m.username || "").toLowerCase().trim();
+
+              const isMatch =
+                  (targetMemberId && (currentId === targetMemberId || currentUid === targetMemberId)) ||
+                  (targetUserId && (currentUid === targetUserId || currentId === targetUserId)) ||
+                  (targetUsername && currentUname === targetUsername);
+
+              if (isMatch) {
+                return { ...m, isMuted: Boolean(data.isMuted) };
+              }
+              return m;
+            })
+        );
+      }
+    });
+
     return () => {
       unsubRole();
       unsubPerm();
+      unsubMute();
     };
   }, []);
 
@@ -161,11 +209,33 @@ export const PlayerMenu = ({
     }
   };
 
-  const handleToggleMute = async (memberId) => {
+  // Mute / Unmute بلادرنگ با برودکست وب‌سوکت
+  const handleToggleMute = async (member) => {
+    const memberActualId = member.id || member.memberId || member.userId;
+    const nextMuteState = !member.isMuted;
+
+    // ۱. آپدیت فوری استیت لوکال
+    setMembersList((prev) =>
+        prev.map((m) =>
+            m.id === memberActualId || m.userId === memberActualId
+                ? { ...m, isMuted: nextMuteState }
+                : m
+        )
+    );
+
+    // ۲. ارسال فوری رویداد به سرور وب‌سوکت
+    wsService.send("MEMBER_MUTE_TOGGLED", {
+      memberId: memberActualId,
+      userId: member.userId,
+      username: member.username,
+      isMuted: nextMuteState,
+    });
+
+    // ۳. درخواست پایداری در بک‌اند
     try {
-      await roomApi.muteMember(roomId, memberId);
+      await roomApi.muteMember(roomId, memberActualId);
     } catch (err) {
-      console.error("خطا در تغییر وضعیت صدا:", err);
+      console.error("خطا در ذخیره وضعیت صدا:", err);
     }
   };
 
@@ -290,7 +360,12 @@ export const PlayerMenu = ({
                     شما
                   </span>
                   )}
-                  {member.isMuted && <VolumeX className="w-3.5 h-3.5 text-rose-400" />}
+                  {member.isMuted && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-bold text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded border border-rose-500/20">
+                      <VolumeX className="w-3 h-3" />
+                      <span>بی‌صدا</span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -407,16 +482,16 @@ export const PlayerMenu = ({
                       <div className="grid grid-cols-4 gap-2">
                         <button
                             type="button"
-                            onClick={() => handleToggleMute(memberActualId)}
+                            onClick={() => handleToggleMute(member)}
                             className={cn(
                                 "py-2 px-1 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all",
                                 member.isMuted
-                                    ? "bg-rose-500/15 border-rose-500/40 text-rose-400"
+                                    ? "bg-rose-500/20 border-rose-500/60 text-rose-300 shadow-sm shadow-rose-500/20"
                                     : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-700"
                             )}
                         >
                           {member.isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-zinc-400" />}
-                          <span>{member.isMuted ? "صدا قطع" : "بی‌صدا"}</span>
+                          <span>{member.isMuted ? "وصل صدا" : "بی‌صدا"}</span>
                         </button>
 
                         <button
@@ -617,40 +692,51 @@ export const PlayerMenu = ({
                 )}
               </div>
 
-              {/* بخش سوییچ میکروفون (Toggle Mute/Unmute دیسکورد) */}
+              {/* بخش سوییچ میکروفون یا وضعیت Mute توسط GM */}
               <div className="pt-2 border-t border-zinc-800/80">
-                <button
-                    type="button"
-                    disabled={!isVoiceConnected}
-                    onClick={toggleMicrophone}
-                    className={cn(
-                        "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
-                        isMicEnabled
-                            ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
-                            : isVoiceConnected
-                                ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
-                                : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
-                    )}
-                >
-                  {isMicEnabled ? (
-                      <>
-                        <Mic className="w-4 h-4 text-zinc-950" />
-                        <span>میکروفون متصل است (کلیک یا Space برای قطع)</span>
-                      </>
-                  ) : (
-                      <>
-                        <MicOff className="w-4 h-4 text-zinc-400" />
-                        <span>{isVoiceConnected ? "میکروفون بسته است (کلیک یا Space برای وصل)" : "چت صوتی غیرفعال"}</span>
-                      </>
-                  )}
-                </button>
-                {isVoiceConnected && (
-                    <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
-                      <span>کلید تاگل سریع:</span>
-                      <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
-                        Space
-                      </kbd>
+                {isSelfMutedByGM ? (
+                    // حذف کامل دکمه میکروفون و نمایش بنر اخطار
+                    <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in select-none">
+                      <VolumeX className="w-4 h-4 text-rose-400" />
+                      <span>شما توسط دانجن‌مستر (GM) بی‌صدا شدید</span>
                     </div>
+                ) : (
+                    // نمایش دکمه تاگل میکروفون
+                    <>
+                      <button
+                          type="button"
+                          disabled={!isVoiceConnected}
+                          onClick={toggleMicrophone}
+                          className={cn(
+                              "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
+                              isMicEnabled
+                                  ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
+                                  : isVoiceConnected
+                                      ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
+                                      : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
+                          )}
+                      >
+                        {isMicEnabled ? (
+                            <>
+                              <Mic className="w-4 h-4 text-zinc-950" />
+                              <span>میکروفون متصل است (کلیک یا Space برای قطع)</span>
+                            </>
+                        ) : (
+                            <>
+                              <MicOff className="w-4 h-4 text-zinc-400" />
+                              <span>{isVoiceConnected ? "میکروفون بسته است (کلیک یا Space برای وصل)" : "چت صوتی غیرفعال"}</span>
+                            </>
+                        )}
+                      </button>
+                      {isVoiceConnected && (
+                          <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
+                            <span>کلید تاگل سریع:</span>
+                            <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
+                              Space
+                            </kbd>
+                          </div>
+                      )}
+                    </>
                 )}
               </div>
             </div>
