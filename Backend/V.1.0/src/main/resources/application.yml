@@ -50,6 +50,10 @@ spring:
             enable: true
             required: true
 
+# CORS Configuration (Supports standard uppercase environment variable)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
 # Google OAuth
 google:
   client-id: ${GOOGLE_CLIENT_ID:your-google-client-id.apps.googleusercontent.com}
@@ -57,7 +61,7 @@ google:
 # Stateless JWT Security
 jwt:
   secret: ${JWT_SECRET:vtt-persian-platform-super-secret-key-must-be-32-chars-minimum!}
-  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  expiration: ${JWT_EXPIRATION:86400000}
 
 # LiveKit SFU Voice Server
 livekit:
