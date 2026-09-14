@@ -15,11 +15,15 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "scenes")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"room", "backgroundAsset"})
+@EqualsAndHashCode(of = "id")
 public class Scene {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -42,7 +46,6 @@ public class Scene {
     @JoinColumn(name = "asset_id")
     private Asset backgroundAsset;
 
-    // ابعاد نقشه
     @Builder.Default
     @Column(name = "map_width")
     private Integer mapWidth = 2000;
@@ -51,7 +54,6 @@ public class Scene {
     @Column(name = "map_height")
     private Integer mapHeight = 1500;
 
-    // تنظیمات پیش‌فرض گرید
     @Builder.Default
     @Column(name = "grid_size")
     private Integer gridSize = 60;
@@ -64,7 +66,6 @@ public class Scene {
     @Column(name = "grid_opacity")
     private Double gridOpacity = 0.35;
 
-    // لیست وضعیت‌های فعال‌شده توسط GM برای این صحنه (JSONB)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     @Builder.Default

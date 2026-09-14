@@ -2,14 +2,18 @@ package com.VTT.V10.room;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "player_permissions")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"room", "member"})
+@EqualsAndHashCode(of = "id")
 public class PlayerPermission {
 
     @Id
@@ -48,8 +52,7 @@ public class PlayerPermission {
     @Column(name = "can_ruler", nullable = false)
     private Boolean canRuler = true;
 
-    // ستون به صورت nullable تعریف شد تا برای سطرهای قبلی خطای Not Null رخ ندهد
     @Builder.Default
-    @Column(name = "can_edit_token", nullable = true)
+    @Column(name = "can_edit_token")
     private Boolean canEditToken = false;
 }

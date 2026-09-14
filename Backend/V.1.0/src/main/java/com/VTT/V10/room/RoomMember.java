@@ -3,16 +3,21 @@ package com.VTT.V10.room;
 import com.VTT.V10.user.User;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "room_members")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"room", "user"})
+@EqualsAndHashCode(of = "id")
 public class RoomMember {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -29,7 +34,6 @@ public class RoomMember {
     @Column(nullable = false)
     private Role role;
 
-    // عنوان و تگ نمایشی نقش (پایدار در دیتابیس)
     @Column(name = "role_title")
     private String roleTitle;
 

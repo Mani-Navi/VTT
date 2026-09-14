@@ -4,6 +4,7 @@ import com.VTT.V10.room.dto.*;
 import com.VTT.V10.user.User;
 import com.VTT.V10.user.UserRepository;
 import com.VTT.V10.websocket.RoomSessionManager;
+import com.VTT.V10.websocket.WsConstants;
 import com.VTT.V10.websocket.dto.SocketEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,13 +67,13 @@ public class RoomService {
                 }
 
                 if (lastSeen.plusMinutes(GM_INACTIVITY_TIMEOUT_MINUTES).isBefore(now)) {
-                    log.info("Auto-deactivating room {} due to GM timeout (last seen: {})", room.getId(), lastSeen);
+                    log.info("Auto-deactivating room {} due to GM timeout", room.getId());
                     room.setIsActive(false);
                     roomRepository.saveAndFlush(room);
 
                     sessionManager.clearRoom(room.getId());
 
-                    messagingTemplate.convertAndSend("/topic/room/" + room.getId(),
+                    messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + room.getId(),
                             SocketEvent.<String>builder()
                                     .roomId(room.getId())
                                     .action("ROOM_CLOSED")
@@ -81,6 +82,109 @@ public class RoomService {
                     );
                 }
             }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isUserMemberOfRoom(UUID roomId, UUID userId) {
+        if (roomId == null || userId == null) return false;
+        return memberRepository.existsByRoomIdAndUserId(roomId, userId) ||
+                roomRepository.findById(roomId).filter(r -> r.getOwner() != null && r.getOwner().getId().equals(userId)).isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isHostOrAdmin(UUID roomId, String email) {
+        try {
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            Optional<Room> roomOpt = roomRepository.findById(roomId);
+            if (userOpt.isPresent() && roomOpt.isPresent()) {
+                Room room = roomOpt.get();
+                if (room.getOwner() != null && room.getOwner().getId().equals(userOpt.get().getId())) {
+                    return true;
+                }
+            }
+            return memberRepository.findByRoomIdAndUserEmail(roomId, email)
+                    .map(m -> m.getRole() == RoomMember.Role.ADMIN)
+                    .orElse(false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasPermission(UUID roomId, String email, String action) {
+        try {
+            if (isHostOrAdmin(roomId, email)) return true;
+
+            var memberOpt = memberRepository.findByRoomIdAndUserEmail(roomId, email);
+            if (memberOpt.isEmpty()) return false;
+
+            RoomMember member = memberOpt.get();
+            var permOpt = permissionRepository.findByMemberId(member.getId());
+            if (permOpt.isEmpty()) return false;
+
+            PlayerPermission perm = permOpt.get();
+            return switch (action) {
+                case WsConstants.PERM_DRAWING -> Boolean.TRUE.equals(perm.getCanDrawing());
+                case WsConstants.PERM_TEXT -> Boolean.TRUE.equals(perm.getCanText());
+                case WsConstants.PERM_FOG -> Boolean.TRUE.equals(perm.getCanFog());
+                case WsConstants.PERM_SCENE -> Boolean.TRUE.equals(perm.getCanScene());
+                case WsConstants.PERM_ASSETS -> Boolean.TRUE.equals(perm.getCanAssets());
+                case WsConstants.PERM_EDIT_TOKEN -> Boolean.TRUE.equals(perm.getCanEditToken());
+                default -> false;
+            };
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Transactional
+    public void handleUserJoinPresence(UUID roomId, String sessionId, String userEmail) {
+        userRepository.findByEmail(userEmail).ifPresent(user -> {
+            sessionManager.addUser(roomId, sessionId, user.getId(), user.getUsername(), user.getEmail());
+            updateLastActive(roomId, user.getUsername());
+        });
+    }
+
+    @Transactional
+    public void handleUserLeavePresence(UUID roomId, String userEmail) {
+        userRepository.findByEmail(userEmail).ifPresent(user -> sessionManager.removeUser(roomId, user.getId()));
+    }
+
+    @Transactional
+    public void updateSceneConditions(UUID roomId, List<String> conditions) {
+        var activeSceneOpt = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+        if (activeSceneOpt.isEmpty()) {
+            var scenes = sceneRepository.findByRoomId(roomId);
+            if (!scenes.isEmpty()) {
+                activeSceneOpt = Optional.of(scenes.get(0));
+            }
+        }
+        activeSceneOpt.ifPresent(scene -> {
+            scene.setAvailableConditions(conditions);
+            sceneRepository.save(scene);
+        });
+    }
+
+    @Transactional
+    public void updateRoleTitle(UUID roomId, String userEmail, Map<String, Object> data) {
+        updateLastActive(roomId, userEmail);
+        try {
+            String title = (String) data.get("title");
+            String targetType = (String) data.get("targetType");
+
+            Optional<Room> roomOpt = roomRepository.findById(roomId);
+            if (roomOpt.isPresent() && title != null && !title.isBlank()) {
+                Room room = roomOpt.get();
+                if ("HOST".equalsIgnoreCase(targetType)) {
+                    room.setHostRoleTitle(title.trim());
+                } else {
+                    room.setPlayerRoleTitle(title.trim());
+                }
+                roomRepository.save(room);
+            }
+        } catch (Exception e) {
+            log.warn("Error saving role title on room: {}", e.getMessage());
         }
     }
 
@@ -155,9 +259,8 @@ public class RoomService {
         User owner = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        boolean exists = roomRepository.findAll().stream()
-                .anyMatch(r -> r.getOwner().getId().equals(owner.getId()) && r.getName().trim().equalsIgnoreCase(request.getName().trim()));
-        if (exists) {
+        // کوئری مستقیم و بهینه در دیتابیس به جای لود کردن همه اتاق‌ها
+        if (roomRepository.existsByOwnerIdAndNameIgnoreCase(owner.getId(), request.getName().trim())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "شما قبلاً اتاقی با همین نام ایجاد کرده‌اید");
         }
 
@@ -194,7 +297,6 @@ public class RoomService {
 
         Room room = roomRepository.saveAndFlush(roomBuilder.build());
 
-        // ساخت عضویت ادمین
         RoomMember admin = RoomMember.builder()
                 .room(room)
                 .user(owner)
@@ -218,7 +320,6 @@ public class RoomService {
                 .build();
         permissionRepository.save(adminPermission);
 
-        // ۱. ایجاد صحنه پیش‌فرض خوش‌آمدگویی اتاق
         String defaultMapUrl = (room.getTemplate() != null && room.getTemplate().getBaseMapUrl() != null)
                 ? room.getTemplate().getBaseMapUrl()
                 : "";
@@ -362,7 +463,7 @@ public class RoomService {
 
         sessionManager.clearRoom(roomId);
 
-        messagingTemplate.convertAndSend("/topic/room/" + roomId,
+        messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId,
                 SocketEvent.<String>builder()
                         .roomId(roomId)
                         .action("ROOM_CLOSED")
@@ -505,7 +606,7 @@ public class RoomService {
         memberRepository.delete(target);
         sessionManager.removeUser(roomId, targetUserId);
 
-        messagingTemplate.convertAndSend("/topic/room/" + roomId,
+        messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId,
                 SocketEvent.<Map<String, Object>>builder()
                         .roomId(roomId)
                         .action("MEMBER_KICKED")
@@ -537,7 +638,7 @@ public class RoomService {
         UUID targetUserId = target.getUser().getId();
         String targetUsername = target.getUser().getUsername();
 
-        messagingTemplate.convertAndSend("/topic/room/" + roomId,
+        messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId,
                 SocketEvent.<Map<String, Object>>builder()
                         .roomId(roomId)
                         .action("MEMBER_BANNED")
@@ -612,7 +713,7 @@ public class RoomService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
         if (room.getOwner().getId().equals(user.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "دانجن‌مستر نمی‌تواند از اتاق خود خارج شود؛ در صورت نیاز می‌توانید اتاق را ببندید یا حذف کنید");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "دانجن‌مستر نمی‌تواند از اتاق خود خارج شود");
         }
 
         Optional<RoomMember> member = memberRepository.findByRoomIdAndUserId(roomId, user.getId());
@@ -672,7 +773,9 @@ public class RoomService {
             if (room.getOwner() != null && room.getOwner().getId().equals(userId)) {
                 room.setGmLastSeenAt(LocalDateTime.now());
                 roomRepository.saveAndFlush(room);
-                log.info("GM disconnected from room {}. gmLastSeenAt set to now.", roomId);
+                if (log.isDebugEnabled()) {
+                    log.debug("GM disconnected from room {}. gmLastSeenAt updated.", roomId);
+                }
             }
         });
     }

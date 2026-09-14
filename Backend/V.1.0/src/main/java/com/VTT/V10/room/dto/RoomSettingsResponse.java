@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Data
@@ -20,7 +21,6 @@ public class RoomSettingsResponse {
     private Double shapeSnapSensitivity;
     private Double gridSnapSensitivity;
 
-    // Grid Settings
     private String gridType;
     private String lineType;
     private String measurementType;

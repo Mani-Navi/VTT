@@ -5,10 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
@@ -27,25 +29,39 @@ public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            // پشتیبانی از Authorization با حروف بزرگ یا کوچک
             String authHeader = accessor.getFirstNativeHeader("Authorization");
             if (authHeader == null) {
                 authHeader = accessor.getFirstNativeHeader("authorization");
             }
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                try {
-                    String userEmail = jwtService.extractEmail(token);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                log.warn("WebSocket CONNECT rejected: Missing Bearer authorization header");
+                throw new MessageDeliveryException("Unauthorized: Missing or malformed STOMP Authorization header");
+            }
 
-                    if (userEmail != null && jwtService.isTokenValid(token, userEmail)) {
-                        UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(
-                                userEmail, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-                        accessor.setUser(user);
-                    }
-                } catch (Exception e) {
-                    log.warn("WebSocket STOMP authentication failed: {}", e.getMessage());
+            String token = authHeader.substring(7);
+            try {
+                if (!jwtService.validateToken(token)) {
+                    throw new AuthenticationCredentialsNotFoundException("Token validation failed");
                 }
+
+                String userEmail = jwtService.extractEmail(token);
+                if (userEmail == null || !jwtService.isTokenValid(token, userEmail)) {
+                    throw new AuthenticationCredentialsNotFoundException("Invalid or expired token claims");
+                }
+
+                UsernamePasswordAuthenticationToken user = new UsernamePasswordAuthenticationToken(
+                        userEmail,
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                );
+                accessor.setUser(user);
+                if (log.isDebugEnabled()) {
+                    log.debug("WebSocket client authenticated successfully: {}", userEmail);
+                }
+            } catch (Exception e) {
+                log.warn("WebSocket CONNECT rejected: {}", e.getMessage());
+                throw new MessageDeliveryException("Unauthorized: Invalid STOMP token - " + e.getMessage());
             }
         }
         return message;

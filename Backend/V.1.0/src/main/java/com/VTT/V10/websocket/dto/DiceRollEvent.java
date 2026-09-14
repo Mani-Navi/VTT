@@ -1,12 +1,19 @@
 package com.VTT.V10.websocket.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DiceRollEvent {
-    private String username; // چه کسی تاس ریخت؟
-    private String formula;  // مثلا "2d20 + 5"
-    private List<Integer> results; // تک‌تک عددها [15, 8]
-    private Integer total; // مجموع: 28
+    private String username;
+    private String formula;
+    private List<Integer> results;
+    private Integer total;
 }

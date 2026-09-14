@@ -22,12 +22,17 @@ public class EmailService {
 
     @Async
     public void sendOtpCode(String toEmail, String code) {
+        if (toEmail == null || code == null || !code.matches("^\\d{6}$")) {
+            log.warn("Invalid email or OTP code format for sending");
+            return;
+        }
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail, "Titipool VTT");
-            helper.setTo(toEmail);
+            helper.setTo(toEmail.trim().toLowerCase());
             helper.setSubject("کد تایید حساب کاربری — Titipool");
 
             String htmlContent = """
@@ -48,12 +53,14 @@ public class EmailService {
 
             helper.setText(htmlContent, true);
             mailSender.send(message);
-            log.info("✅ Verification email sent successfully to {}", toEmail);
 
+            if (log.isDebugEnabled()) {
+                log.debug("Verification email dispatched to {}", toEmail);
+            }
         } catch (MessagingException e) {
-            log.error("❌ Failed to send verification email to {}: ", toEmail, e);
+            log.error("Failed to dispatch verification email to recipient. Error: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("❌ General error in sending email: ", e);
+            log.error("General error in sending verification email", e);
         }
     }
 }

@@ -155,3 +155,13 @@ CREATE TABLE drawings (
                           is_visible BOOLEAN DEFAULT TRUE,
                           created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- ==========================================================
+-- INDEXES FOR PRODUCTION PERFORMANCE (<100ms real-time target)
+-- ==========================================================
+CREATE INDEX idx_scenes_room_id ON scenes(room_id);
+CREATE INDEX idx_tokens_scene_id ON tokens(scene_id);
+CREATE INDEX idx_fog_regions_scene_id ON fog_regions(scene_id);
+CREATE INDEX idx_drawings_scene_id ON drawings(scene_id);
+CREATE INDEX idx_assets_user_id ON assets(user_id);
+CREATE INDEX idx_room_members_user_id ON room_members(user_id);

@@ -16,34 +16,39 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoomMemberRepository roomMemberRepository;
     private final JwtService jwtService;
     private final EmailService emailService;
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Transactional(readOnly = true)
     public UserDto getProfile(String userEmail) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
         return toDto(user);
     }
 
     @Transactional
     public UserDto updateProfile(String userEmail, UpdateProfileRequest request) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
 
         if (request.getUsername() != null && !request.getUsername().isBlank()
                 && !request.getUsername().equals(user.getUsername())) {
-            if (userRepository.existsByUsername(request.getUsername().trim())) {
+            String trimmedUsername = request.getUsername().trim();
+            if (userRepository.existsByUsername(trimmedUsername)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "این نام کاربری قبلاً انتخاب شده است");
             }
-            user.setUsername(request.getUsername().trim());
+            user.setUsername(trimmedUsername);
         }
 
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
@@ -56,7 +61,7 @@ public class UserService {
 
     @Transactional
     public void changePassword(String userEmail, ChangePasswordRequest request) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
 
         if (user.getPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "رمز عبور فعلی نادرست است");
@@ -68,7 +73,7 @@ public class UserService {
 
     @Transactional
     public AuthResponse changeEmail(String userEmail, ChangeEmailRequest request) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
 
         if (user.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "رمز عبور نادرست است");
@@ -85,7 +90,6 @@ public class UserService {
         user.setVerificationExpiry(null);
         user = userRepository.save(user);
 
-        // تولید توکن جدید با شناسه و ایمیل به‌روزرسانی شده
         String newToken = jwtService.generateToken(user);
         UserDto userDto = toDto(user);
 
@@ -100,22 +104,22 @@ public class UserService {
 
     @Transactional
     public void sendVerificationCode(String userEmail) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
 
-        String code = String.format("%06d", new Random().nextInt(999999));
+        int randomInt = SECURE_RANDOM.nextInt(1_000_000);
+        String code = String.format("%06d", randomInt);
+
         user.setVerificationCode(code);
         user.setVerificationExpiry(LocalDateTime.now().plusMinutes(2));
         userRepository.save(user);
 
-        log.info("📧 [Titipool Console OTP] Email: {} | Code: {}", user.getEmail(), code);
-
-        // ارسال ایمیل واقعی
+        log.info("Dispatching OTP verification code for user: {}", user.getId());
         emailService.sendOtpCode(user.getEmail(), code);
     }
 
     @Transactional
     public UserDto verifyCode(String userEmail, String code) {
-        User user = getUserByEmail(userEmail);
+        User user = getByEmail(userEmail);
 
         if (user.getVerificationCode() == null || user.getVerificationExpiry() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "کد تاییدی ارسال نشده است");
@@ -137,7 +141,11 @@ public class UserService {
         return toDto(user);
     }
 
-    private User getUserByEmail(String email) {
+    @Transactional(readOnly = true)
+    public User getByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ایمیل نامعتبر است");
+        }
         return userRepository.findByEmail(email.trim().toLowerCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
     }

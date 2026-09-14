@@ -1,12 +1,23 @@
 package com.VTT.V10.room.dto;
 
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.UUID;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddTokenRequest {
+
+    @NotNull(message = "شناسه صحنه الزامی است")
     private UUID sceneId;
+
     private UUID assetId;
     private String label;
     private String avatarUrl;

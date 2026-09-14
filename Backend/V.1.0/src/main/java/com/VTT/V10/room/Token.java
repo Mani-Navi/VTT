@@ -12,11 +12,15 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tokens")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"scene", "asset"})
+@EqualsAndHashCode(of = "id")
 public class Token {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -46,21 +50,17 @@ public class Token {
     private Boolean isHidden;
     private Boolean isLocked;
 
-    // مالکیت توکن
     private String controlledBy;
 
-    // یادداشت اختصاصی GM
     @Column(columnDefinition = "TEXT")
     private String gmNotes;
 
-    // ویژگی‌های تفکیک اشیاء (Props)
     @Builder.Default
     private Boolean isProp = false;
     private Integer goldValue;
     private Integer xpValue;
     private Boolean isLooted;
 
-    // ۱. تاگل‌های کنترل نمایش بصری روی بوم و توکن
     @Builder.Default
     private Boolean showHp = true;
     @Builder.Default
@@ -72,7 +72,6 @@ public class Token {
     @Builder.Default
     private Boolean showNotes = false;
 
-    // ۲. تاگل‌های اعطای دسترسی و پرمیشن استفاده به پلیر
     @Builder.Default
     private Boolean allowPlayerHp = true;
     @Builder.Default
@@ -82,7 +81,6 @@ public class Token {
     @Builder.Default
     private Boolean allowPlayerSize = true;
 
-    // لیست کاندیشن‌ها (JSONB)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     @Builder.Default

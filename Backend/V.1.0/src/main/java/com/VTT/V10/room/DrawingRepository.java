@@ -27,7 +27,6 @@ public interface DrawingRepository extends JpaRepository<Drawing, UUID> {
     @Query("DELETE FROM Drawing d WHERE d.clientDrawingId = :clientDrawingId")
     int deleteByClientDrawingIdDirect(@Param("clientDrawingId") String clientDrawingId);
 
-    // کوئری بومی ۱۰۰٪ سازگار با PostgreSQL
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM drawings WHERE client_drawing_id = :targetId OR CAST(id AS TEXT) = :targetId", nativeQuery = true)

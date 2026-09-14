@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdatePermissionRequest {
+
     @NotNull(message = "شناسه عضو الزامی است")
     private UUID memberId;
 

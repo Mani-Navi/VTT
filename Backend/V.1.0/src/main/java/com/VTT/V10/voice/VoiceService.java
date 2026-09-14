@@ -2,13 +2,14 @@ package com.VTT.V10.voice;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -16,33 +17,35 @@ import java.util.UUID;
 public class VoiceService {
 
     private final LiveKitConfig config;
+    private static final String HMAC_ALGORITHM = "HmacSHA256";
+
+    @Async
+    public CompletableFuture<String> generateTokenAsync(UUID roomId, UUID userId, String username) {
+        return CompletableFuture.completedFuture(generateToken(roomId, userId, username));
+    }
 
     public String generateToken(UUID roomId, UUID userId, String username) {
+        if (roomId == null || userId == null) {
+            throw new IllegalArgumentException("roomId and userId cannot be null");
+        }
+
         try {
             long nowSec = System.currentTimeMillis() / 1000L;
             long expSec = nowSec + (4L * 60L * 60L); // ۴ ساعت اعتبار
 
-            String apiKey = (config.getApiKey() != null && !config.getApiKey().isBlank())
-                    ? config.getApiKey()
-                    : "devkey";
-
-            String secret = (config.getApiSecret() != null && !config.getApiSecret().isBlank())
-                    ? config.getApiSecret()
-                    : "secret";
-
-            String safeUserId = (userId != null) ? userId.toString() : UUID.randomUUID().toString();
+            String safeUserId = userId.toString();
             String safeUsername = (username != null && !username.isBlank())
-                    ? username.replace("\"", "\\\"")
+                    ? username.replace("\\", "\\\\").replace("\"", "\\\"")
                     : "Player";
-            String safeRoomId = (roomId != null) ? roomId.toString() : "default-room";
+            String safeRoomId = roomId.toString();
 
-            // ۱. Header استاندارد JWT
+            // ۱. Header استاندارد JWT (دقیقاً بر اساس نیاز LiveKit SFU)
             String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
 
-            // ۲. Payload دقیق استاندارد LiveKit SFU
+            // ۲. Payload دقیق استاندارد LiveKit RFC-7519
             String payloadJson = String.format(
                     "{\"iss\":\"%s\",\"sub\":\"%s\",\"name\":\"%s\",\"video\":{\"canPublish\":true,\"canSubscribe\":true,\"room\":\"%s\",\"roomJoin\":true},\"iat\":%d,\"nbf\":%d,\"exp\":%d}",
-                    apiKey, safeUserId, safeUsername, safeRoomId, nowSec, nowSec, expSec
+                    config.getApiKey(), safeUserId, safeUsername, safeRoomId, nowSec, nowSec, expSec
             );
 
             Base64.Encoder b64 = Base64.getUrlEncoder().withoutPadding();
@@ -50,18 +53,21 @@ public class VoiceService {
             String encodedPayload = b64.encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
             String dataToSign = encodedHeader + "." + encodedPayload;
 
-            // ۳. محاسبه امضای HMAC-SHA256 استاندارد
-            Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(secretKeySpec);
+            // ۳. محاسبه امضای دیجیتال HMAC-SHA256 بدون SDK خارجی
+            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+            mac.init(config.getSecretKeySpec());
 
             byte[] signatureBytes = mac.doFinal(dataToSign.getBytes(StandardCharsets.UTF_8));
             String encodedSignature = b64.encodeToString(signatureBytes);
 
+            if (log.isDebugEnabled()) {
+                log.debug("LiveKit token issued successfully for user {} in room {}", userId, roomId);
+            }
+
             return dataToSign + "." + encodedSignature;
         } catch (Exception e) {
-            log.error("Error generating LiveKit token: ", e);
-            throw new RuntimeException("خطا در تولید توکن صدا", e);
+            log.error("Failed to generate LiveKit voice token for room: {}", roomId);
+            throw new IllegalStateException("خطا در تولید امضای دیجیتال صوتی", e);
         }
     }
 }

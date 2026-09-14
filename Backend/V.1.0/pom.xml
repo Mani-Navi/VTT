@@ -6,11 +6,11 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>3.3.5</version>
+		<relativePath/>
 	</parent>
 
-	<groupId>com.vtt</groupId>
+	<groupId>com.VTT.V10</groupId>
 	<artifactId>vtt-platform</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>VTT Platform</name>
@@ -18,11 +18,14 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<jjwt.version>0.12.5</jjwt.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<jjwt.version>0.12.6</jjwt.version>
 	</properties>
 
 	<dependencies>
-		<!-- Core Starters -->
+		<!-- Core Web & Security Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -44,16 +47,34 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.google.api-client</groupId>
-			<artifactId>google-api-client</artifactId>
-			<version>2.2.0</version>
-		</dependency>
-		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
-		<!-- Database -->
+		<!-- Production Monitoring & Performance -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+
+		<!-- Third Party Client (Excluded conflicting commons-logging) -->
+		<dependency>
+			<groupId>com.google.api-client</groupId>
+			<artifactId>google-api-client</artifactId>
+			<version>2.2.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- Database Persistence & Migration -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
@@ -68,25 +89,26 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
-		<!-- Auth: JWT (jjwt 0.12.5) -->
+		<!-- Auth: JWT (RFC-7519 / HMAC-SHA256) -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
-			<version>0.12.6</version>
+			<version>${jjwt.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
-			<version>0.12.6</version>
+			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
-			<version>0.12.6</version>
+			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
 		</dependency>
-		<!-- Utils -->
+
+		<!-- Developer Tools & Boilerplate Reduction -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -123,7 +145,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.13.0</version>
 				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>

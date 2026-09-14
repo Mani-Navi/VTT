@@ -5,22 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AssetResponse {
-    private UUID id;
+public class UpdateAssetRequest {
     private String name;
-    private String type;
-    private String fileUrl;
-    private Long fileSize;
-    private String mimeType;
-    private Integer width;
-    private Integer height;
     private Integer dpi;
     private Integer gridColumns;
     private Integer gridRows;
@@ -34,6 +24,4 @@ public class AssetResponse {
     private String textColor;
     private Integer fontSize;
     private String fontFamily;
-    private String ownerUsername;
-    private LocalDateTime createdAt;
 }

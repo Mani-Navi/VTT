@@ -4,21 +4,26 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "drawings")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "scene")
+@EqualsAndHashCode(of = "id")
 public class Drawing {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "client_drawing_id")
-    private String clientDrawingId; // شناسه یکتای سمت فرانت‌اند جهت جلوگیری از ایجاد رکوردهای تکراری
+    private String clientDrawingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "scene_id", nullable = false)
@@ -39,7 +44,6 @@ public class Drawing {
     private Double height;
     private Double radius;
 
-    // مشخصات کامل متن
     @Column(columnDefinition = "TEXT")
     private String text;
     private String fontFamily;

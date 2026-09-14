@@ -5,6 +5,7 @@ import com.VTT.V10.websocket.dto.DrawingEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,8 +19,54 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class DrawingService {
+
     private final DrawingRepository drawingRepository;
     private final SceneRepository sceneRepository;
+
+    @Async
+    @Transactional
+    public void asyncSaveOrUpdateDrawing(UUID roomId, DrawingEvent event) {
+        try {
+            UUID sceneId = event.getSceneId();
+            if (sceneId == null) {
+                var activeScene = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+                if (activeScene.isPresent()) {
+                    sceneId = activeScene.get().getId();
+                } else {
+                    var scenes = sceneRepository.findByRoomId(roomId);
+                    if (!scenes.isEmpty()) {
+                        sceneId = scenes.get(0).getId();
+                    }
+                }
+            }
+            if (sceneId != null) {
+                saveOrUpdateDrawing(sceneId, event);
+            }
+        } catch (Exception e) {
+            log.warn("Async Drawing save warning: {}", e.getMessage());
+        }
+    }
+
+    @Async
+    @Transactional
+    public void asyncDeleteDrawing(UUID roomId, DrawingEvent event) {
+        try {
+            String targetId = event.getClientDrawingId() != null
+                    ? event.getClientDrawingId()
+                    : (event.getId() != null ? event.getId() : event.getDrawingId());
+
+            UUID sceneId = event.getSceneId();
+            if (sceneId == null) {
+                var activeScene = sceneRepository.findByRoomIdAndIsActiveTrue(roomId);
+                if (activeScene.isPresent()) {
+                    sceneId = activeScene.get().getId();
+                }
+            }
+            deleteDrawing(sceneId, targetId);
+        } catch (Exception e) {
+            log.warn("Async Drawing delete warning: {}", e.getMessage());
+        }
+    }
 
     @Transactional
     public void saveOrUpdateDrawing(UUID sceneId, DrawingEvent event) {
@@ -75,7 +122,6 @@ public class DrawingService {
             if (event.getHeight() != null) drawing.setHeight(event.getHeight());
             if (event.getRadius() != null) drawing.setRadius(event.getRadius());
 
-            // به‌روزرسانی مشخصات متن
             if (event.getText() != null) drawing.setText(event.getText());
             if (event.getFontFamily() != null) drawing.setFontFamily(event.getFontFamily());
             if (event.getFontStyle() != null) drawing.setFontStyle(event.getFontStyle());
@@ -122,14 +168,12 @@ public class DrawingService {
     public void deleteDrawing(UUID sceneId, String drawingIdStr) {
         if (drawingIdStr == null || drawingIdStr.isBlank()) return;
         String cleanId = drawingIdStr.trim();
-        log.info("Deleting drawing with identifier: '{}'", cleanId);
 
         try {
             UUID uuid = UUID.fromString(cleanId);
             int count = drawingRepository.deleteByIdDirect(uuid);
             if (count > 0) {
                 drawingRepository.flush();
-                log.info("Drawing deleted by direct UUID match: {}", uuid);
                 return;
             }
         } catch (IllegalArgumentException ignored) {}
@@ -137,14 +181,12 @@ public class DrawingService {
         int clientCount = drawingRepository.deleteByClientDrawingIdDirect(cleanId);
         if (clientCount > 0) {
             drawingRepository.flush();
-            log.info("Drawing deleted by clientDrawingId match: {}", cleanId);
             return;
         }
 
         try {
-            int nativeCount = drawingRepository.deleteByAnyIdNative(cleanId);
+            drawingRepository.deleteByAnyIdNative(cleanId);
             drawingRepository.flush();
-            log.info("Drawing deleted by native SQL match: count {}", nativeCount);
         } catch (Exception e) {
             log.warn("Native query delete fallback error: {}", e.getMessage());
         }

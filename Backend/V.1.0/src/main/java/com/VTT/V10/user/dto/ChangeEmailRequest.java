@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChangeEmailRequest {
+
     @NotBlank(message = "ایمیل جدید الزامی است")
     @Email(message = "فرمت ایمیل نامعتبر است")
     private String newEmail;

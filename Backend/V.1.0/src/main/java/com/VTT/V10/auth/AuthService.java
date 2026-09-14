@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -27,6 +28,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -34,24 +36,28 @@ public class AuthService {
     @Value("${google.client-id:}")
     private String googleClientId;
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
+        String email = request.getEmail().trim().toLowerCase();
+        String username = request.getUsername().trim();
+
+        if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "این ایمیل قبلاً ثبت شده است");
         }
-        if (userRepository.existsByUsername(request.getUsername().trim())) {
+        if (userRepository.existsByUsername(username)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "این نام کاربری قبلاً انتخاب شده است");
         }
 
         User user = User.builder()
-                .username(request.getUsername().trim())
-                .email(request.getEmail().trim().toLowerCase())
+                .username(username)
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .isEmailVerified(false)
                 .isPremium(false)
                 .build();
 
-        // دریافت موجودیت پایدارشده با ID تولیدی معتبر
         user = userRepository.save(user);
 
         String token = jwtService.generateToken(user);
@@ -66,8 +72,11 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+        String email = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "ایمیل یا رمز عبور اشتباه است"));
 
         if (user.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -114,9 +123,15 @@ public class AuthService {
             User user = userRepository.findByEmail(email).orElseGet(() -> {
                 String baseUsername = (name != null ? name.replaceAll("\\s+", "_").toLowerCase() : email.split("@")[0]);
                 String generatedUsername = baseUsername;
-                int counter = 1;
-                while (userRepository.existsByUsername(generatedUsername)) {
-                    generatedUsername = baseUsername + counter++;
+
+                int attempts = 0;
+                while (userRepository.existsByUsername(generatedUsername) && attempts < 5) {
+                    generatedUsername = baseUsername + "_" + (100 + SECURE_RANDOM.nextInt(900));
+                    attempts++;
+                }
+
+                if (userRepository.existsByUsername(generatedUsername)) {
+                    generatedUsername = "user_" + UUID.randomUUID().toString().substring(0, 8);
                 }
 
                 User newUser = User.builder()
@@ -151,7 +166,7 @@ public class AuthService {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Google Auth verification failed: ", e);
+            log.error("Google Auth verification failed: {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "اعتبارسنجی حساب گوگل ناموفق بود");
         }
     }

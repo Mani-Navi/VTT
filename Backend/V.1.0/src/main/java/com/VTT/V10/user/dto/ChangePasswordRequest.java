@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChangePasswordRequest {
+
     @NotBlank(message = "رمز عبور فعلی الزامی است")
     private String currentPassword;
 

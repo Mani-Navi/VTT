@@ -12,15 +12,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RoomMemberResponse {
-    private UUID id; // memberId
+    private UUID id;
     private UUID userId;
     private String username;
     private String email;
-    private String role; // "GM" یا "Player"
-    private String roleTitle; // عنوان نمایشی رول (مانند: میزبان، دانجن‌مستر، ماجراجو)
+    private String role;
+    private String roleTitle;
     private Boolean isOwner;
     private Boolean isMuted;
     private Boolean isBanned;
-    private Boolean isOnline; // وضعیت آنلاین لحظه‌ای
+    private Boolean isOnline;
     private PermissionResponse permissions;
 }

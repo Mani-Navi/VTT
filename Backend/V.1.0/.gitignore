@@ -1,8 +1,27 @@
 HELP.md
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+### Sensitive Environment & Secret Files ###
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.jks
+*.p12
+application-local.yml
+application-local.properties
+application-secret.yml
+application-secret.properties
+
+### Logs & OS Files ###
+*.log
+logs/
+.DS_Store
+Thumbs.db
 
 ### STS ###
 .apt_generated
@@ -14,10 +33,11 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
+out/
 
 ### NetBeans ###
 /nbproject/private/

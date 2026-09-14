@@ -37,14 +37,14 @@ public class TokenMoveEvent {
     private Integer xpValue;
     private Boolean isLooted;
 
-    // نمایش روی بوم
+    // Canvas presentation flags
     private Boolean showHp;
     private Boolean showName;
     private Boolean showAc;
     private Boolean showConditions;
     private Boolean showNotes;
 
-    // پرمیشن دسترسی پلیر
+    // Player permissions
     private Boolean allowPlayerHp;
     private Boolean allowPlayerConditions;
     private Boolean allowPlayerAc;

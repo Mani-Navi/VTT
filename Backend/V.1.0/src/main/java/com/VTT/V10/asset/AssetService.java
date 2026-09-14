@@ -1,10 +1,12 @@
 package com.VTT.V10.asset;
 
 import com.VTT.V10.asset.dto.AssetResponse;
+import com.VTT.V10.asset.dto.UpdateAssetRequest;
 import com.VTT.V10.user.User;
 import com.VTT.V10.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,38 +20,30 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssetService {
+
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
 
-    private static final String UPLOAD_DIR = "uploads/";
+    private static final String UPLOAD_DIR = "uploads";
 
-    // محدودیت‌های حجمی اختصاصی بر حسب بایت
     private static final long MAX_MAP_SIZE = 15 * 1024 * 1024;   // 15 MB
     private static final long MAX_TOKEN_SIZE = 3 * 1024 * 1024;  // 3 MB
     private static final long MAX_PROP_SIZE = 4 * 1024 * 1024;   // 4 MB
     private static final long DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 
-    private void validateFileSize(long size, Asset.AssetType type) {
-        long allowedSize = switch (type) {
-            case MAP -> MAX_MAP_SIZE;
-            case TOKEN -> MAX_TOKEN_SIZE;
-            case PROP -> MAX_PROP_SIZE;
-            default -> DEFAULT_MAX_SIZE;
-        };
-
-        if (size > allowedSize) {
-            String limitLabel = (allowedSize / (1024 * 1024)) + " مگابایت";
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "حجم فایل برای این نوع بیشتر از حد مجاز است (حداکثر " + limitLabel + ")");
-        }
-    }
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml",
+            "audio/mpeg", "audio/ogg", "audio/wav"
+    );
 
     @Transactional
     public AssetResponse uploadAsset(
@@ -72,26 +66,34 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "فایل ارسالی خالی است");
         }
 
+        String contentType = file.getContentType();
+        if (contentType != null && !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "نوع فایل مجاز نیست");
+        }
+
         Asset.AssetType assetType = parseAssetType(type);
         validateFileSize(file.getSize(), assetType);
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        File directory = new File(UPLOAD_DIR);
-        if (!directory.exists()) {
-            directory.mkdirs();
+        Path uploadPath = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
         }
 
-        String originalFilename = file.getOriginalFilename() != null
-                ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.\\-_]", "_")
-                : "asset";
-        String uniqueFileName = UUID.randomUUID() + "_" + originalFilename;
-        Path targetLocation = Paths.get(UPLOAD_DIR).resolve(uniqueFileName);
+        String rawOriginalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "asset";
+        String cleanOriginalFilename = rawOriginalFilename.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
+        String uniqueFileName = UUID.randomUUID() + "_" + cleanOriginalFilename;
+
+        Path targetLocation = uploadPath.resolve(uniqueFileName).normalize();
+        if (!targetLocation.startsWith(uploadPath)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "نام فایل نامعتبر است");
+        }
 
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-        String finalName = (name != null && !name.isBlank()) ? name : originalFilename;
+        String finalName = (name != null && !name.isBlank()) ? name : cleanOriginalFilename;
         String publicFileUrl = "/uploads/" + uniqueFileName;
 
         Asset asset = Asset.builder()
@@ -99,7 +101,7 @@ public class AssetService {
                 .type(assetType)
                 .fileUrl(publicFileUrl)
                 .fileSize(file.getSize())
-                .mimeType(file.getContentType())
+                .mimeType(contentType)
                 .dpi(dpi != null ? dpi : 150)
                 .gridColumns(columns != null ? columns : 1)
                 .gridRows(rows != null ? rows : 1)
@@ -132,6 +134,11 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "آدرس لینک نمی‌تواند خالی باشد");
         }
 
+        String cleanUrl = url.trim();
+        if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "فرمت پروتکل لینک باید http یا https باشد");
+        }
+
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
@@ -141,7 +148,7 @@ public class AssetService {
         Asset asset = Asset.builder()
                 .name(finalName)
                 .type(assetType)
-                .fileUrl(url.trim())
+                .fileUrl(cleanUrl)
                 .dpi(dpi != null ? dpi : 150)
                 .gridColumns(columns != null ? columns : 1)
                 .gridRows(rows != null ? rows : 1)
@@ -152,16 +159,6 @@ public class AssetService {
 
         assetRepository.save(asset);
         return mapToResponse(asset);
-    }
-
-    private Asset.AssetType parseAssetType(String type) {
-        if (type != null && !type.isBlank()) {
-            try {
-                return Asset.AssetType.valueOf(type.trim().toUpperCase());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        return Asset.AssetType.TOKEN;
     }
 
     @Transactional(readOnly = true)
@@ -185,25 +182,30 @@ public class AssetService {
     }
 
     @Transactional
-    public AssetResponse updateAsset(UUID assetId, Asset updateData, String userEmail) {
+    public AssetResponse updateAsset(UUID assetId, UpdateAssetRequest updateData, String userEmail) {
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "است مورد نظر یافت نشد"));
 
-        if (!asset.getUser().getEmail().equals(userEmail)) {
+        if (!asset.getUser().getEmail().equalsIgnoreCase(userEmail)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز");
         }
 
-        if (updateData.getName() != null) asset.setName(updateData.getName());
-        if (updateData.getDpi() != null) asset.setDpi(updateData.getDpi());
-        if (updateData.getGridColumns() != null) asset.setGridColumns(updateData.getGridColumns());
-        if (updateData.getGridRows() != null) asset.setGridRows(updateData.getGridRows());
-        if (updateData.getRotation() != null) asset.setRotation(updateData.getRotation());
-        if (updateData.getIsVisible() != null) asset.setIsVisible(updateData.getIsVisible());
-        if (updateData.getIsLocked() != null) asset.setIsLocked(updateData.getIsLocked());
-        if (updateData.getDefaultText() != null) asset.setDefaultText(updateData.getDefaultText());
-        if (updateData.getTextColor() != null) asset.setTextColor(updateData.getTextColor());
-        if (updateData.getFontSize() != null) asset.setFontSize(updateData.getFontSize());
-        if (updateData.getFontFamily() != null) asset.setFontFamily(updateData.getFontFamily());
+        if (updateData != null) {
+            if (updateData.getName() != null) asset.setName(updateData.getName());
+            if (updateData.getDpi() != null) asset.setDpi(updateData.getDpi());
+            if (updateData.getGridColumns() != null) asset.setGridColumns(updateData.getGridColumns());
+            if (updateData.getGridRows() != null) asset.setGridRows(updateData.getGridRows());
+            if (updateData.getRotation() != null) asset.setRotation(updateData.getRotation());
+            if (updateData.getIsVisible() != null) asset.setIsVisible(updateData.getIsVisible());
+            if (updateData.getIsLocked() != null) asset.setIsLocked(updateData.getIsLocked());
+            if (updateData.getFolderName() != null) asset.setFolderName(updateData.getFolderName());
+            if (updateData.getCollectionName() != null) asset.setCollectionName(updateData.getCollectionName());
+            if (updateData.getCollectionColor() != null) asset.setCollectionColor(updateData.getCollectionColor());
+            if (updateData.getDefaultText() != null) asset.setDefaultText(updateData.getDefaultText());
+            if (updateData.getTextColor() != null) asset.setTextColor(updateData.getTextColor());
+            if (updateData.getFontSize() != null) asset.setFontSize(updateData.getFontSize());
+            if (updateData.getFontFamily() != null) asset.setFontFamily(updateData.getFontFamily());
+        }
 
         assetRepository.save(asset);
         return mapToResponse(asset);
@@ -214,29 +216,61 @@ public class AssetService {
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "است مورد نظر یافت نشد"));
 
-        if (!asset.getUser().getEmail().equals(userEmail)) {
+        if (!asset.getUser().getEmail().equalsIgnoreCase(userEmail)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز");
         }
 
-        // ۱. پاک‌سازی ارجاعات خارجی با استفاده از پارامتر موضعی استاندارد
-        entityManager.createNativeQuery("UPDATE tokens SET asset_id = NULL WHERE asset_id = ?1")
-                .setParameter(1, assetId)
+        // ۱. پاک‌سازی ارجاعات خارجی با استفاده از کوئری امن پارامتری
+        entityManager.createNativeQuery("UPDATE tokens SET asset_id = NULL WHERE asset_id = :assetId")
+                .setParameter("assetId", assetId)
                 .executeUpdate();
 
-        entityManager.createNativeQuery("UPDATE scenes SET asset_id = NULL WHERE asset_id = ?1")
-                .setParameter(1, assetId)
+        entityManager.createNativeQuery("UPDATE scenes SET asset_id = NULL WHERE asset_id = :assetId")
+                .setParameter("assetId", assetId)
                 .executeUpdate();
 
-        // ۲. حذف فیزیکی فایل از دیسک در صورت لوکال بودن
+        // ۲. حذف فیزیکی امن با مهار کامل Path Traversal
         try {
             if (asset.getFileUrl() != null && asset.getFileUrl().startsWith("/uploads/")) {
-                Path filePath = Paths.get(asset.getFileUrl().substring(1));
-                Files.deleteIfExists(filePath);
-            }
-        } catch (Exception ignored) {}
+                String subPath = asset.getFileUrl().substring("/uploads/".length());
+                Path basePath = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
+                Path targetPath = basePath.resolve(subPath).normalize();
 
-        // ۳. حذف رکورد اصلی است
+                if (targetPath.startsWith(basePath)) {
+                    Files.deleteIfExists(targetPath);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete physical file for asset {}: {}", assetId, e.getMessage());
+        }
+
+        // ۳. حذف رکورد از دیتابیس
         assetRepository.delete(asset);
+    }
+
+    private void validateFileSize(long size, Asset.AssetType type) {
+        long allowedSize = switch (type) {
+            case MAP -> MAX_MAP_SIZE;
+            case TOKEN -> MAX_TOKEN_SIZE;
+            case PROP -> MAX_PROP_SIZE;
+            default -> DEFAULT_MAX_SIZE;
+        };
+
+        if (size > allowedSize) {
+            String limitLabel = (allowedSize / (1024 * 1024)) + " مگابایت";
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "حجم فایل برای این نوع بیشتر از حد مجاز است (حداکثر " + limitLabel + ")");
+        }
+    }
+
+    private Asset.AssetType parseAssetType(String type) {
+        if (type != null && !type.isBlank()) {
+            try {
+                return Asset.AssetType.valueOf(type.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return Asset.AssetType.TOKEN;
     }
 
     public AssetResponse mapToResponse(Asset asset) {

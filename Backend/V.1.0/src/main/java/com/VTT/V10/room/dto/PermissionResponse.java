@@ -15,7 +15,7 @@ import java.util.UUID;
 public class PermissionResponse {
     private UUID memberId;
     private String username;
-    private String role; // "GM" یا "Player"
+    private String role;
     private Boolean canAssets;
     private Boolean canText;
     private Boolean canFog;

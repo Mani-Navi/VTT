@@ -1,12 +1,20 @@
 package com.VTT.V10.asset;
 
 import com.VTT.V10.asset.dto.AssetResponse;
+import com.VTT.V10.asset.dto.UpdateAssetRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -16,6 +24,7 @@ import java.util.UUID;
 @RequestMapping("/api/assets")
 @RequiredArgsConstructor
 public class AssetController {
+
     private final AssetService assetService;
 
     @PostMapping("/upload")
@@ -35,6 +44,7 @@ public class AssetController {
             @RequestParam(value = "fontFamily", required = false) String fontFamily,
             Authentication authentication
     ) throws IOException {
+        validateAuth(authentication);
         AssetResponse response = assetService.uploadAsset(
                 file, name, type, dpi, columns, rows, rotation, isVisible, isLocked,
                 defaultText, textColor, fontSize, fontFamily, authentication.getName()
@@ -44,9 +54,10 @@ public class AssetController {
 
     @PostMapping("/from-url")
     public ResponseEntity<AssetResponse> createFromUrl(
-            @RequestBody UrlAssetRequest request,
+            @Valid @RequestBody UrlAssetRequest request,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         AssetResponse response = assetService.createAssetFromUrl(
                 request.getUrl(),
                 request.getName(),
@@ -64,6 +75,7 @@ public class AssetController {
             @RequestParam(value = "type", required = false) String type,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         List<AssetResponse> assets = assetService.getUserAssets(authentication.getName(), type);
         return ResponseEntity.ok(assets);
     }
@@ -71,9 +83,10 @@ public class AssetController {
     @PatchMapping("/{assetId}")
     public ResponseEntity<AssetResponse> updateAsset(
             @PathVariable UUID assetId,
-            @RequestBody Asset updateData,
+            @RequestBody UpdateAssetRequest updateData,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         AssetResponse response = assetService.updateAsset(assetId, updateData, authentication.getName());
         return ResponseEntity.ok(response);
     }
@@ -83,12 +96,23 @@ public class AssetController {
             @PathVariable UUID assetId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         assetService.deleteAsset(assetId, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
+    private void validateAuth(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
+        }
+    }
+
     @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class UrlAssetRequest {
+        @NotBlank(message = "آدرس URL الزامی است")
         private String url;
         private String name;
         private String type;

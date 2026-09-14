@@ -2,14 +2,18 @@ package com.VTT.V10.room;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "room_settings")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(of = "roomId")
+@ToString(exclude = "room")
 public class RoomSettings {
 
     @Id
@@ -20,12 +24,12 @@ public class RoomSettings {
     @JoinColumn(name = "room_id", insertable = false, updatable = false)
     private Room room;
 
-    // تنظیمات عمومی (General Settings UCS-01)
+    // تنظیمات عمومی
     @Builder.Default
     private Double zoomSensitivity = 1.0;
 
     @Builder.Default
-    private String overlayEffect = "GLASS"; // GLASS, TRANSPARENT
+    private String overlayEffect = "GLASS";
 
     @Builder.Default
     private Double gmFogBlend = 0.5;
@@ -34,7 +38,7 @@ public class RoomSettings {
     private String colorTheme = "DARK";
 
     @Builder.Default
-    private String inputMode = "AUTO"; // AUTO, MOUSE, TRACKPAD
+    private String inputMode = "AUTO";
 
     @Builder.Default
     private Double shapeSnapSensitivity = 0.5;
@@ -42,15 +46,15 @@ public class RoomSettings {
     @Builder.Default
     private Double gridSnapSensitivity = 0.5;
 
-    // تنظیمات گرید تاکتیکال (Grid Settings UCS-01)
+    // تنظیمات گرید تاکتیکال
     @Builder.Default
-    private String gridType = "square"; // square, isometric, hex_h, hex_v
+    private String gridType = "square";
 
     @Builder.Default
-    private String lineType = "solid"; // solid, dotted, dots
+    private String lineType = "solid";
 
     @Builder.Default
-    private String measurementType = "dnd5e_5105"; // dnd5e_5105, dnd35_alternating, euclidean, manhattan
+    private String measurementType = "dnd5e_5105";
 
     @Builder.Default
     private Integer gridSize = 60;

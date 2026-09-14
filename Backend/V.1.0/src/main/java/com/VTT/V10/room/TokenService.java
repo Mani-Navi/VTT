@@ -8,6 +8,7 @@ import com.VTT.V10.websocket.dto.TokenMoveEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,16 +23,20 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class TokenService {
+
     private final TokenRepository tokenRepository;
     private final SceneRepository sceneRepository;
     private final AssetRepository assetRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final PlayerPermissionRepository playerPermissionRepository;
 
+    @Async
+    public void asyncUpdateTokenFromEvent(TokenMoveEvent data, String userEmail, UUID roomId) {
+        updateTokenFromEvent(data, userEmail, roomId);
+    }
+
     @Transactional
     public TokenResponse addToken(AddTokenRequest request, String userEmail) {
-        log.info("Adding token for user: {}, sceneId: {}, assetId: {}", userEmail, request.getSceneId(), request.getAssetId());
-
         Scene scene = sceneRepository.findById(request.getSceneId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
@@ -63,7 +68,6 @@ public class TokenService {
                     log.warn("Could not check player permission: {}", e.getMessage());
                 }
             } else {
-                // اگر GM در حال ساخت توکن یا شیء است، فیلد مالک را خالی می‌گذاریم مگر اینکه مشخص کرده باشد
                 finalControlledBy = (request.getControlledBy() != null && !request.getControlledBy().isBlank())
                         ? request.getControlledBy()
                         : "";
@@ -123,11 +127,10 @@ public class TokenService {
                     .build();
 
             tokenRepository.save(token);
-            log.info("Token created successfully with ID: {}", token.getId());
             return convertToResponse(token);
         } catch (Exception e) {
             log.error("Fatal error saving token to database: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "خطا در ذخیره‌سازی توکن: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "خطا در ذخیره‌سازی توکن در پایگاه داده");
         }
     }
 

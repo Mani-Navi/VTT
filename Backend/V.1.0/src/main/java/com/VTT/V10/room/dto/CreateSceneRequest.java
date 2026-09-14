@@ -14,13 +14,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateSceneRequest {
+
     @NotNull(message = "شناسه اتاق الزامی است")
     private UUID roomId;
 
     @NotBlank(message = "نام صحنه نباید خالی باشد")
     private String name;
 
-    // اختیاری بودن فایل نقشه و آدرس مستقیم تصویر
     private UUID assetId;
     private String mapUrl;
 

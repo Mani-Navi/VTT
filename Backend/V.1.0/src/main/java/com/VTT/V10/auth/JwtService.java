@@ -2,31 +2,65 @@ package com.VTT.V10.auth;
 
 import com.VTT.V10.user.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.function.Function;
 
+@Slf4j
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    @Value("${jwt.expiration:86400000}")
+    private long jwtExpirationMs;
+
+    private SecretKey cachedSignInKey;
+
+    @PostConstruct
+    public void initKey() {
+        if (secretKey == null || secretKey.trim().length() < 32) {
+            throw new IllegalStateException("تنظیمات امنیتی بحرانی: طول کلید jwt.secret باید حداقل ۳۲ کاراکتر باشد");
+        }
+
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+            if (keyBytes.length >= 32) {
+                this.cachedSignInKey = Keys.hmacShaKeyFor(keyBytes);
+                return;
+            }
+        } catch (Exception ignored) {
+            // Not a valid base64, fallback to UTF-8
+        }
+
+        byte[] utf8Bytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        this.cachedSignInKey = Keys.hmacShaKeyFor(utf8Bytes);
+    }
 
     public String generateToken(User user) {
         String userIdStr = user.getId() != null ? user.getId().toString() : "";
 
+        long now = System.currentTimeMillis();
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("userId", userIdStr)
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
                 .claim("avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "")
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24)) // ۲۴ ساعت اعتبار
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + jwtExpirationMs))
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
     }
@@ -36,25 +70,52 @@ public class JwtService {
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = Jwts.parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
     public boolean isTokenValid(String token, String userEmail) {
-        final String email = extractEmail(token);
-        return (email != null && email.equalsIgnoreCase(userEmail) && !isTokenExpired(token));
+        try {
+            final String email = extractEmail(token);
+            return (email != null && email.equalsIgnoreCase(userEmail) && !isTokenExpired(token));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(getSignInKey())
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (ExpiredJwtException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("JWT token expired: {}", e.getMessage());
+            }
+            return false;
+        } catch (JwtException | IllegalArgumentException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid JWT signature/token format: {}", e.getMessage());
+            }
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
 
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSignInKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return this.cachedSignInKey;
     }
 }

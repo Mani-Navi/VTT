@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,22 +40,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String jwt = authHeader.substring(7);
         try {
-            final String userEmail = jwtService.extractEmail(jwt);
+            if (jwtService.validateToken(jwt)) {
+                final String userEmail = jwtService.extractEmail(jwt);
 
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtService.isTokenValid(jwt, userEmail)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userEmail,
-                            null,
-                            new ArrayList<>()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    if (jwtService.isTokenValid(jwt, userEmail)) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userEmail,
+                                null,
+                                new ArrayList<>()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
+            } else {
+                SecurityContextHolder.clearContext();
             }
         } catch (Exception ex) {
-            // توکن نامعتبر یا منقضی شده است؛ context خالی می‌ماند تا SecurityEntryPoint خطای 401 بدهد
             SecurityContextHolder.clearContext();
+            if (log.isDebugEnabled()) {
+                log.debug("JWT authentication filter rejected token: {}", ex.getMessage());
+            }
         }
 
         filterChain.doFilter(request, response);

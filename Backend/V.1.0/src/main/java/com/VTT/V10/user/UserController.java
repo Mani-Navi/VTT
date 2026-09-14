@@ -7,9 +7,11 @@ import com.VTT.V10.user.dto.ChangePasswordRequest;
 import com.VTT.V10.user.dto.UpdateProfileRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -17,10 +19,12 @@ import java.util.Map;
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
 
     @GetMapping("/profile")
     public ResponseEntity<UserDto> getProfile(Authentication auth) {
+        validateAuth(auth);
         return ResponseEntity.ok(userService.getProfile(auth.getName()));
     }
 
@@ -29,6 +33,7 @@ public class UserController {
             Authentication auth,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
+        validateAuth(auth);
         return ResponseEntity.ok(userService.updateProfile(auth.getName(), request));
     }
 
@@ -37,6 +42,7 @@ public class UserController {
             Authentication auth,
             @Valid @RequestBody ChangePasswordRequest request
     ) {
+        validateAuth(auth);
         userService.changePassword(auth.getName(), request);
         return ResponseEntity.ok().build();
     }
@@ -46,11 +52,13 @@ public class UserController {
             Authentication auth,
             @Valid @RequestBody ChangeEmailRequest request
     ) {
+        validateAuth(auth);
         return ResponseEntity.ok(userService.changeEmail(auth.getName(), request));
     }
 
     @PostMapping("/send-verification-code")
     public ResponseEntity<Void> sendVerificationCode(Authentication auth) {
+        validateAuth(auth);
         userService.sendVerificationCode(auth.getName());
         return ResponseEntity.ok().build();
     }
@@ -60,7 +68,17 @@ public class UserController {
             Authentication auth,
             @RequestBody Map<String, String> body
     ) {
-        String code = body.get("code");
+        validateAuth(auth);
+        if (body == null || !body.containsKey("code") || body.get("code") == null || body.get("code").isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "کد تایید الزامی است");
+        }
+        String code = body.get("code").trim();
         return ResponseEntity.ok(userService.verifyCode(auth.getName(), code));
+    }
+
+    private void validateAuth(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
+        }
     }
 }

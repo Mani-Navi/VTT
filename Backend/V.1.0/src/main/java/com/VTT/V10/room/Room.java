@@ -4,16 +4,21 @@ import com.VTT.V10.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "rooms")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"password", "owner", "template"})
+@EqualsAndHashCode(of = "id")
 public class Room {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -49,7 +54,6 @@ public class Room {
 
     private String musicUrl;
 
-    // عناوین نمایشی نقش‌های اتاق (پایدار در دیتابیس)
     @Builder.Default
     @Column(name = "host_role_title")
     private String hostRoleTitle = "میزبان";

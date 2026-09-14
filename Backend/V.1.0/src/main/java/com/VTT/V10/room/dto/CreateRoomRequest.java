@@ -24,6 +24,5 @@ public class CreateRoomRequest {
 
     private String password;
 
-    // شناسه قالب برای ساخت اتاق از پیش‌طراحی‌شده (اختیاری)
     private UUID templateId;
 }

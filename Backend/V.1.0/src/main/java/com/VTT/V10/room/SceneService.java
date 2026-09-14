@@ -20,8 +20,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SceneService {
+
     private final SceneRepository sceneRepository;
     private final RoomRepository roomRepository;
+    private final RoomMemberRepository roomMemberRepository;
     private final AssetRepository assetRepository;
     private final TokenService tokenService;
     private final TokenRepository tokenRepository;
@@ -31,9 +33,11 @@ public class SceneService {
     private final FogRegionRepository fogRegionRepository;
 
     @Transactional
-    public SceneResponse createScene(CreateSceneRequest request) {
+    public SceneResponse createScene(CreateSceneRequest request, String userEmail) {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "اتاق یافت نشد"));
+
+        validateGMRole(room.getId(), userEmail);
 
         Asset asset = null;
         if (request.getAssetId() != null) {
@@ -45,7 +49,7 @@ public class SceneService {
             mapUrl = asset.getFileUrl();
         }
 
-        long sceneCount = sceneRepository.findByRoomId(room.getId()).size();
+        long sceneCount = sceneRepository.countByRoomId(room.getId());
         boolean shouldBeActive = sceneCount == 0 || Boolean.TRUE.equals(request.getIsActive());
 
         if (shouldBeActive) {
@@ -73,9 +77,11 @@ public class SceneService {
     }
 
     @Transactional
-    public SceneResponse renameScene(UUID sceneId, String newName) {
+    public SceneResponse renameScene(UUID sceneId, String newName, String userEmail) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateGMRole(scene.getRoom().getId(), userEmail);
 
         if (newName != null && !newName.trim().isEmpty()) {
             scene.setName(newName.trim());
@@ -85,25 +91,29 @@ public class SceneService {
     }
 
     @Transactional
-    public SceneResponse updateSceneMap(UUID sceneId, Map<String, Object> payload) {
+    public SceneResponse updateSceneMap(UUID sceneId, Map<String, Object> payload, String userEmail) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
-        if (payload.containsKey("mapUrl") && payload.get("mapUrl") != null) {
-            scene.setMapUrl(payload.get("mapUrl").toString());
-        }
+        validateGMRole(scene.getRoom().getId(), userEmail);
 
-        if (payload.containsKey("assetId") && payload.get("assetId") != null) {
-            try {
-                UUID assetId = UUID.fromString(payload.get("assetId").toString());
-                assetRepository.findById(assetId).ifPresent(scene::setBackgroundAsset);
-            } catch (Exception ignored) {}
-        }
+        if (payload != null) {
+            if (payload.containsKey("mapUrl") && payload.get("mapUrl") != null) {
+                scene.setMapUrl(payload.get("mapUrl").toString());
+            }
 
-        if (payload.containsKey("name") && payload.get("name") != null) {
-            String nameStr = payload.get("name").toString().trim();
-            if (!nameStr.isEmpty()) {
-                scene.setName(nameStr);
+            if (payload.containsKey("assetId") && payload.get("assetId") != null) {
+                try {
+                    UUID assetId = UUID.fromString(payload.get("assetId").toString());
+                    assetRepository.findById(assetId).ifPresent(scene::setBackgroundAsset);
+                } catch (Exception ignored) {}
+            }
+
+            if (payload.containsKey("name") && payload.get("name") != null) {
+                String nameStr = payload.get("name").toString().trim();
+                if (!nameStr.isEmpty()) {
+                    scene.setName(nameStr);
+                }
             }
         }
 
@@ -112,9 +122,11 @@ public class SceneService {
     }
 
     @Transactional
-    public SceneResponse activateScene(UUID sceneId) {
+    public SceneResponse activateScene(UUID sceneId, String userEmail) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateGMRole(scene.getRoom().getId(), userEmail);
 
         sceneRepository.deactivateAllScenesInRoom(scene.getRoom().getId());
         scene.setIsActive(true);
@@ -124,16 +136,19 @@ public class SceneService {
     }
 
     @Transactional(readOnly = true)
-    public List<SceneResponse> getRoomScenes(UUID roomId) {
+    public List<SceneResponse> getRoomScenes(UUID roomId, String userEmail) {
+        validateMembership(roomId, userEmail);
         return sceneRepository.findByRoomId(roomId).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public SceneStateResponse getFullSceneState(UUID sceneId) {
+    public SceneStateResponse getFullSceneState(UUID sceneId, String userEmail) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateMembership(scene.getRoom().getId(), userEmail);
 
         return SceneStateResponse.builder()
                 .scene(convertToResponse(scene))
@@ -144,15 +159,20 @@ public class SceneService {
     }
 
     @Transactional
-    public void deleteScene(UUID sceneId) {
+    public void deleteScene(UUID sceneId, String userEmail) {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
         UUID roomId = scene.getRoom().getId();
+        validateGMRole(roomId, userEmail);
 
         tokenRepository.deleteBySceneId(sceneId);
         fogRegionRepository.deleteBySceneId(sceneId);
-        drawingRepository.findBySceneId(sceneId).forEach(drawingRepository::delete);
+
+        List<Drawing> drawings = drawingRepository.findBySceneId(sceneId);
+        if (drawings != null && !drawings.isEmpty()) {
+            drawingRepository.deleteAll(drawings);
+        }
 
         sceneRepository.delete(scene);
 
@@ -163,6 +183,29 @@ public class SceneService {
                 newActive.setIsActive(true);
                 sceneRepository.save(newActive);
             }
+        }
+    }
+
+    private void validateMembership(UUID roomId, String email) {
+        boolean isMember = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email).isPresent() ||
+                roomRepository.findById(roomId).filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email)).isPresent();
+
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید");
+        }
+    }
+
+    private void validateGMRole(UUID roomId, String email) {
+        boolean isOwner = roomRepository.findById(roomId)
+                .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
+                .isPresent();
+
+        boolean isAdmin = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email)
+                .filter(m -> m.getRole() == RoomMember.Role.ADMIN)
+                .isPresent();
+
+        if (!isOwner && !isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها دانجن‌مستر (GM) اجازه این عملیات را دارد");
         }
     }
 

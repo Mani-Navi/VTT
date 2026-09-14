@@ -3,13 +3,23 @@ package com.VTT.V10.room;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity @Table(name = "journals")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Entity
+@Table(name = "journals")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = "room")
+@EqualsAndHashCode(of = "id")
 public class Journal {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -22,6 +32,7 @@ public class Journal {
     private String content;
 
     @Column(name = "is_admin_only")
+    @Builder.Default
     private Boolean isAdminOnly = true;
 
     @CreationTimestamp

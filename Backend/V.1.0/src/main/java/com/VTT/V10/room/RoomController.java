@@ -2,9 +2,11 @@ package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ public class RoomController {
 
     @GetMapping
     public ResponseEntity<List<RoomResponse>> getRooms(Authentication authentication) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.getUserRooms(authentication.getName()));
     }
 
@@ -32,6 +35,7 @@ public class RoomController {
             @PathVariable UUID roomId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.getRoomById(roomId, authentication.getName()));
     }
 
@@ -40,6 +44,7 @@ public class RoomController {
             @RequestBody CreateRoomRequest request,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.createRoom(request, authentication.getName()));
     }
 
@@ -49,6 +54,7 @@ public class RoomController {
             @RequestBody UpdateRoomRequest request,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.updateRoom(roomId, request, authentication.getName()));
     }
 
@@ -57,6 +63,7 @@ public class RoomController {
             @RequestBody JoinRoomRequest request,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.joinRoom(request, authentication.getName()));
     }
 
@@ -65,6 +72,7 @@ public class RoomController {
             @PathVariable UUID roomId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         roomService.closeRoom(roomId, authentication.getName());
         return ResponseEntity.ok().build();
     }
@@ -74,6 +82,7 @@ public class RoomController {
             @PathVariable UUID roomId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.getRoomMembers(roomId, authentication.getName()));
     }
 
@@ -83,6 +92,7 @@ public class RoomController {
             @PathVariable UUID memberId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         roomService.kickMember(roomId, memberId, authentication.getName());
         return ResponseEntity.ok().build();
     }
@@ -93,6 +103,7 @@ public class RoomController {
             @PathVariable UUID memberId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         roomService.banMember(roomId, memberId, authentication.getName());
         return ResponseEntity.ok().build();
     }
@@ -103,6 +114,7 @@ public class RoomController {
             @PathVariable UUID memberId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         return ResponseEntity.ok(roomService.toggleMuteMember(roomId, memberId, authentication.getName()));
     }
 
@@ -113,7 +125,8 @@ public class RoomController {
             @RequestBody Map<String, String> body,
             Authentication authentication
     ) {
-        String newRole = body.getOrDefault("role", "Player");
+        validateAuth(authentication);
+        String newRole = body != null ? body.getOrDefault("role", "Player") : "Player";
         return ResponseEntity.ok(roomService.changeMemberRole(roomId, memberId, newRole, authentication.getName()));
     }
 
@@ -122,6 +135,7 @@ public class RoomController {
             @PathVariable UUID roomId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         roomService.leaveRoom(roomId, authentication.getName());
         return ResponseEntity.ok().build();
     }
@@ -131,7 +145,14 @@ public class RoomController {
             @PathVariable UUID roomId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
         roomService.deleteRoom(roomId, authentication.getName());
         return ResponseEntity.noContent().build();
+    }
+
+    private void validateAuth(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
+        }
     }
 }

@@ -18,12 +18,11 @@ public class RoomResponse {
     private String code;
     private String name;
     private String description;
-    private String type; // STANDARD یا OFFICIAL
+    private String type;
     private String ownerUsername;
-    private String role; // "GM" یا "Player"
+    private String role;
     private boolean isProtected;
 
-    // عناوین همگانی نقش‌های اتاق
     @Builder.Default
     private String hostRoleTitle = "میزبان";
 
