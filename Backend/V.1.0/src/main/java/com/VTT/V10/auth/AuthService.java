@@ -11,6 +11,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,7 +37,23 @@ public class AuthService {
     @Value("${google.client-id:}")
     private String googleClientId;
 
+    private GoogleIdTokenVerifier verifier;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @PostConstruct
+    public void initGoogleVerifier() {
+        if (googleClientId != null && !googleClientId.isBlank()) {
+            this.verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance()
+            )
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+            log.info("Google Token Verifier initialized successfully with audience verification.");
+        } else {
+            log.warn("GOOGLE_CLIENT_ID is not configured. Google Sign-In will be disabled until set.");
+        }
+    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -97,17 +114,15 @@ public class AuthService {
 
     @Transactional
     public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
+        if (verifier == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "ورود با گوگل در حال حاضر فعال نیست (Client ID تنظیم نشده است)");
+        }
+
+        if (request.getIdToken() == null || request.getIdToken().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "توکن گوگل نمی‌تواند خالی باشد");
+        }
+
         try {
-            GoogleIdTokenVerifier.Builder verifierBuilder = new GoogleIdTokenVerifier.Builder(
-                    new NetHttpTransport(),
-                    GsonFactory.getDefaultInstance()
-            );
-
-            if (googleClientId != null && !googleClientId.isBlank()) {
-                verifierBuilder.setAudience(Collections.singletonList(googleClientId));
-            }
-
-            GoogleIdTokenVerifier verifier = verifierBuilder.build();
             GoogleIdToken idToken = verifier.verify(request.getIdToken());
 
             if (idToken == null) {
@@ -147,6 +162,7 @@ public class AuthService {
                 return userRepository.save(newUser);
             });
 
+            // اگر کاربر قبلاً آواتار نداشته و گوگل عکس دارد، آپدیت شود
             if (user.getAvatarUrl() == null && pictureUrl != null) {
                 user.setAvatarUrl(pictureUrl);
                 user = userRepository.save(user);
