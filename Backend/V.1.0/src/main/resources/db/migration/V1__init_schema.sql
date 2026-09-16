@@ -28,9 +28,15 @@ CREATE TABLE rooms (
                        is_active   BOOLEAN DEFAULT TRUE
 );
 
+-- تابع محاسباتی دترمینستیک و Immutable برای سازگاری ۱۰۰٪ با PostgreSQL
+CREATE OR REPLACE FUNCTION calculate_expires_at(last_active TIMESTAMP, expire_days INT)
+RETURNS TIMESTAMP LANGUAGE sql IMMUTABLE AS $$
+SELECT last_active + (expire_days * INTERVAL '1 day');
+$$;
+
 -- ستون محاسباتی برای انقضا
 ALTER TABLE rooms ADD COLUMN expires_at TIMESTAMP
-    GENERATED ALWAYS AS (last_active + (expire_days || ' days')::INTERVAL) STORED;
+    GENERATED ALWAYS AS (calculate_expires_at(last_active, expire_days)) STORED;
 
 -- 4. ROOM MEMBERS
 CREATE TABLE room_members (
@@ -156,9 +162,7 @@ CREATE TABLE drawings (
                           created_at TIMESTAMP DEFAULT NOW()
 );
 
--- ==========================================================
--- INDEXES FOR PRODUCTION PERFORMANCE (<100ms real-time target)
--- ==========================================================
+-- INDEXES
 CREATE INDEX idx_scenes_room_id ON scenes(room_id);
 CREATE INDEX idx_tokens_scene_id ON tokens(scene_id);
 CREATE INDEX idx_fog_regions_scene_id ON fog_regions(scene_id);
