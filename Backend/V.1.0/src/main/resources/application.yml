@@ -71,16 +71,21 @@ livekit:
   api-secret: ${LIVEKIT_API_SECRET:secret}
 
 # Monitoring & Production Health Endpoint
+# Monitoring & Production Health Endpoint
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: "*"
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
+      show-components: always
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false
 
 # Production Log Levels
 logging:
