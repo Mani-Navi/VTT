@@ -17,7 +17,7 @@ export const LoginForm = ({ onSuccess }) => {
     const { login, loginWithGoogle } = useAuth();
     const [serverError, setServerError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const googleButtonRef = useRef(null);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     const {
         register,
@@ -27,52 +27,70 @@ export const LoginForm = ({ onSuccess }) => {
         resolver: zodResolver(loginSchema),
     });
 
-    // راه‌اندازی و لود اسکریپت گوگل Identity Services
-    useEffect(() => {
-        if (!ENV.GOOGLE_CLIENT_ID) return;
+    // هندلر ورود با گوگل
+    const handleGoogleLoginClick = () => {
+        console.log("[GOOGLE AUTH] Clicked. Client ID:", ENV.GOOGLE_CLIENT_ID);
 
-        const initializeGoogle = () => {
-            if (!window.google?.accounts?.id) return;
+        if (!ENV.GOOGLE_CLIENT_ID) {
+            setServerError("شناسه گوگل (Google Client ID) در متغیرهای محیطی یافت نشد.");
+            return;
+        }
 
+        if (!window.google?.accounts?.id) {
+            setServerError("اسکریپت گوگل در مرورگر شما بارگذاری نشده است (احتمالاً توسط AdBlocker مسدود شده).");
+            return;
+        }
+
+        setIsGoogleLoading(true);
+        setServerError("");
+
+        try {
             window.google.accounts.id.initialize({
                 client_id: ENV.GOOGLE_CLIENT_ID,
                 callback: async (response) => {
+                    console.log("[GOOGLE AUTH] Credential received:", response.credential ? "OK" : "EMPTY");
                     try {
-                        setServerError("");
-                        // response.credential همان idToken استاندارد گوگل است
                         await loginWithGoogle(response.credential);
                         onSuccess?.();
                     } catch (err) {
                         const errorMsg =
                             err.response?.data?.message ||
                             err.response?.data?.error ||
-                            "خطا در ورود با حساب گوگل.";
+                            "خطا در ورود با گوگل از سمت سرور.";
                         setServerError(errorMsg);
+                    } finally {
+                        setIsGoogleLoading(false);
                     }
                 },
             });
 
-            if (googleButtonRef.current) {
-                // رندر دکمه گوگل داخل کانتینر
-                window.google.accounts.id.renderButton(googleButtonRef.current, {
-                    theme: "outline",
-                    size: "large",
-                    width: "100%",
-                });
-            }
-        };
+            // نمایش پرامپت انتخاب حساب کاربری گوگل
+            window.google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    console.warn("[GOOGLE AUTH] Prompt not displayed:", notification.getNotDisplayedReason?.());
+                    setIsGoogleLoading(false);
+                }
+            });
+        } catch (e) {
+            console.error("[GOOGLE AUTH] Error initializing:", e);
+            setServerError("خطا در اجرای لاگین گوگل: " + e.message);
+            setIsGoogleLoading(false);
+        }
+    };
 
-        if (window.google?.accounts?.id) {
-            initializeGoogle();
-        } else {
+    // بارگذاری اسکریپت رسمی گوگل در صورت نبود
+    useEffect(() => {
+        if (!document.getElementById("google-gsi-script")) {
             const script = document.createElement("script");
+            script.id = "google-gsi-script";
             script.src = "https://accounts.google.com/gsi/client";
             script.async = true;
             script.defer = true;
-            script.onload = initializeGoogle;
+            script.onload = () => console.log("[GOOGLE AUTH] SDK loaded successfully.");
+            script.onerror = () => console.error("[GOOGLE AUTH] Failed to load Google SDK.");
             document.body.appendChild(script);
         }
-    }, [loginWithGoogle, onSuccess]);
+    }, []);
 
     const onSubmit = async (data) => {
         setServerError("");
@@ -93,19 +111,14 @@ export const LoginForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-4 text-right" dir="rtl">
-            {/* دکمه ورود با گوگل */}
-            <div className="relative flex items-center justify-center">
-                {/* لایه نامرئی دکمه رسمی گوگل که روی کلیک کاربر فعال می‌شود */}
-                <div
-                    ref={googleButtonRef}
-                    className="absolute inset-0 opacity-0 z-10 overflow-hidden cursor-pointer flex justify-center [&>div]:!w-full [&>div]:!h-full"
-                />
-
-                {/* استایل ظاهری سفارشی برنامه */}
+            {/* دکمه اختصاصی ورود با گوگل */}
+            <div className="flex items-center justify-center">
                 <button
                     type="button"
+                    onClick={handleGoogleLoginClick}
+                    disabled={isGoogleLoading}
                     aria-label="ورود با گوگل"
-                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm pointer-events-none"
+                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm cursor-pointer disabled:opacity-50"
                 >
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path
@@ -125,7 +138,7 @@ export const LoginForm = ({ onSuccess }) => {
                             d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
                         />
                     </svg>
-                    ورود با حساب گوگل
+                    {isGoogleLoading ? "در حال اتصال به گوگل..." : "ورود با حساب گوگل"}
                 </button>
             </div>
 
