@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,6 +6,7 @@ import { LogIn, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
 import { useAuth } from "../../hooks/useAuth";
+import { ENV } from "../../config/validateEnv";
 
 const loginSchema = z.object({
     email: z.string().email("ایمیل معتبر وارد کنید"),
@@ -13,9 +14,10 @@ const loginSchema = z.object({
 });
 
 export const LoginForm = ({ onSuccess }) => {
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
     const [serverError, setServerError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const googleButtonRef = useRef(null);
 
     const {
         register,
@@ -24,6 +26,53 @@ export const LoginForm = ({ onSuccess }) => {
     } = useForm({
         resolver: zodResolver(loginSchema),
     });
+
+    // راه‌اندازی و لود اسکریپت گوگل Identity Services
+    useEffect(() => {
+        if (!ENV.GOOGLE_CLIENT_ID) return;
+
+        const initializeGoogle = () => {
+            if (!window.google?.accounts?.id) return;
+
+            window.google.accounts.id.initialize({
+                client_id: ENV.GOOGLE_CLIENT_ID,
+                callback: async (response) => {
+                    try {
+                        setServerError("");
+                        // response.credential همان idToken استاندارد گوگل است
+                        await loginWithGoogle(response.credential);
+                        onSuccess?.();
+                    } catch (err) {
+                        const errorMsg =
+                            err.response?.data?.message ||
+                            err.response?.data?.error ||
+                            "خطا در ورود با حساب گوگل.";
+                        setServerError(errorMsg);
+                    }
+                },
+            });
+
+            if (googleButtonRef.current) {
+                // رندر دکمه گوگل داخل کانتینر
+                window.google.accounts.id.renderButton(googleButtonRef.current, {
+                    theme: "outline",
+                    size: "large",
+                    width: "100%",
+                });
+            }
+        };
+
+        if (window.google?.accounts?.id) {
+            initializeGoogle();
+        } else {
+            const script = document.createElement("script");
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            script.onload = initializeGoogle;
+            document.body.appendChild(script);
+        }
+    }, [loginWithGoogle, onSuccess]);
 
     const onSubmit = async (data) => {
         setServerError("");
@@ -44,11 +93,19 @@ export const LoginForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-4 text-right" dir="rtl">
-            <div className="flex items-center justify-center gap-3">
+            {/* دکمه ورود با گوگل */}
+            <div className="relative flex items-center justify-center">
+                {/* لایه نامرئی دکمه رسمی گوگل که روی کلیک کاربر فعال می‌شود */}
+                <div
+                    ref={googleButtonRef}
+                    className="absolute inset-0 opacity-0 z-10 overflow-hidden cursor-pointer flex justify-center [&>div]:!w-full [&>div]:!h-full"
+                />
+
+                {/* استایل ظاهری سفارشی برنامه */}
                 <button
                     type="button"
                     aria-label="ورود با گوگل"
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm cursor-pointer"
+                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm pointer-events-none"
                 >
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                         <path
@@ -75,8 +132,8 @@ export const LoginForm = ({ onSuccess }) => {
             <div className="relative flex items-center justify-center my-3">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
-          یا ورود با ایمیل
-        </span>
+                    یا ورود با ایمیل
+                </span>
                 <div className="border-t border-zinc-800 w-full" />
             </div>
 

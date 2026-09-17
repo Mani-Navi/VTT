@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,6 +6,7 @@ import { UserPlus, Check, X, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
 import { useAuth } from "../../hooks/useAuth";
+import { ENV } from "../../config/validateEnv";
 
 const registerSchema = z
     .object({
@@ -31,10 +32,11 @@ const checkPasswordCriteria = (pass = "") => [
 ];
 
 export const RegisterForm = ({ onSuccess }) => {
-    const { register: registerUser } = useAuth();
+    const { register: registerUser, loginWithGoogle } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [serverError, setServerError] = useState("");
+    const googleButtonRef = useRef(null);
 
     const {
         register,
@@ -57,6 +59,51 @@ export const RegisterForm = ({ onSuccess }) => {
         return { label: "بسیار قوی", color: "bg-emerald-500", width: "100%" };
     }, [passwordValue, passedCriteriaCount]);
 
+    // راه‌اندازی و لود اسکریپت گوگل Identity Services
+    useEffect(() => {
+        if (!ENV.GOOGLE_CLIENT_ID) return;
+
+        const initializeGoogle = () => {
+            if (!window.google?.accounts?.id) return;
+
+            window.google.accounts.id.initialize({
+                client_id: ENV.GOOGLE_CLIENT_ID,
+                callback: async (response) => {
+                    try {
+                        setServerError("");
+                        await loginWithGoogle(response.credential);
+                        onSuccess?.();
+                    } catch (err) {
+                        const errorMsg =
+                            err.response?.data?.message ||
+                            err.response?.data?.error ||
+                            "خطا در ثبت‌نام با حساب گوگل.";
+                        setServerError(errorMsg);
+                    }
+                },
+            });
+
+            if (googleButtonRef.current) {
+                window.google.accounts.id.renderButton(googleButtonRef.current, {
+                    theme: "outline",
+                    size: "large",
+                    width: "100%",
+                });
+            }
+        };
+
+        if (window.google?.accounts?.id) {
+            initializeGoogle();
+        } else {
+            const script = document.createElement("script");
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            script.onload = initializeGoogle;
+            document.body.appendChild(script);
+        }
+    }, [loginWithGoogle, onSuccess]);
+
     const onSubmit = async (data) => {
         setServerError("");
         try {
@@ -76,37 +123,45 @@ export const RegisterForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-3.5 text-right" dir="rtl">
-            <button
-                type="button"
-                aria-label="ثبت‌نام با گوگل"
-                className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm cursor-pointer"
-            >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path
-                        fill="#EA4335"
-                        d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
-                    />
-                    <path
-                        fill="#4285F4"
-                        d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
-                    />
-                    <path
-                        fill="#FBBC05"
-                        d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.5s.7 4.8 1.9 7.2l3.7-2.9z"
-                    />
-                    <path
-                        fill="#34A853"
-                        d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
-                    />
-                </svg>
-                ثبت‌نام سریع با حساب گوگل
-            </button>
+            {/* دکمه ثبت‌نام سریع با گوگل */}
+            <div className="relative flex items-center justify-center">
+                <div
+                    ref={googleButtonRef}
+                    className="absolute inset-0 opacity-0 z-10 overflow-hidden cursor-pointer flex justify-center [&>div]:!w-full [&>div]:!h-full"
+                />
+
+                <button
+                    type="button"
+                    aria-label="ثبت‌نام با گوگل"
+                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all flex items-center justify-center gap-2 text-xs font-medium text-zinc-300 shadow-sm pointer-events-none"
+                >
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                        <path
+                            fill="#EA4335"
+                            d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
+                        />
+                        <path
+                            fill="#4285F4"
+                            d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
+                        />
+                        <path
+                            fill="#FBBC05"
+                            d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.5s.7 4.8 1.9 7.2l3.7-2.9z"
+                        />
+                        <path
+                            fill="#34A853"
+                            d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"
+                        />
+                    </svg>
+                    ثبت‌نام سریع با حساب گوگل
+                </button>
+            </div>
 
             <div className="relative flex items-center justify-center my-2">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
-          یا تکمیل فرم زیر
-        </span>
+                    یا تکمیل فرم زیر
+                </span>
                 <div className="border-t border-zinc-800 w-full" />
             </div>
 
@@ -169,8 +224,8 @@ export const RegisterForm = ({ onSuccess }) => {
                                                     : "text-emerald-400"
                                     }`}
                                 >
-                  {strengthInfo.label}
-                </span>
+                                    {strengthInfo.label}
+                                </span>
                             </div>
 
                             <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
@@ -234,5 +289,4 @@ export const RegisterForm = ({ onSuccess }) => {
     );
 };
 
-// خروجی دوگانه برای پشتیبانی از هر دو نوع ایمپورت
 export default RegisterForm;
