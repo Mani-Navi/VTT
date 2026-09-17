@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { useParams } from "react-router-dom";
 import {
   Settings,
@@ -16,8 +16,6 @@ import {
   Layers,
   Eye,
   Ruler,
-  Compass,
-  Sparkles,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -25,8 +23,9 @@ import { settingsApi } from "../../api/settings.api";
 import { wsService } from "../../services/websocket.service";
 import { Button } from "../ui/Button";
 import { cn } from "../../utils/cn";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS = Object.freeze({
   zoomSensitivity: 1.0,
   overlayEffect: "GLASS",
   gmFogBlend: 0.45,
@@ -42,9 +41,9 @@ const DEFAULT_SETTINGS = {
   lineWidth: 1.5,
   gridColor: "#000000",
   isGridSnapping: true,
-};
+});
 
-export const SettingsMenu = ({ isGM = false }) => {
+export const SettingsMenu = memo(({ isGM = false }) => {
   const { roomId } = useParams();
 
   const isSettingsOpen = useCanvasStore((state) => state.isSettingsMenuOpen);
@@ -66,7 +65,7 @@ export const SettingsMenu = ({ isGM = false }) => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState("grid"); // grid | room | camera
+  const [activeTab, setActiveTab] = useState("grid");
 
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
 
@@ -84,9 +83,22 @@ export const SettingsMenu = ({ isGM = false }) => {
               if (data.gmFogBlend !== undefined) setGmFogBlend(data.gmFogBlend);
             }
           })
-          .catch((err) => console.error("خطا در دریافت تنظیمات اتاق:", err));
+          .catch((err) => {
+            if (import.meta.env.DEV) {
+              console.error("خطا در دریافت تنظیمات اتاق:", err);
+            }
+          });
     }
-  }, [isSettingsOpen, roomId, isGM, setRulerType, setInputMode, setZoomSensitivity, setShapeSnapSensitivity, setGmFogBlend]);
+  }, [
+    isSettingsOpen,
+    roomId,
+    isGM,
+    setRulerType,
+    setInputMode,
+    setZoomSensitivity,
+    setShapeSnapSensitivity,
+    setGmFogBlend,
+  ]);
 
   if (!isSettingsOpen) return null;
 
@@ -158,14 +170,16 @@ export const SettingsMenu = ({ isGM = false }) => {
           snapToGrid: settings.isGridSnapping !== false,
         };
         useSceneStore.setState({ currentScene: { ...currentScene, grid: finalGrid } });
-        wsService.send("SETTINGS_UPDATE", settings);
+        wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", settings);
         wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: finalGrid });
       }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err) {
-      console.error("خطا در ذخیره تنظیمات اتاق:", err);
+      if (import.meta.env.DEV) {
+        console.error("خطا در ذخیره تنظیمات اتاق:", err);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -178,7 +192,7 @@ export const SettingsMenu = ({ isGM = false }) => {
       let defaults = null;
       try {
         defaults = await settingsApi.resetSettings(roomId);
-      } catch (e) {
+      } catch {
         defaults = null;
       }
 
@@ -203,7 +217,7 @@ export const SettingsMenu = ({ isGM = false }) => {
           snapToGrid: finalDefaults.isGridSnapping !== false,
         };
         useSceneStore.setState({ currentScene: { ...currentScene, grid: resetGrid } });
-        wsService.send("SETTINGS_UPDATE", finalDefaults);
+        wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", finalDefaults);
         wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: resetGrid });
       }
 
@@ -211,14 +225,16 @@ export const SettingsMenu = ({ isGM = false }) => {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
-      console.error("خطا در بازنشانی تنظیمات:", err);
+      if (import.meta.env.DEV) {
+        console.error("خطا در بازنشانی تنظیمات:", err);
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSyncView = () => {
-    wsService.send("VIEWPORT_SYNC", {
+    wsService.send(WS_EVENTS.VIEWPORT_SYNC || "VIEWPORT_SYNC", {
       zoom,
       stageX,
       stageY,
@@ -230,7 +246,6 @@ export const SettingsMenu = ({ isGM = false }) => {
           className="fixed top-16 right-6 z-50 w-[480px] max-w-[95vw] bg-zinc-950/95 border border-zinc-800/90 rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-3xl p-5 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-200"
           dir="rtl"
       >
-        {/* هدر پنجره */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/10">
@@ -255,7 +270,6 @@ export const SettingsMenu = ({ isGM = false }) => {
           </button>
         </div>
 
-        {/* نوار انتخاب تب‌ها */}
         <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1.5 rounded-2xl border border-zinc-800/80 my-4 shadow-inner">
           {[
             { id: "grid", label: "شبکه و گرید", icon: Grid },
@@ -283,13 +297,9 @@ export const SettingsMenu = ({ isGM = false }) => {
           })}
         </div>
 
-        {/* محتوای اسکرول‌پذیر تب‌ها */}
         <div className="space-y-4 max-h-[52vh] overflow-y-auto pr-1.5 custom-scrollbar">
-
-          {/* تب ۱: تنظیمات گرید */}
           {activeTab === "grid" && (
               <div className="space-y-3.5">
-                {/* انتخاب نوع شبکه */}
                 <div className="p-3.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2.5">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <Grid className="w-3.5 h-3.5 text-amber-400" />
@@ -320,7 +330,6 @@ export const SettingsMenu = ({ isGM = false }) => {
                   </div>
                 </div>
 
-                {/* استایل خطوط */}
                 <div className="p-3.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2.5">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <Layers className="w-3.5 h-3.5 text-amber-400" />
@@ -349,7 +358,6 @@ export const SettingsMenu = ({ isGM = false }) => {
                   </div>
                 </div>
 
-                {/* سیستم اندازه‌گیری فواصل */}
                 <div className="p-3.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <Ruler className="w-3.5 h-3.5 text-amber-400" />
@@ -358,7 +366,7 @@ export const SettingsMenu = ({ isGM = false }) => {
                   <select
                       value={settings.measurementType}
                       onChange={(e) => handleChange({ measurementType: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 font-bold focus:outline-none focus:border-amber-500 transition-colors"
+                      className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 font-bold focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
                   >
                     <option value="dnd5e_5105">قانون استاندارد Chessboard D&D 5e (۵، ۱۰، ۱۵، ۲۰ فوت)</option>
                     <option value="dnd35_alternating">قانون Alternating Diagonal D&D 3.5e (۵، ۱۰، ۵، ۱۰)</option>
@@ -367,15 +375,13 @@ export const SettingsMenu = ({ isGM = false }) => {
                   </select>
                 </div>
 
-                {/* اسلایدرهای ابعاد و گرافیک گرید */}
                 <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-4">
-                  {/* اندازه خانه */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-zinc-300 font-bold">اندازه سلول‌ها (Grid Size):</span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {settings.gridSize} px
-                    </span>
+                    {settings.gridSize} px
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -388,13 +394,12 @@ export const SettingsMenu = ({ isGM = false }) => {
                     />
                   </div>
 
-                  {/* شفافیت گرید */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-zinc-300 font-bold">شفافیت گرید (Opacity):</span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {Math.round((settings.gridOpacity || 0.35) * 100)}%
-                    </span>
+                    {Math.round((settings.gridOpacity || 0.35) * 100)}%
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -407,13 +412,12 @@ export const SettingsMenu = ({ isGM = false }) => {
                     />
                   </div>
 
-                  {/* ضخامت خطوط */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-zinc-300 font-bold">ضخامت خطوط (Line Width):</span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {settings.lineWidth} px
-                    </span>
+                    {settings.lineWidth} px
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -427,11 +431,14 @@ export const SettingsMenu = ({ isGM = false }) => {
                   </div>
                 </div>
 
-                {/* تاگل چسبیدن به گرید */}
                 <div className="flex items-center justify-between p-4 bg-zinc-900/70 border border-zinc-800/80 rounded-2xl shadow-sm">
                   <div>
-                    <span className="text-xs font-black text-zinc-100 block">چسبیدن خودکار به سلول‌ها (Snapping)</span>
-                    <span className="text-[11px] text-zinc-400">قرارگیری دقیق توکن‌ها در مرکز هندسی گرید</span>
+                <span className="text-xs font-black text-zinc-100 block">
+                  چسبیدن خودکار به سلول‌ها (Snapping)
+                </span>
+                    <span className="text-[11px] text-zinc-400">
+                  قرارگیری دقیق توکن‌ها در مرکز هندسی گرید
+                </span>
                   </div>
                   <button
                       type="button"
@@ -452,10 +459,8 @@ export const SettingsMenu = ({ isGM = false }) => {
               </div>
           )}
 
-          {/* تب ۲: تنظیمات عمومی اتاق */}
           {activeTab === "room" && (
               <div className="space-y-3.5">
-                {/* حالت ورودی ماوس / ترک‌پد */}
                 <div className="p-3.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2.5">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <MousePointer className="w-3.5 h-3.5 text-amber-400" />
@@ -485,15 +490,13 @@ export const SettingsMenu = ({ isGM = false }) => {
                   </div>
                 </div>
 
-                {/* اسلایدرهای حساسیت و دید GM */}
                 <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-4">
-                  {/* حساسیت زوم */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-zinc-300 font-bold">حساسیت زوم دوربین (Zoom Speed):</span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {settings.zoomSensitivity}x
-                    </span>
+                    {settings.zoomSensitivity}x
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -506,13 +509,12 @@ export const SettingsMenu = ({ isGM = false }) => {
                     />
                   </div>
 
-                  {/* حساسیت اسنپ اشکال */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-zinc-300 font-bold">حساسیت اسنپ ترسیمات (Shape Snapping):</span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {Math.round((settings.shapeSnapSensitivity || 0.5) * 100)}%
-                    </span>
+                    {Math.round((settings.shapeSnapSensitivity || 0.5) * 100)}%
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -525,16 +527,15 @@ export const SettingsMenu = ({ isGM = false }) => {
                     />
                   </div>
 
-                  {/* دید GM از پشت مه */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-zinc-300 font-bold flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5 text-amber-400" />
-                        دید دانجن‌مستر از پشت مه (GM Fog Blend):
-                      </span>
+                  <span className="text-zinc-300 font-bold flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-amber-400" />
+                    دید دانجن‌مستر از پشت مه (GM Fog Blend):
+                  </span>
                       <span className="font-mono px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-xs font-bold">
-                      {Math.round((settings.gmFogBlend ?? 0.45) * 100)}%
-                    </span>
+                    {Math.round((settings.gmFogBlend ?? 0.45) * 100)}%
+                  </span>
                     </div>
                     <input
                         type="range"
@@ -550,13 +551,14 @@ export const SettingsMenu = ({ isGM = false }) => {
               </div>
           )}
 
-          {/* تب ۳: دوربین و همگام‌سازی */}
           {activeTab === "camera" && (
               <div className="space-y-3.5">
                 <div className="p-4 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl space-y-2.5 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-zinc-800/60">
                     <span className="text-zinc-400">بزرگ‌نمایی کنونی صحنه (Zoom):</span>
-                    <span className="font-mono text-amber-400 font-black text-sm">{Math.round(zoom * 100)}%</span>
+                    <span className="font-mono text-amber-400 font-black text-sm">
+                  {Math.round(zoom * 100)}%
+                </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-zinc-800/60">
                     <span className="text-zinc-400">موقعیت افقی دوربین (Offset X):</span>
@@ -593,7 +595,6 @@ export const SettingsMenu = ({ isGM = false }) => {
           )}
         </div>
 
-        {/* فوتر پنجره: دکمه‌های بازنشانی و ذخیره */}
         <div className="pt-4 mt-4 border-t border-zinc-800/80 flex items-center justify-between gap-3">
           <Button
               size="sm"
@@ -633,4 +634,6 @@ export const SettingsMenu = ({ isGM = false }) => {
         </div>
       </div>
   );
-};
+});
+
+SettingsMenu.displayName = "SettingsMenu";

@@ -24,66 +24,74 @@ export function useRooms() {
     }
   }, [setRooms, setLoading, setError]);
 
-  // ساخت خوش‌بینانه اتاق
-  const createRoom = async (roomData) => {
-    const tempId = `temp-${Date.now()}`;
-    const optimisticRoom = {
-      id: tempId,
-      name: roomData.name,
-      description: roomData.description,
-      code: "......",
-      player_count: 1,
-      role: "GM",
-      type: roomData.templateId ? "OFFICIAL" : "STANDARD",
-      isProtected: !!roomData.password,
-      is_active: true,
-      expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-      isOptimistic: true,
-    };
+  const createRoom = useCallback(
+      async (roomData) => {
+        const tempId = `temp-${Date.now()}`;
+        const optimisticRoom = {
+          id: tempId,
+          name: roomData.name,
+          description: roomData.description,
+          code: "......",
+          player_count: 1,
+          role: "GM",
+          type: roomData.templateId ? "OFFICIAL" : "STANDARD",
+          isProtected: !!roomData.password,
+          is_active: true,
+          expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+          isOptimistic: true,
+        };
 
-    addRoom(optimisticRoom);
+        addRoom(optimisticRoom);
 
-    try {
-      const realRoom = await roomApi.createRoom(roomData);
-      removeRoom(tempId);
-      addRoom(realRoom);
-      return realRoom;
-    } catch (err) {
-      removeRoom(tempId);
-      throw err;
-    }
-  };
+        try {
+          const realRoom = await roomApi.createRoom(roomData);
+          removeRoom(tempId);
+          addRoom(realRoom);
+          return realRoom;
+        } catch (err) {
+          removeRoom(tempId);
+          throw err;
+        }
+      },
+      [addRoom, removeRoom]
+  );
 
-  // ویرایش مشخصات اتاق توسط GM
-  const updateRoom = async (id, payload) => {
-    const updated = await roomApi.updateRoom(id, payload);
-    if (updateRoomInStore) {
-      updateRoomInStore(updated);
-    }
-    return updated;
-  };
+  const updateRoom = useCallback(
+      async (id, payload) => {
+        const updated = await roomApi.updateRoom(id, payload);
+        if (updateRoomInStore) {
+          updateRoomInStore(updated);
+        }
+        return updated;
+      },
+      [updateRoomInStore]
+  );
 
-  // حذف خوش‌بینانه اتاق توسط GM
-  const deleteRoom = async (id, roomBackup) => {
-    removeRoom(id);
-    try {
-      await roomApi.deleteRoom(id);
-    } catch (err) {
-      if (roomBackup) addRoom(roomBackup);
-      throw err;
-    }
-  };
+  const deleteRoom = useCallback(
+      async (id, roomBackup) => {
+        removeRoom(id);
+        try {
+          await roomApi.deleteRoom(id);
+        } catch (err) {
+          if (roomBackup) addRoom(roomBackup);
+          throw err;
+        }
+      },
+      [removeRoom, addRoom]
+  );
 
-  // خروج خوش‌بینانه بازیکن از ماجراجویی
-  const leaveRoom = async (id, roomBackup) => {
-    removeRoom(id);
-    try {
-      await roomApi.leaveRoom(id);
-    } catch (err) {
-      if (roomBackup) addRoom(roomBackup);
-      throw err;
-    }
-  };
+  const leaveRoom = useCallback(
+      async (id, roomBackup) => {
+        removeRoom(id);
+        try {
+          await roomApi.leaveRoom(id);
+        } catch (err) {
+          if (roomBackup) addRoom(roomBackup);
+          throw err;
+        }
+      },
+      [removeRoom, addRoom]
+  );
 
   return {
     rooms,

@@ -44,7 +44,6 @@ export const LoginForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-4 text-right" dir="rtl">
-            {/* دکمه ورود سریع با گوگل */}
             <div className="flex items-center justify-center gap-3">
                 <button
                     type="button"
@@ -129,3 +128,5 @@ export const LoginForm = ({ onSuccess }) => {
         </div>
     );
 };
+
+export default LoginForm;

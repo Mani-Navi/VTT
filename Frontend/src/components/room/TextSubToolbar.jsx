@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import {
     Bold,
     Italic,
@@ -7,38 +7,38 @@ import {
     Smile,
     Palette,
     Layers,
-    Check
+    Check,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { TOOLS } from "../../constants/tools";
 import { cn } from "../../utils/cn";
 
-const EMOJI_LIST = [
+const EMOJI_LIST = Object.freeze([
     "⚔️", "🛡️", "🐉", "💀", "🔥",
     "💎", "📜", "🏹", "✨", "🎲",
-    "❤️", "☠️", "👑", "🗡️", "🪄"
-];
+    "❤️", "☠️", "👑", "🗡️", "🪄",
+]);
 
-const TEXT_FONTS_LIST = [
+const TEXT_FONTS_LIST = Object.freeze([
     { id: "Vazirmatn", label: "وزیرمتن (اصلی)" },
     { id: "Sahel", label: "ساحل" },
     { id: "Shabnam", label: "شبنم" },
     { id: "Lalezar", label: "لاله‌زار (عنوان)" },
     { id: "Cinzel", label: "Cinzel (فانتزی)" },
     { id: "Arial", label: "Arial" },
-];
+]);
 
-const PRESET_COLORS = [
-    "#f59e0b", // Amber
-    "#ef4444", // Red
-    "#10b981", // Green
-    "#38bdf8", // Blue
-    "#a855f7", // Purple
-    "#ffffff", // White
-    "#000000", // Black
-];
+const PRESET_COLORS = Object.freeze([
+    "#f59e0b",
+    "#ef4444",
+    "#10b981",
+    "#38bdf8",
+    "#a855f7",
+    "#ffffff",
+    "#000000",
+]);
 
-export const TextSubToolbar = () => {
+export const TextSubToolbar = memo(() => {
     const activeTool = useCanvasStore((state) => state.activeTool);
 
     const textFontFamily = useCanvasStore((state) => state.textFontFamily);
@@ -78,7 +78,6 @@ export const TextSubToolbar = () => {
             className="flex items-center gap-1.5 p-1.5 bg-zinc-900/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150 text-zinc-200"
             dir="rtl"
         >
-            {/* ۱. انتخاب فونت */}
             <select
                 value={textFontFamily}
                 onChange={(e) => setTextFontFamily(e.target.value)}
@@ -94,7 +93,6 @@ export const TextSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* ۲. کنترل‌های سبک متن: Bold / Italic */}
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
                 <button
                     type="button"
@@ -121,7 +119,6 @@ export const TextSubToolbar = () => {
                 </button>
             </div>
 
-            {/* ۳. تیترها: H1 / H2 */}
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
                 <button
                     type="button"
@@ -150,7 +147,6 @@ export const TextSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* ۴. انتخاب رنگ نوشته */}
             <div className="relative">
                 <button
                     type="button"
@@ -184,7 +180,11 @@ export const TextSubToolbar = () => {
                                     className="w-6 h-6 rounded-lg border border-zinc-700 flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
                                     style={{ backgroundColor: c }}
                                 >
-                                    {textColor === c && <Check className={cn("w-3 h-3", c === "#ffffff" ? "text-zinc-950" : "text-white")} />}
+                                    {textColor === c && (
+                                        <Check
+                                            className={cn("w-3 h-3", c === "#ffffff" ? "text-zinc-950" : "text-white")}
+                                        />
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -192,7 +192,6 @@ export const TextSubToolbar = () => {
                 )}
             </div>
 
-            {/* ۵. تنظیمات حاشیه (Stroke) */}
             <div className="relative">
                 <button
                     type="button"
@@ -203,7 +202,9 @@ export const TextSubToolbar = () => {
                     }}
                     className={cn(
                         "flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-zinc-950 border transition-all cursor-pointer",
-                        textHasStroke ? "border-amber-500/60 text-amber-400" : "border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                        textHasStroke
+                            ? "border-amber-500/60 text-amber-400"
+                            : "border-zinc-800 text-zinc-400 hover:text-zinc-200"
                     )}
                     title="حاشیه دور متن (Stroke)"
                 >
@@ -236,7 +237,14 @@ export const TextSubToolbar = () => {
                                                 className="w-6 h-6 rounded-lg border border-zinc-700 flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
                                                 style={{ backgroundColor: c }}
                                             >
-                                                {textStrokeColor === c && <Check className={cn("w-3 h-3", c === "#ffffff" ? "text-zinc-950" : "text-white")} />}
+                                                {textStrokeColor === c && (
+                                                    <Check
+                                                        className={cn(
+                                                            "w-3 h-3",
+                                                            c === "#ffffff" ? "text-zinc-950" : "text-white"
+                                                        )}
+                                                    />
+                                                )}
                                             </button>
                                         ))}
                                     </div>
@@ -264,7 +272,6 @@ export const TextSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* ۶. انتخاب ایموجی و درج مستقیم روی مپ */}
             <div className="relative">
                 <button
                     type="button"
@@ -287,7 +294,10 @@ export const TextSubToolbar = () => {
                         className="absolute bottom-11 -right-2 p-2.5 bg-zinc-950/95 border border-zinc-800 rounded-2xl shadow-2xl w-48 backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-100"
                         dir="ltr"
                     >
-                        <div className="text-[10px] text-zinc-400 font-medium mb-2 text-right px-1" dir="rtl">
+                        <div
+                            className="text-[10px] text-zinc-400 font-medium mb-2 text-right px-1"
+                            dir="rtl"
+                        >
                             درج مستقیم ایموجی:
                         </div>
                         <div className="grid grid-cols-5 gap-1.5 justify-items-center">
@@ -297,7 +307,9 @@ export const TextSubToolbar = () => {
                                     type="button"
                                     onClick={() => {
                                         setPendingEmoji(emoji);
-                                        try { navigator.clipboard.writeText(emoji); } catch (e) {}
+                                        if (navigator.clipboard) {
+                                            navigator.clipboard.writeText(emoji).catch(() => {});
+                                        }
                                         setIsEmojiOpen(false);
                                     }}
                                     className="w-7 h-7 rounded-lg bg-zinc-900/60 hover:bg-amber-500/20 hover:scale-110 border border-zinc-800/80 flex items-center justify-center text-base cursor-pointer transition-all active:scale-95"
@@ -312,4 +324,6 @@ export const TextSubToolbar = () => {
             </div>
         </div>
     );
-};
+});
+
+TextSubToolbar.displayName = "TextSubToolbar";

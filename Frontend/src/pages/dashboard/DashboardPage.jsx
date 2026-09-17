@@ -38,22 +38,28 @@ export const DashboardPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [toastError, setToastError] = useState("");
 
-  // بررسی پارامتر دعوت ?join=CODE در URL
   useEffect(() => {
     const inviteCode = searchParams.get("join");
     if (inviteCode) {
       setIsJoinOpen(true);
-      // پاک کردن پارامتر از URL پس از باز شدن مدال
       searchParams.delete("join");
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  // کلیدهای میانبر کیبورد (N برای ساخت اتاق، J برای ورود)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // اگر داخل input یا textarea تایپ نمی‌کند
-      if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+      const activeEl = document.activeElement;
+      if (
+          activeEl &&
+          (activeEl.tagName === "INPUT" ||
+              activeEl.tagName === "TEXTAREA" ||
+              activeEl.tagName === "SELECT" ||
+              activeEl.isContentEditable)
+      ) {
+        return;
+      }
+
       if (e.key === "n" || e.key === "N" || e.key === "د") {
         e.preventDefault();
         setIsCreateOpen(true);
@@ -62,6 +68,7 @@ export const DashboardPage = () => {
         setIsJoinOpen(true);
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
@@ -141,7 +148,6 @@ export const DashboardPage = () => {
             </div>
         )}
 
-        {/* هدر بالایی داشبورد */}
         <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
@@ -213,7 +219,6 @@ export const DashboardPage = () => {
           </div>
         </header>
 
-        {/* محتوای داشبورد */}
         <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8 space-y-8">
           {rooms.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
@@ -234,11 +239,11 @@ export const DashboardPage = () => {
               </span>
                   <span className="h-3 w-px bg-zinc-700" />
                   <span>
-                ماجراهای من: <strong className="text-amber-400">{rooms.filter(r => r.role === "GM").length}</strong>
+                ماجراهای من: <strong className="text-amber-400">{rooms.filter((r) => r.role === "GM").length}</strong>
               </span>
                   <span className="h-3 w-px bg-zinc-700" />
                   <span>
-                ماجراجویی‌های من: <strong className="text-blue-400">{rooms.filter(r => r.role !== "GM").length}</strong>
+                ماجراجویی‌های من: <strong className="text-blue-400">{rooms.filter((r) => r.role !== "GM").length}</strong>
               </span>
                 </div>
               </div>
@@ -277,7 +282,6 @@ export const DashboardPage = () => {
               <EmptyRooms onCreateClick={() => setIsCreateOpen(true)} />
           ) : (
               <div className="space-y-8">
-                {/* ماجراهای من (GM) */}
                 {myCreatedAdventures.length > 0 && (
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
@@ -300,7 +304,6 @@ export const DashboardPage = () => {
                     </section>
                 )}
 
-                {/* ماجراجویی‌های من (Player) */}
                 {myJoinedAdventures.length > 0 && (
                     <section className="space-y-4">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
@@ -338,16 +341,12 @@ export const DashboardPage = () => {
           )}
         </main>
 
-        {/* تمام مدال‌های مورد نیاز */}
         <CreateRoomModal
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
             onCreate={handleCreateRoom}
         />
-        <JoinRoomModal
-            isOpen={isJoinOpen}
-            onClose={() => setIsJoinOpen(false)}
-        />
+        <JoinRoomModal isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
         <EditRoomModal
             isOpen={!!roomToEdit}
             onClose={() => setRoomToEdit(null)}

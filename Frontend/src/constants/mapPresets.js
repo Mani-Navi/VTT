@@ -1,4 +1,4 @@
-export const MAP_PRESETS = [
+export const MAP_PRESETS = Object.freeze([
   {
     id: "map-dungeon-crypt",
     name: "Ancient Stone Crypt",
@@ -59,4 +59,4 @@ export const MAP_PRESETS = [
     gridSize: 70,
     gridType: "hex_h",
   },
-];
+]);

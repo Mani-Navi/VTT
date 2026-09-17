@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useId } from "react";
 import { cn } from "../../utils/cn";
 
 export const Input = React.forwardRef(
     ({ className, label, error, helperText, id, ...props }, ref) => {
-        const inputId = id || `input-${Math.random().toString(36).substr(2, 6)}`;
+        const generatedId = useId();
+        const inputId = id || generatedId;
 
         return (
             <div className="w-full space-y-1.5 text-right font-fa" dir="rtl">

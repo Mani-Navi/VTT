@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
     Shapes,
     PenTool,
@@ -15,17 +15,19 @@ import { DRAW_MODES, TOOLS } from "../../constants/tools";
 import { cn } from "../../utils/cn";
 import { Tooltip } from "../ui/Tooltip";
 
-const COLOR_PALETTE = [
-    "#f59e0b", // Amber
-    "#ef4444", // Red
-    "#10b981", // Emerald
-    "#3b82f6", // Blue
-    "#a855f7", // Purple
-    "#ffffff", // White
-    "#090a0f", // Dark
-];
+const COLOR_PALETTE = Object.freeze([
+    "#f59e0b",
+    "#ef4444",
+    "#10b981",
+    "#3b82f6",
+    "#a855f7",
+    "#ffffff",
+    "#090a0f",
+]);
 
-export const DrawSubToolbar = () => {
+const STROKE_WIDTHS = Object.freeze([2, 4, 8, 14]);
+
+export const DrawSubToolbar = memo(() => {
     const activeTool = useCanvasStore((state) => state.activeTool);
     const activeDrawShape = useCanvasStore((state) => state.activeDrawShape);
     const drawStrokeColor = useCanvasStore((state) => state.drawStrokeColor);
@@ -56,7 +58,6 @@ export const DrawSubToolbar = () => {
             className="flex items-center gap-2 p-1.5 bg-zinc-900/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150"
             dir="rtl"
         >
-            {/* حالت‌های رسم اشکال */}
             <div className="flex items-center gap-1 bg-zinc-950/60 p-1 rounded-xl border border-zinc-800/50">
                 {drawModesList.map((mode) => {
                     const Icon = mode.icon;
@@ -83,7 +84,6 @@ export const DrawSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800" />
 
-            {/* پالت رنگ سریع */}
             <div className="flex items-center gap-1.5 px-1">
                 {COLOR_PALETTE.map((color) => (
                     <button
@@ -103,9 +103,8 @@ export const DrawSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800" />
 
-            {/* ضخامت خطوط */}
             <div className="flex items-center gap-1">
-                {[2, 4, 8, 14].map((width) => (
+                {STROKE_WIDTHS.map((width) => (
                     <button
                         key={width}
                         type="button"
@@ -124,7 +123,6 @@ export const DrawSubToolbar = () => {
 
             <div className="h-5 w-px bg-zinc-800" />
 
-            {/* لایه مخفی GM */}
             <button
                 type="button"
                 onClick={() => setIsDrawGMLayer(!isDrawGMLayer)}
@@ -139,4 +137,6 @@ export const DrawSubToolbar = () => {
             </button>
         </div>
     );
-};
+});
+
+DrawSubToolbar.displayName = "DrawSubToolbar";

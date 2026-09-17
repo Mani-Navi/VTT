@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +14,7 @@ const joinRoomSchema = z.object({
   password: z.string().optional(),
 });
 
-export const JoinRoomModal = ({ isOpen, onClose }) => {
+export const JoinRoomModal = memo(({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +77,6 @@ export const JoinRoomModal = ({ isOpen, onClose }) => {
               })}
           />
 
-          {/* فیلد پسورد دائمی برای راحتی ملحق شدن به اتاق‌های خصوصی */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-zinc-300">
               رمز عبور اتاق (در صورت خصوصی بودن)
@@ -119,4 +118,6 @@ export const JoinRoomModal = ({ isOpen, onClose }) => {
         </form>
       </Modal>
   );
-};
+});
+
+JoinRoomModal.displayName = "JoinRoomModal";

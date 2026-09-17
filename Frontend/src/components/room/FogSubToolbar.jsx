@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import {
     Eye,
     EyeOff,
@@ -15,7 +15,6 @@ import {
     ChevronDown,
     Check,
     PenTool,
-    Sparkles,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -23,8 +22,9 @@ import { TOOLS, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../../constants/tools";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../../utils/cn";
 import { wsService } from "../../services/websocket.service";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
 
-const FIT_OPTIONS = [
+const FIT_OPTIONS = Object.freeze([
     {
         key: "fit",
         label: "Fit (انطباق با نقشه)",
@@ -57,9 +57,9 @@ const FIT_OPTIONS = [
         colorClass: "text-purple-400",
         bgClass: "bg-purple-500/10 border-purple-500/30",
     },
-];
+]);
 
-export const FogSubToolbar = () => {
+export const FogSubToolbar = memo(() => {
     const activeTool = useCanvasStore((state) => state.activeTool);
     const fogAction = useCanvasStore((state) => state.fogAction);
     const fogBrushShape = useCanvasStore((state) => state.fogBrushShape);
@@ -117,7 +117,7 @@ export const FogSubToolbar = () => {
                 fogShapes: [],
             };
             setScene(updated);
-            wsService.send("FOG_UPDATE", {
+            wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
                 sceneId: currentScene.id,
                 type: "FILL_ALL",
                 fogFilled: true,
@@ -164,7 +164,7 @@ export const FogSubToolbar = () => {
                     height: mapHeight,
                 };
                 updateFogShape(selectedShape.id, fittedShape);
-                wsService.send("FOG_UPDATE", {
+                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
                     ...fittedShape,
                     sceneId: currentScene.id,
                     type: fittedShape.isCover ? "HIDE" : "REVEAL",
@@ -188,7 +188,7 @@ export const FogSubToolbar = () => {
                     height: Math.max(20, trimmedH),
                 };
                 updateFogShape(selectedShape.id, trimmedShape);
-                wsService.send("FOG_UPDATE", {
+                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
                     ...trimmedShape,
                     sceneId: currentScene.id,
                     type: trimmedShape.isCover ? "HIDE" : "REVEAL",
@@ -211,7 +211,6 @@ export const FogSubToolbar = () => {
             className="relative flex items-center gap-2 px-3.5 py-2 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200 text-zinc-100"
             dir="rtl"
         >
-            {/* ۱. بخش حالت‌های عملکردی مه (آشکارساز، پوشش، برش) */}
             <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800/80">
                 <Tooltip
                     content={isFogRevealedGlobally ? "Disable Global Reveal" : "Enable Global Reveal"}
@@ -271,7 +270,6 @@ export const FogSubToolbar = () => {
 
             <div className="h-6 w-px bg-zinc-800/80 mx-0.5" />
 
-            {/* ۲. اشکال هندسی مه جنگ با سایزهای فراگیر و تاچ راحت */}
             <div className="flex items-center gap-1 p-0.5 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
                 <Tooltip content="Circle Fog" subContent="دایره">
                     <button
@@ -351,8 +349,10 @@ export const FogSubToolbar = () => {
 
             <div className="h-6 w-px bg-zinc-800/80 mx-0.5" />
 
-            {/* ۳. دکمه Fill Fog */}
-            <Tooltip content="Fill Fog" subContent={isFogFilled ? "خالی کردن مه کل نقشه" : "پوشاندن کل نقشه با مه"}>
+            <Tooltip
+                content="Fill Fog"
+                subContent={isFogFilled ? "خالی کردن مه کل نقشه" : "پوشاندن کل نقشه با مه"}
+            >
                 <button
                     type="button"
                     onClick={handleToggleFillFog}
@@ -368,7 +368,6 @@ export const FogSubToolbar = () => {
                 </button>
             </Tooltip>
 
-            {/* ۴. منوی بازشونده Fit Fog */}
             <div className="relative">
                 <button
                     type="button"
@@ -377,7 +376,12 @@ export const FogSubToolbar = () => {
                 >
                     <CurrentOptionIcon className={cn("w-4 h-4 stroke-[2.2]", currentOption.colorClass)} />
                     <span>{currentOption.shortLabel} Fog</span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200 opacity-80", isFitMenuOpen ? "rotate-180" : "")} />
+                    <ChevronDown
+                        className={cn(
+                            "w-3.5 h-3.5 transition-transform duration-200 opacity-80",
+                            isFitMenuOpen ? "rotate-180" : ""
+                        )}
+                    />
                 </button>
 
                 {isFitMenuOpen && (
@@ -413,7 +417,6 @@ export const FogSubToolbar = () => {
 
             <div className="h-6 w-px bg-zinc-800/80 mx-0.5" />
 
-            {/* ۵. دکمه پاک‌کردن کامل مه */}
             <Tooltip content="Clear Fog" subContent="حذف کامل تمام مه جنگ نقشه">
                 <button
                     type="button"
@@ -425,4 +428,6 @@ export const FogSubToolbar = () => {
             </Tooltip>
         </div>
     );
-};
+});
+
+FogSubToolbar.displayName = "FogSubToolbar";

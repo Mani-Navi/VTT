@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { TOOLS, DRAW_MODES, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../constants/tools";
+import { MIN_ZOOM, MAX_ZOOM } from "../constants/canvas.js";
 import { useSceneStore } from "./scene.store";
 
 export const useCanvasStore = create((set, get) => ({
@@ -10,13 +11,11 @@ export const useCanvasStore = create((set, get) => ({
     drawFillColor: "rgba(245, 158, 11, 0.2)",
     isDrawGMLayer: false,
 
-    // تنظیمات ورودی و دوربین
-    inputMode: "AUTO", // AUTO, MOUSE, TRACKPAD
+    inputMode: "AUTO",
     zoomSensitivity: 1.0,
     shapeSnapSensitivity: 0.5,
     gmFogBlend: 0.45,
 
-    // تنظیمات متن
     textFontFamily: "Vazirmatn",
     textFontSize: 24,
     textColor: "#f59e0b",
@@ -28,7 +27,6 @@ export const useCanvasStore = create((set, get) => ({
     textStrokeWidth: 2,
     pendingEmoji: null,
 
-    // تنظیمات مه جنگ
     fogBrushShape: FOG_BRUSH_SHAPES.CIRCLE,
     fogAction: FOG_ACTIONS.HIDE,
     fogBrushRadius: 75,
@@ -51,7 +49,6 @@ export const useCanvasStore = create((set, get) => ({
     laserPosition: null,
     remoteLasers: {},
 
-    // تنظیمات خط‌کش
     rulerType: "dnd5e_5105",
     rulerUnit: "ft",
     measurement: null,
@@ -62,9 +59,22 @@ export const useCanvasStore = create((set, get) => ({
     setShapeSnapSensitivity: (val) => set({ shapeSnapSensitivity: Number(val) || 0.5 }),
     setGmFogBlend: (val) => set({ gmFogBlend: Number(val) || 0.45 }),
 
-    setActiveTool: (tool) => set({ activeTool: tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null }),
-    toggleActiveTool: (tool) => set((state) => ({ activeTool: state.activeTool === tool ? TOOLS.SELECT : tool, selectedDrawingId: null, selectedFogId: null, laserPosition: null })),
-    setActiveDrawShape: (shape) => set({ activeDrawShape: shape, selectedDrawingId: null, selectedFogId: null }),
+    setActiveTool: (tool) =>
+        set({
+            activeTool: tool,
+            selectedDrawingId: null,
+            selectedFogId: null,
+            laserPosition: null,
+        }),
+    toggleActiveTool: (tool) =>
+        set((state) => ({
+            activeTool: state.activeTool === tool ? TOOLS.SELECT : tool,
+            selectedDrawingId: null,
+            selectedFogId: null,
+            laserPosition: null,
+        })),
+    setActiveDrawShape: (shape) =>
+        set({ activeDrawShape: shape, selectedDrawingId: null, selectedFogId: null }),
     setDrawStrokeColor: (color) => set({ drawStrokeColor: color }),
     setDrawStrokeWidth: (width) => set({ drawStrokeWidth: width }),
     setDrawFillColor: (color) => set({ drawFillColor: color }),
@@ -73,8 +83,14 @@ export const useCanvasStore = create((set, get) => ({
     setTextFontFamily: (fontFamily) => set({ textFontFamily }),
     setTextFontSize: (size) => set({ textFontSize: size }),
     setTextColor: (color) => set({ textColor: color }),
-    setTextIsBold: (isBold) => set((state) => ({ textIsBold: typeof isBold === "function" ? isBold(state.textIsBold) : isBold })),
-    setTextIsItalic: (isItalic) => set((state) => ({ textIsItalic: typeof isItalic === "function" ? isItalic(state.textIsItalic) : isItalic })),
+    setTextIsBold: (isBold) =>
+        set((state) => ({
+            textIsBold: typeof isBold === "function" ? isBold(state.textIsBold) : isBold,
+        })),
+    setTextIsItalic: (isItalic) =>
+        set((state) => ({
+            textIsItalic: typeof isItalic === "function" ? isItalic(state.textIsItalic) : isItalic,
+        })),
     setTextHeading: (heading) => {
         set((state) => {
             const nextHeading = state.textHeading === heading ? "normal" : heading;
@@ -84,7 +100,10 @@ export const useCanvasStore = create((set, get) => ({
             return { textHeading: nextHeading, textFontSize: nextSize };
         });
     },
-    setTextHasStroke: (hasStroke) => set((state) => ({ textHasStroke: typeof hasStroke === "function" ? hasStroke(state.textHasStroke) : hasStroke })),
+    setTextHasStroke: (hasStroke) =>
+        set((state) => ({
+            textHasStroke: typeof hasStroke === "function" ? hasStroke(state.textHasStroke) : hasStroke,
+        })),
     setTextStrokeColor: (color) => set({ textStrokeColor: color }),
     setTextStrokeWidth: (width) => set({ textStrokeWidth: width }),
     setPendingEmoji: (emoji) => set({ pendingEmoji: emoji }),
@@ -92,16 +111,19 @@ export const useCanvasStore = create((set, get) => ({
     setFogBrushShape: (shape) => set({ fogBrushShape: shape }),
     setFogAction: (action) => set({ fogAction: action }),
     setFogBrushRadius: (radius) => set({ fogBrushRadius: radius }),
-    toggleFogGlobalReveal: () => set((state) => ({ isFogRevealedGlobally: !state.isFogRevealedGlobally })),
+    toggleFogGlobalReveal: () =>
+        set((state) => ({ isFogRevealedGlobally: !state.isFogRevealedGlobally })),
     setFogGlobalReveal: (val) => set({ isFogRevealedGlobally: Boolean(val) }),
 
     setRulerType: (type) => set({ rulerType: type }),
     setRulerUnit: (unit) => set({ rulerUnit: unit }),
 
-    setZoom: (zoom) => set((state) => ({ zoom: typeof zoom === "function" ? zoom(state.zoom) : zoom })),
+    setZoom: (zoom) =>
+        set((state) => ({
+            zoom: typeof zoom === "function" ? zoom(state.zoom) : zoom,
+        })),
     setStagePos: (stageX, stageY) => set({ stageX, stageY }),
 
-    // انطباق کامل و قرار دادن مپ در مرکز صفحه
     fitToMap: (mapW = null, mapH = null, containerW = null, containerH = null) => {
         let screenW = containerW;
         let screenH = containerH;
@@ -121,11 +143,11 @@ export const useCanvasStore = create((set, get) => ({
         }
 
         const sceneState = useSceneStore.getState().currentScene;
-        const targetW = (mapW && Number(mapW) > 50) ? Number(mapW) : (sceneState?.mapWidth || 2000);
-        const targetH = (mapH && Number(mapH) > 50) ? Number(mapH) : (sceneState?.mapHeight || 1500);
+        const targetW = mapW && Number(mapW) > 50 ? Number(mapW) : sceneState?.mapWidth || 2000;
+        const targetH = mapH && Number(mapH) > 50 ? Number(mapH) : sceneState?.mapHeight || 1500;
 
         const paddingX = Math.min(screenW * 0.08, 90);
-        const paddingY = Math.min(screenH * 0.10, 90);
+        const paddingY = Math.min(screenH * 0.1, 90);
 
         const availW = Math.max(screenW - paddingX * 2, 200);
         const availH = Math.max(screenH - paddingY * 2, 200);
@@ -133,7 +155,7 @@ export const useCanvasStore = create((set, get) => ({
         const scaleX = availW / targetW;
         const scaleY = availH / targetH;
         const optimalScale = Math.min(scaleX, scaleY);
-        const clampedScale = Math.max(0.15, Math.min(optimalScale, 2.5));
+        const clampedScale = Math.max(MIN_ZOOM, Math.min(optimalScale, MAX_ZOOM));
 
         const stageX = (screenW - targetW * clampedScale) / 2;
         const stageY = (screenH - targetH * clampedScale) / 2;
@@ -145,7 +167,6 @@ export const useCanvasStore = create((set, get) => ({
         });
     },
 
-    // بازنشانی دوربین به مرکز نقشه
     resetView: () => {
         get().fitToMap();
     },
@@ -170,27 +191,49 @@ export const useCanvasStore = create((set, get) => ({
                     selectedFogId: null,
                 };
             }
-            return { selectedTokenIds: [tokenId], selectedDrawingId: null, selectedFogId: null };
+            return {
+                selectedTokenIds: [tokenId],
+                selectedDrawingId: null,
+                selectedFogId: null,
+            };
         });
     },
 
-    setSelectedDrawingId: (id) => set({ selectedDrawingId: id, selectedTokenIds: [], selectedFogId: null }),
-    setSelectedFogId: (id) => set({ selectedFogId: id, selectedDrawingId: null, selectedTokenIds: [] }),
-    clearSelection: () => set({ selectedTokenIds: [], selectedDrawingId: null, selectedFogId: null }),
+    setSelectedDrawingId: (id) =>
+        set({ selectedDrawingId: id, selectedTokenIds: [], selectedFogId: null }),
+    setSelectedFogId: (id) =>
+        set({ selectedFogId: id, selectedDrawingId: null, selectedTokenIds: [] }),
+    clearSelection: () =>
+        set({ selectedTokenIds: [], selectedDrawingId: null, selectedFogId: null }),
 
     openTokenEditor: (tokenId) => set({ isTokenEditorOpen: true, editingTokenId: tokenId }),
     closeTokenEditor: () => set({ isTokenEditorOpen: false, editingTokenId: null }),
 
+    closeAllMenus: () =>
+        set({ isAssetMenuOpen: false, isSettingsMenuOpen: false, isDiceRollerOpen: false }),
+
     toggleMenu: (menuName) => {
         set((state) => {
             if (menuName === "asset") {
-                return { isAssetMenuOpen: !state.isAssetMenuOpen, isSettingsMenuOpen: false, isDiceRollerOpen: false };
+                return {
+                    isAssetMenuOpen: !state.isAssetMenuOpen,
+                    isSettingsMenuOpen: false,
+                    isDiceRollerOpen: false,
+                };
             }
             if (menuName === "settings") {
-                return { isSettingsMenuOpen: !state.isSettingsMenuOpen, isAssetMenuOpen: false, isDiceRollerOpen: false };
+                return {
+                    isSettingsMenuOpen: !state.isSettingsMenuOpen,
+                    isAssetMenuOpen: false,
+                    isDiceRollerOpen: false,
+                };
             }
             if (menuName === "dice") {
-                return { isDiceRollerOpen: !state.isDiceRollerOpen, isAssetMenuOpen: false, isSettingsMenuOpen: false };
+                return {
+                    isDiceRollerOpen: !state.isDiceRollerOpen,
+                    isAssetMenuOpen: false,
+                    isSettingsMenuOpen: false,
+                };
             }
             return {};
         });

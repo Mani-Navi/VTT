@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,16 +53,19 @@ const checkPasswordCriteria = (pass = "") => [
 
 export const ProfilePage = () => {
     const navigate = useNavigate();
-    const { user, updateUser, setAuth, logout } = useAuthStore();
-    const [activeTab, setActiveTab] = useState("overview"); // 'overview' | 'avatars' | 'security' | 'email'
+
+    // سلکتورهای اتمیک جهت جلوگیری از رندرهای آبشاری (قانون شماره ۲)
+    const user = useAuthStore((state) => state.user);
+    const updateUser = useAuthStore((state) => state.updateUser);
+    const setAuth = useAuthStore((state) => state.setAuth);
+    const logout = useAuthStore((state) => state.logout);
+
+    const [activeTab, setActiveTab] = useState("overview");
     const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
-    // مدیریت نمایش چشم برای پسوردهای بخش امنیت
     const [showCurrentPass, setShowCurrentPass] = useState(false);
     const [showNewPass, setShowNewPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
-
-    // مدیریت نمایش چشم برای پسورد تایید ایمیل
     const [showEmailPass, setShowEmailPass] = useState(false);
 
     const [usernameInput, setUsernameInput] = useState(user?.username || "");
@@ -74,11 +77,20 @@ export const ProfilePage = () => {
     const [codeSent, setCodeSent] = useState(false);
     const [timer, setTimer] = useState(0);
 
+    const feedbackTimerRef = useRef(null);
+
     useEffect(() => {
-        userApi.getProfile().then((data) => {
-            updateUser(data);
-            setUsernameInput(data.username);
-        }).catch(() => {});
+        userApi
+            .getProfile()
+            .then((data) => {
+                updateUser(data);
+                setUsernameInput(data.username);
+            })
+            .catch((err) => {
+                if (import.meta.env.DEV) {
+                    console.warn("[Profile] Failed to fetch fresh profile:", err);
+                }
+            });
     }, [updateUser]);
 
     useEffect(() => {
@@ -87,6 +99,14 @@ export const ProfilePage = () => {
             return () => clearInterval(interval);
         }
     }, [timer]);
+
+    useEffect(() => {
+        return () => {
+            if (feedbackTimerRef.current) {
+                clearTimeout(feedbackTimerRef.current);
+            }
+        };
+    }, []);
 
     const {
         register: registerPass,
@@ -114,7 +134,12 @@ export const ProfilePage = () => {
 
     const showFeedback = (type, text) => {
         setStatusMsg({ type, text });
-        setTimeout(() => setStatusMsg({ type: "", text: "" }), 4000);
+        if (feedbackTimerRef.current) {
+            clearTimeout(feedbackTimerRef.current);
+        }
+        feedbackTimerRef.current = setTimeout(() => {
+            setStatusMsg({ type: "", text: "" });
+        }, 4000);
     };
 
     const handleAvatarSelect = async (avatarId) => {
@@ -211,7 +236,6 @@ export const ProfilePage = () => {
             className="h-screen w-full bg-[#090a0f] text-zinc-100 font-fa select-none overflow-y-auto overflow-x-hidden flex flex-col"
             dir="rtl"
         >
-            {/* هدر بالای صفحه */}
             <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
                 <div className="flex items-center gap-3">
                     <Link
@@ -235,11 +259,8 @@ export const ProfilePage = () => {
                 </div>
             </header>
 
-            {/* بدنه اسکرول‌پذیر صفحه */}
             <div className="flex-1 w-full">
                 <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-
-                    {/* کارت هدر پروفایل */}
                     <div className="relative bg-zinc-950/90 border border-zinc-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden flex flex-col items-center text-center">
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -256,7 +277,6 @@ export const ProfilePage = () => {
                         <h1 className="text-xl sm:text-2xl font-black text-zinc-100">{user?.username}</h1>
                         <p className="text-xs text-zinc-400 mt-1">{user?.email}</p>
 
-                        {/* آمار خلاصه کاربر */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg mt-6 pt-5 border-t border-zinc-800/60">
                             <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3 flex flex-col items-center">
                                 <Layers className="w-4 h-4 text-amber-400 mb-1" />
@@ -282,7 +302,6 @@ export const ProfilePage = () => {
                         </div>
                     </div>
 
-                    {/* پیام وضعیت */}
                     {statusMsg.text && (
                         <div
                             className={`p-3.5 rounded-2xl flex items-center gap-2 text-xs font-bold animate-fadeIn ${
@@ -296,9 +315,7 @@ export const ProfilePage = () => {
                         </div>
                     )}
 
-                    {/* کارت تنظیمات با تب‌ها */}
                     <div className="bg-zinc-950/90 border border-zinc-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-
                         <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 pb-4">
                             <button
                                 type="button"
@@ -353,7 +370,6 @@ export const ProfilePage = () => {
                             </button>
                         </div>
 
-                        {/* تب ۱: ویرایش نام کاربری */}
                         {activeTab === "overview" && (
                             <div className="space-y-4 max-w-md animate-fadeIn">
                                 <div>
@@ -383,7 +399,6 @@ export const ProfilePage = () => {
                             </div>
                         )}
 
-                        {/* تب ۲: انتخاب ۱۰ آواتار RPG */}
                         {activeTab === "avatars" && (
                             <div className="space-y-4 animate-fadeIn">
                                 <div>
@@ -421,7 +436,6 @@ export const ProfilePage = () => {
                             </div>
                         )}
 
-                        {/* تب ۳: امنیت و تغییر رمز عبور (با آیکون چشم روی هر ۳ فیلد) */}
                         {activeTab === "security" && (
                             <form onSubmit={handlePassSubmit(onSubmitPassword)} className="space-y-4 max-w-md animate-fadeIn">
                                 <div>
@@ -545,10 +559,8 @@ export const ProfilePage = () => {
                             </form>
                         )}
 
-                        {/* تب ۴: تایید و تغییر ایمیل (با آیکون چشم برای رمز تایید) */}
                         {activeTab === "email" && (
                             <div className="space-y-6 max-w-md animate-fadeIn">
-
                                 <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -673,7 +685,6 @@ export const ProfilePage = () => {
                                 </form>
                             </div>
                         )}
-
                     </div>
                 </main>
             </div>

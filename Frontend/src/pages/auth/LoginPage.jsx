@@ -25,10 +25,7 @@ export const LoginPage = () => {
         <div className="fixed -bottom-32 right-1/4 w-[30rem] h-[30rem] bg-amber-600/5 rounded-full blur-[140px] pointer-events-none" />
 
         <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 sm:py-16">
-
           <div className="w-full max-w-4xl bg-zinc-950/95 border border-zinc-800/90 rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-2xl grid grid-cols-1 lg:grid-cols-12 z-10 my-auto overflow-hidden">
-
-            {/* ستون راست برندینگ */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900 via-zinc-950 to-[#090a0f] border-l border-zinc-800/80 p-8 flex-col justify-between overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -73,7 +70,6 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            {/* ستون چپ فرم لاگین */}
             <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
               <div>
                 <div className="text-center mb-6">
@@ -101,9 +97,7 @@ export const LoginPage = () => {
                 </Link>
               </div>
             </div>
-
           </div>
-
         </div>
       </div>
   );

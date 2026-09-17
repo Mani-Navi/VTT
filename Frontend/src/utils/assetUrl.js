@@ -1,3 +1,5 @@
+import { ENV } from "../config/validateEnv";
+
 export function getFullAssetUrl(url) {
     if (!url) return "";
     const trimmed = String(url).trim();
@@ -13,12 +15,9 @@ export function getFullAssetUrl(url) {
         return trimmed;
     }
 
-    // لینک‌های محلی آپلودشده در سرور
-    const backendBase =
-        import.meta.env.VITE_BACKEND_URL ||
-        import.meta.env.VITE_API_URL?.replace(/\/api$/, "") ||
-        "http://localhost:8080";
-
+    // نرمال‌سازی مسیر آدرس‌های آپلودشده محلی سرور
+    const backendBase = ENV.API_BASE_URL.replace(/\/api\/?$/, "") || "http://localhost:8080";
     const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+
     return `${backendBase}${cleanPath}`;
 }
