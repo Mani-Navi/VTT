@@ -26,7 +26,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const isVoiceRequest = error.config?.url?.includes("/voice");
+
+        // فقط اگر خطای ۴۰۱ مربوط به وویس نباشد، نشست باطل شود
+        if (error.response?.status === 401 && !isVoiceRequest) {
             localStorage.removeItem("vtt_jwt");
             if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
                 window.location.href = "/login";
