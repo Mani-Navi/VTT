@@ -17,7 +17,9 @@ export const drawingApi = {
       });
       return res.data;
     } catch (err) {
-      console.warn("خطا در حذف دیتابیس نقاشی:", err);
+      if (import.meta.env.DEV) {
+        console.warn("[drawingApi] خطا در حذف نقاشی:", err);
+      }
       return false;
     }
   },

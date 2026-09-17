@@ -1,7 +1,7 @@
-import React from "react";
+import React, { memo } from "react";
 import { Dices, Plus } from "lucide-react";
 
-export const EmptyRooms = ({ onCreateClick }) => {
+export const EmptyRooms = memo(({ onCreateClick }) => {
     return (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center" dir="rtl">
             <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-5 text-amber-400 shadow-neon">
@@ -14,11 +14,13 @@ export const EmptyRooms = ({ onCreateClick }) => {
             <button
                 type="button"
                 onClick={onCreateClick}
-                className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl text-xs transition-all shadow-neon active:scale-95"
+                className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl text-xs transition-all shadow-neon active:scale-95 cursor-pointer"
             >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
                 ایجاد اولین اتاق بازی
             </button>
         </div>
     );
-};
+});
+
+EmptyRooms.displayName = "EmptyRooms";

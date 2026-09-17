@@ -1,11 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, memo } from "react";
 import { Group, Line, Circle, Rect, Text } from "react-konva";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
 import { useAuthStore } from "../../store/auth.store";
-import { calculateTotalDistance } from "../../utils/measurement";
+import { calculateTotalDistance } from "../../utils/distance.js";
 
-export const RulerLayer = () => {
+const RULER_DASH_PATTERN = Object.freeze([8, 5]);
+
+export const RulerLayer = memo(() => {
     const measurement = useCanvasStore((state) => state.measurement);
     const remoteMeasurements = useCanvasStore((state) => state.remoteMeasurements) || {};
     const clearRemoteMeasurement = useCanvasStore((state) => state.clearRemoteMeasurement);
@@ -19,18 +21,23 @@ export const RulerLayer = () => {
     const gridSize = currentScene?.grid?.size || 60;
     const scaleValue = 5;
 
-    // پاکسازی خودکار خط‌کش‌های رهاشده بعد از ۳ ثانیه
+    const remoteMeasurementsRef = useRef(remoteMeasurements);
+    useEffect(() => {
+        remoteMeasurementsRef.current = remoteMeasurements;
+    }, [remoteMeasurements]);
+
     useEffect(() => {
         const interval = setInterval(() => {
             const now = Date.now();
-            Object.values(remoteMeasurements).forEach((m) => {
+            const currentRemote = remoteMeasurementsRef.current;
+            Object.values(currentRemote).forEach((m) => {
                 if (now - (m.timestamp || 0) > 3500) {
                     clearRemoteMeasurement(m.userId);
                 }
             });
         }, 1500);
         return () => clearInterval(interval);
-    }, [remoteMeasurements, clearRemoteMeasurement]);
+    }, [clearRemoteMeasurement]);
 
     const renderRulerVisual = (meas, isLocal = false, color = "#f59e0b", name = "") => {
         if (!meas || meas.startX === undefined || meas.currentX === undefined) return null;
@@ -60,7 +67,6 @@ export const RulerLayer = () => {
 
         return (
             <Group key={isLocal ? "local-ruler" : `ruler-${meas.userId || name}`} listening={false}>
-                {/* هاله ضخیم پس‌زمینه خط */}
                 <Line
                     points={allPoints}
                     stroke={color}
@@ -70,17 +76,15 @@ export const RulerLayer = () => {
                     lineJoin="round"
                 />
 
-                {/* خط خط‌چین اصلی */}
                 <Line
                     points={allPoints}
                     stroke={color}
                     strokeWidth={3}
-                    dash={[8, 5]}
+                    dash={RULER_DASH_PATTERN}
                     lineCap="round"
                     lineJoin="round"
                 />
 
-                {/* نقطه شروع */}
                 <Circle
                     x={start.x}
                     y={start.y}
@@ -90,7 +94,6 @@ export const RulerLayer = () => {
                     strokeWidth={2}
                 />
 
-                {/* ایستگاه‌های میانی (Waypoints) */}
                 {waypoints.map((wp, i) => (
                     <Circle
                         key={`wp-${i}`}
@@ -103,7 +106,6 @@ export const RulerLayer = () => {
                     />
                 ))}
 
-                {/* نقطه انتهایی متحرک */}
                 <Circle
                     x={current.x}
                     y={current.y}
@@ -113,7 +115,6 @@ export const RulerLayer = () => {
                     strokeWidth={2}
                 />
 
-                {/* حباب معلق نمایش مسافت و تعداد خانه‌ها */}
                 <Group x={bubbleX} y={bubbleY}>
                     <Rect
                         width={120}
@@ -149,10 +150,8 @@ export const RulerLayer = () => {
 
     return (
         <Group listening={false}>
-            {/* خط‌کش کاربر محلی */}
             {measurement && renderRulerVisual(measurement, true, "#f59e0b", "شما")}
 
-            {/* خط‌کش‌های سایر بازیکنان به صورت زنده */}
             {Object.values(remoteMeasurements).map((meas) => {
                 if (String(meas.userId).toLowerCase() === currentUserId.toLowerCase() && measurement) {
                     return null;
@@ -161,4 +160,6 @@ export const RulerLayer = () => {
             })}
         </Group>
     );
-};
+});
+
+RulerLayer.displayName = "RulerLayer";

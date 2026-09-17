@@ -4,7 +4,7 @@ const getInitialUser = () => {
   try {
     const raw = localStorage.getItem("vtt_user");
     return raw ? JSON.parse(raw) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };

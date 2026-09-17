@@ -80,12 +80,12 @@ export function rollDice(
         colors: ["#fbbf24", "#f59e0b", "#ef4444", "#3b82f6", "#10b981"],
       });
     } catch {
-      // نادیده گرفتن در صورت خطا
+      // نادیده گرفتن در صورت عدم پشتیبانی یا خطای محیطی
     }
   }
 
   return {
-    id: `roll-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    id: `roll-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     userId,
     userName,
     userColor,

@@ -1,6 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
 
-export const AVATAR_LIST = [
+export const AVATAR_LIST = Object.freeze([
     { id: "cowboy", name: "ماجراجوی کلاه‌چرمی", col: 0, row: 0 },
     { id: "gamer", name: "خنیاگر نئونی", col: 1, row: 0 },
     { id: "catgirl", name: "روگ گربه‌ای", col: 0, row: 1 },
@@ -11,12 +11,11 @@ export const AVATAR_LIST = [
     { id: "druid", name: "دروئید طبیعت", col: 1, row: 3 },
     { id: "birdfolk", name: "مسافر پرنده‌نما", col: 0, row: 4 },
     { id: "artificer", name: "مهندس موآبی", col: 1, row: 4 },
-];
+]);
 
-export const RpgAvatar = ({ avatarId = "cowboy", className = "w-16 h-16" }) => {
+export const RpgAvatar = memo(({ avatarId = "cowboy", className = "w-16 h-16" }) => {
     const avatar = AVATAR_LIST.find((a) => a.id === avatarId) || AVATAR_LIST[0];
 
-    // محاسبه دقیق مرکز سلول‌ها با زوم ۲۱۸٪ در ۵۴۵٪ جهت حذف کامل خطوط سفید حاشیه‌ای
     const posX = avatar.col === 0 ? "3%" : "97%";
     const posY = `${avatar.row * 24.8 + 1}%`;
 
@@ -31,4 +30,6 @@ export const RpgAvatar = ({ avatarId = "cowboy", className = "w-16 h-16" }) => {
             }}
         />
     );
-};
+});
+
+RpgAvatar.displayName = "RpgAvatar";

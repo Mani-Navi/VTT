@@ -1,4 +1,4 @@
-export const TOKEN_PRESETS = [
+export const TOKEN_PRESETS = Object.freeze([
   {
     id: "preset-warrior",
     name: "Sir Gareth (Paladin)",
@@ -119,4 +119,4 @@ export const TOKEN_PRESETS = [
     ac: 15,
     speed: 0,
   },
-];
+]);

@@ -23,7 +23,6 @@ const matchFogId = (a, b) => {
     return Boolean(idA && idB && idA === idB);
 };
 
-// حل‌کننده دقیق ساختار مه در دیتابیس و سوکت
 const normalizeFogRegion = (fog) => {
     if (!fog) return null;
 
@@ -56,7 +55,6 @@ export const useSceneStore = create((set, get) => ({
     remoteLiveDrawing: null,
     remoteLiveFog: null,
     isLoading: false,
-
     availableConditions: [],
 
     setAvailableConditions: (conditions) => {
@@ -123,7 +121,6 @@ export const useSceneStore = create((set, get) => ({
             const sceneData = fullState.scene || active;
 
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
-
             const rawTokens = fullState.tokens || [];
             const loadedTokens = [];
             const seenTokenIds = new Set();
@@ -153,8 +150,8 @@ export const useSceneStore = create((set, get) => ({
 
             const rawFogRegions = fullState.fogRegions || sceneData.fogShapes || [];
             const normalizedFog = rawFogRegions.map(normalizeFogRegion).filter(Boolean);
-
             const isRevealedSaved = Boolean(sceneData.isFogRevealed || fullState.isFogRevealed);
+
             useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
 
             if (roomSettings?.measurementType) {
@@ -194,7 +191,9 @@ export const useSceneStore = create((set, get) => ({
                 isLoading: false,
             });
         } catch (err) {
-            console.error("خطا در دریافت صحنه‌های اتاق:", err);
+            if (import.meta.env.DEV) {
+                console.error("خطا در دریافت صحنه‌های اتاق:", err);
+            }
             set({ isLoading: false });
         }
     },
@@ -322,13 +321,10 @@ export const useSceneStore = create((set, get) => ({
         });
 
         try {
-            await sceneApi.updateSceneMap(current.id, {
-                mapUrl,
-                assetId,
-            });
+            await sceneApi.updateSceneMap(current.id, { mapUrl, assetId });
             wsService.send("SCENE_UPDATE", { sceneId: current.id, mapUrl, assetId });
         } catch (err) {
-            console.error("خطا در ذخیره نقشه در سرور:", err);
+            if (import.meta.env.DEV) console.error("خطا در ذخیره نقشه در سرور:", err);
         }
     },
 
@@ -345,7 +341,7 @@ export const useSceneStore = create((set, get) => ({
             await sceneApi.renameScene(sceneId, trimmed);
             wsService.send("SCENE_RENAME", { sceneId, name: trimmed });
         } catch (err) {
-            console.error("خطا در تغییر نام صحنه:", err);
+            if (import.meta.env.DEV) console.error("خطا در تغییر نام صحنه:", err);
         }
     },
 
@@ -411,7 +407,7 @@ export const useSceneStore = create((set, get) => ({
                 ...fullToken,
             });
         } catch (err) {
-            console.error("خطا در ثبت پایدار توکن:", err);
+            if (import.meta.env.DEV) console.error("خطا در ثبت پایدار توکن:", err);
         }
     },
 
@@ -615,8 +611,8 @@ export const useSceneStore = create((set, get) => ({
 
             const rawFogRegions = fullState.fogRegions || sceneData.fogShapes || [];
             const normalizedFog = rawFogRegions.map(normalizeFogRegion).filter(Boolean);
-
             const isRevealedSaved = Boolean(sceneData.isFogRevealed || fullState.isFogRevealed);
+
             useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
 
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];
@@ -653,7 +649,9 @@ export const useSceneStore = create((set, get) => ({
                 isLoading: false,
             }));
         } catch (err) {
-            console.error("خطا در تغییر صحنه:", err);
+            if (import.meta.env.DEV) {
+                console.error("خطا در تغییر صحنه:", err);
+            }
             set({ isLoading: false });
         }
     },

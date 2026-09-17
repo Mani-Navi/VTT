@@ -1,10 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { RouterProvider } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { router } from "./router";
 import { useAuthStore } from "./store/auth.store";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import { ENV } from "./config/validateEnv";
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "MOCK_GOOGLE_CLIENT_ID";
+/**
+ * رمزگشایی ایمن Base64 توکن JWT برای پشتیبانی کامل از کاراکترهای فارسی و UTF-8
+ */
+function parseJwtPayload(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+        atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -18,20 +37,16 @@ export default function App() {
       return;
     }
 
-    try {
-      const payloadBase64 = token.split(".")[1];
-      const payload = JSON.parse(atob(payloadBase64));
+    const payload = parseJwtPayload(token);
 
-      if (payload.exp && payload.exp * 1000 > Date.now()) {
-        setAuth(payload, token);
-      } else {
-        logout();
-      }
-    } catch {
+    if (payload && payload.exp && payload.exp * 1000 > Date.now()) {
+      setAuth(payload, token);
+    } else {
+      localStorage.removeItem("vtt_jwt");
       logout();
-    } finally {
-      setIsCheckingAuth(false);
     }
+
+    setIsCheckingAuth(false);
   }, [setAuth, logout]);
 
   if (isCheckingAuth) {
@@ -43,7 +58,7 @@ export default function App() {
   }
 
   return (
-      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <GoogleOAuthProvider clientId={ENV.GOOGLE_CLIENT_ID || "MOCK_GOOGLE_CLIENT_ID"}>
         <RouterProvider router={router} />
       </GoogleOAuthProvider>
   );

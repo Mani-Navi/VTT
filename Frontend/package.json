@@ -1,13 +1,13 @@
 {
-  "name": "react-example",
+  "name": "Titipool",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=5173 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,8 +22,6 @@
     "cannon-es": "^0.20.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
     "konva": "^10.3.1",
     "livekit-client": "^2.22.2",
     "lucide-react": "^0.546.0",
@@ -36,19 +34,16 @@
     "sockjs-client": "^1.6.1",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",
-    "vite": "^6.2.3",
     "zod": "^4.4.3",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/sockjs-client": "^1.5.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
   }

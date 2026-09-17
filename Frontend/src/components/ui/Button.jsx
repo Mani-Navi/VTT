@@ -2,13 +2,30 @@ import React from "react";
 import { cn } from "../../utils/cn";
 
 export const Button = React.forwardRef(
-    ({ className, variant = "secondary", size = "md", isLoading, children, disabled, type = "button", ...props }, ref) => {
+    (
+        {
+            className,
+            variant = "secondary",
+            size = "md",
+            isLoading,
+            children,
+            disabled,
+            type = "button",
+            ...props
+        },
+        ref
+    ) => {
         const variants = {
-            primary: "bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700 shadow-sm border border-blue-500/30",
-            secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/60",
-            amber: "bg-amber-500 text-zinc-950 font-semibold hover:bg-amber-400 active:bg-amber-600 shadow-sm border border-amber-400/40",
-            danger: "bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700 border border-rose-500/30",
-            outline: "bg-transparent text-zinc-200 border border-zinc-700 hover:bg-zinc-800 active:bg-zinc-900",
+            primary:
+                "bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700 shadow-sm border border-blue-500/30",
+            secondary:
+                "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 active:bg-zinc-900 border border-zinc-700/60",
+            amber:
+                "bg-amber-500 text-zinc-950 font-semibold hover:bg-amber-400 active:bg-amber-600 shadow-sm border border-amber-400/40",
+            danger:
+                "bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700 border border-rose-500/30",
+            outline:
+                "bg-transparent text-zinc-200 border border-zinc-700 hover:bg-zinc-800 active:bg-zinc-900",
             ghost: "bg-transparent text-zinc-300 hover:bg-zinc-800/80 active:bg-zinc-800",
         };
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef, memo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,17 +26,48 @@ import {
     Award,
 } from "lucide-react";
 
-// مجموعه آواتارهای آماده سبک RPG / Fantasy
-const PRESET_AVATARS = [
-    { id: "dm", name: "Dungeon Master", url: "https://api.dicebear.com/7.x/bottts/svg?seed=DM&backgroundColor=b6e3f4,c0aede,d1d4f9" },
-    { id: "wizard", name: "جادوگر (Wizard)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Wizard&backgroundColor=ffd5dc,ffdfbf" },
-    { id: "warrior", name: "جنگجو (Warrior)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior&backgroundColor=c0aede,b6e3f4" },
-    { id: "rogue", name: "روگ (Rogue)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Rogue&backgroundColor=d1d4f9" },
-    { id: "cleric", name: "روحانی (Cleric)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Cleric&backgroundColor=ffd5dc" },
-    { id: "paladin", name: "پالادین (Paladin)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Paladin&backgroundColor=ffdfbf" },
-    { id: "elf", name: "الف (Elf Ranger)", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf&backgroundColor=b6e3f4" },
-    { id: "dragon", name: "اژدها (Dragon)", url: "https://api.dicebear.com/7.x/bottts/svg?seed=Dragon&backgroundColor=ffdfbf" },
-];
+const PRESET_AVATARS = Object.freeze([
+    {
+        id: "dm",
+        name: "Dungeon Master",
+        url: "https://api.dicebear.com/7.x/bottts/svg?seed=DM&backgroundColor=b6e3f4,c0aede,d1d4f9",
+    },
+    {
+        id: "wizard",
+        name: "جادوگر (Wizard)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Wizard&backgroundColor=ffd5dc,ffdfbf",
+    },
+    {
+        id: "warrior",
+        name: "جنگجو (Warrior)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior&backgroundColor=c0aede,b6e3f4",
+    },
+    {
+        id: "rogue",
+        name: "روگ (Rogue)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Rogue&backgroundColor=d1d4f9",
+    },
+    {
+        id: "cleric",
+        name: "روحانی (Cleric)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Cleric&backgroundColor=ffd5dc",
+    },
+    {
+        id: "paladin",
+        name: "پالادین (Paladin)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Paladin&backgroundColor=ffdfbf",
+    },
+    {
+        id: "elf",
+        name: "الف (Elf Ranger)",
+        url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf&backgroundColor=b6e3f4",
+    },
+    {
+        id: "dragon",
+        name: "اژدها (Dragon)",
+        url: "https://api.dicebear.com/7.x/bottts/svg?seed=Dragon&backgroundColor=ffdfbf",
+    },
+]);
 
 const passwordSchema = z
     .object({
@@ -63,19 +94,31 @@ const checkPasswordCriteria = (pass = "") => {
     ];
 };
 
-export const ProfileModal = ({ isOpen, onClose }) => {
-    const { user, updateUser, logout } = useAuthStore();
-    const [activeTab, setActiveTab] = useState("overview"); // 'overview' | 'avatars' | 'security' | 'email'
+export const ProfileModal = memo(({ isOpen, onClose }) => {
+    // تفکیک دقیق سلکتورهای استور بر اساس قانون شماره ۲
+    const user = useAuthStore((state) => state.user);
+    const updateUser = useAuthStore((state) => state.updateUser);
+    const logout = useAuthStore((state) => state.logout);
+
+    const [activeTab, setActiveTab] = useState("overview");
     const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
     const [selectedAvatar, setSelectedAvatar] = useState(user?.avatarUrl || PRESET_AVATARS[0].url);
     const [isSavingAvatar, setIsSavingAvatar] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // فرم اطلاعات عمومی
     const [usernameInput, setUsernameInput] = useState(user?.username || "");
     const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
 
-    // فرم تغییر رمز عبور
+    const timerRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, []);
+
     const {
         register: registerPass,
         handleSubmit: handlePassSubmit,
@@ -87,7 +130,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         mode: "onChange",
     });
 
-    // فرم تغییر ایمیل
     const {
         register: registerEmail,
         handleSubmit: handleEmailSubmit,
@@ -103,10 +145,12 @@ export const ProfileModal = ({ isOpen, onClose }) => {
 
     const showFeedback = (type, text) => {
         setStatusMsg({ type, text });
-        setTimeout(() => setStatusMsg({ type: "", text: "" }), 4000);
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+        timerRef.current = setTimeout(() => setStatusMsg({ type: "", text: "" }), 4000);
     };
 
-    // ذخیره آواتار انتخابی
     const handleSaveAvatar = async (avatarUrl) => {
         try {
             setIsSavingAvatar(true);
@@ -114,14 +158,13 @@ export const ProfileModal = ({ isOpen, onClose }) => {
             const updated = await userApi.updateProfile({ avatarUrl });
             updateUser(updated);
             showFeedback("success", "آواتار کاراکتر شما با موفقیت تغییر کرد.");
-        } catch (err) {
+        } catch {
             showFeedback("error", "خطا در به‌روزرسانی آواتار.");
         } finally {
             setIsSavingAvatar(false);
         }
     };
 
-    // ویرایش نام کاربری
     const handleUpdateUsername = async (e) => {
         e.preventDefault();
         if (!usernameInput || usernameInput === user?.username) return;
@@ -138,7 +181,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         }
     };
 
-    // تغییر رمز عبور
     const onSubmitPassword = async (data) => {
         try {
             await userApi.changePassword({
@@ -152,7 +194,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         }
     };
 
-    // تغییر ایمیل
     const onSubmitEmail = async (data) => {
         try {
             const updated = await userApi.changeEmail(data);
@@ -164,14 +205,12 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         }
     };
 
-    // تایید ایمیل
     const handleVerifyEmail = async () => {
         try {
-            const updated = await userApi.verifyEmail();
-            updateUser(updated);
-            showFeedback("success", "ایمیل با موفقیت تایید شد.");
+            await userApi.sendVerificationCode();
+            showFeedback("success", "کد تایید به ایمیل شما ارسال شد.");
         } catch {
-            showFeedback("error", "خطا در تایید ایمیل.");
+            showFeedback("error", "خطا در ارسال کد تایید.");
         }
     };
 
@@ -184,10 +223,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xl animate-fadeIn font-fa select-none"
             dir="rtl"
         >
-            {/* بدنه اصلی پنل گیمینگ (مشابه تصویر) */}
             <div className="relative w-full max-w-5xl bg-zinc-950/95 border border-zinc-800/90 rounded-[2.5rem] shadow-2xl shadow-black overflow-hidden flex flex-col max-h-[90vh]">
-
-                {/* دکمه بستن در گوشه بالا */}
                 <button
                     type="button"
                     onClick={onClose}
@@ -196,12 +232,9 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                     <X className="w-4 h-4" />
                 </button>
 
-                {/* بنر هدر کاربری با حلقه طلایی و آمار (Hero Header) */}
                 <div className="relative p-6 sm:p-8 bg-gradient-to-b from-amber-500/10 via-zinc-900/40 to-transparent border-b border-zinc-800/80 flex flex-col items-center justify-center text-center">
-                    {/* هاله نور امبینت طلایی پشت آواتار */}
                     <div className="absolute top-8 left-1/2 -translate-x-1/2 w-40 h-40 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
 
-                    {/* فریم و آواتار طلایی گرد (مشابه تصویر) */}
                     <div className="relative mb-3 group">
                         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1.5 bg-gradient-to-tr from-amber-600 via-amber-300 to-amber-500 shadow-xl shadow-amber-500/20 flex items-center justify-center">
                             <div className="w-full h-full rounded-full bg-zinc-950 overflow-hidden border-2 border-zinc-900 flex items-center justify-center">
@@ -213,14 +246,12 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* بج کوچک پایین آواتار */}
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-zinc-900 border border-amber-500/60 rounded-full px-2 py-0.5 shadow-md flex items-center gap-1 text-[10px] text-amber-300 font-bold">
                             <Crown className="w-3 h-3 text-amber-400" />
                             <span>Titipool</span>
                         </div>
                     </div>
 
-                    {/* نام کاربری و تگ‌ها */}
                     <h2 className="text-xl sm:text-2xl font-black text-zinc-100 tracking-wide mt-1">
                         {user?.username || "ماجراجو"}
                     </h2>
@@ -241,7 +272,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                         )}
                     </div>
 
-                    {/* نوار XP / Level فرضی بازی */}
                     <div className="w-full max-w-xs mt-4">
                         <div className="flex justify-between text-[11px] font-bold text-zinc-400 mb-1">
               <span className="flex items-center gap-1 text-amber-400">
@@ -254,11 +284,10 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* کارت‌های آمار سریع (Quick Stats Row) */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-2xl mt-5 pt-4 border-t border-zinc-800/60">
                         <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-2.5 flex flex-col items-center">
                             <Layers className="w-4 h-4 text-amber-400 mb-1" />
-                            <span className="text-sm font-black text-zinc-100">۸</span>
+                            <span className="text-sm font-black text-zinc-100">{user?.roomsCount ?? 8}</span>
                             <span className="text-[10px] text-zinc-400">اتاق‌های ساخته شده</span>
                         </div>
 
@@ -282,7 +311,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {/* پیام فیدبک */}
                 {statusMsg.text && (
                     <div
                         className={`mx-8 mt-4 p-3 rounded-2xl flex items-center gap-2 text-xs font-bold animate-fadeIn ${
@@ -300,10 +328,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                     </div>
                 )}
 
-                {/* بدنه دوتکه: سایدبار منو + محتوای تب فعال */}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-y-auto p-6 sm:p-8 gap-6">
-
-                    {/* سایدبار سمت راست */}
                     <div className="md:col-span-4 flex flex-col justify-between space-y-4 border-l border-zinc-800/80 pl-0 md:pl-6">
                         <div className="space-y-1.5">
                             <button
@@ -359,7 +384,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                             </button>
                         </div>
 
-                        {/* دکمه خروج در انتهای سایدبار */}
                         <button
                             type="button"
                             onClick={logout}
@@ -370,10 +394,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                         </button>
                     </div>
 
-                    {/* محتوای تب انتخابی */}
                     <div className="md:col-span-8">
-
-                        {/* تب ۱: مشخصات عمومی */}
                         {activeTab === "overview" && (
                             <div className="space-y-5 animate-fadeIn">
                                 <div>
@@ -404,7 +425,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                             </div>
                         )}
 
-                        {/* تب ۲: انتخاب آواتارهای آماده (بدون آپلود) */}
                         {activeTab === "avatars" && (
                             <div className="space-y-4 animate-fadeIn">
                                 <div>
@@ -414,7 +434,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                                     </p>
                                 </div>
 
-                                {/* گرید آواتارها */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-2">
                                     {PRESET_AVATARS.map((avatar) => {
                                         const isSelected = currentAvatar === avatar.url;
@@ -431,7 +450,11 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                                                 }`}
                                             >
                                                 <div className="w-14 h-14 rounded-full bg-zinc-950 overflow-hidden border border-zinc-800 p-1">
-                                                    <img src={avatar.url} alt={avatar.name} className="w-full h-full object-cover" />
+                                                    <img
+                                                        src={avatar.url}
+                                                        alt={avatar.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 </div>
                                                 <span className="text-[11px] font-bold text-zinc-300 truncate w-full text-center">
                           {avatar.name}
@@ -448,9 +471,11 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                             </div>
                         )}
 
-                        {/* تب ۳: امنیت و رمز عبور */}
                         {activeTab === "security" && (
-                            <form onSubmit={handlePassSubmit(onSubmitPassword)} className="space-y-4 max-w-md animate-fadeIn">
+                            <form
+                                onSubmit={handlePassSubmit(onSubmitPassword)}
+                                className="space-y-4 max-w-md animate-fadeIn"
+                            >
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100">تغییر رمز عبور</h3>
                                     <p className="text-xs text-zinc-400 mt-0.5">
@@ -554,7 +579,6 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                             </form>
                         )}
 
-                        {/* تب ۴: تنظیمات ایمیل */}
                         {activeTab === "email" && (
                             <div className="space-y-6 max-w-md animate-fadeIn">
                                 <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between">
@@ -613,11 +637,11 @@ export const ProfileModal = ({ isOpen, onClose }) => {
                                 </form>
                             </div>
                         )}
-
                     </div>
                 </div>
-
             </div>
         </div>
     );
-};
+});
+
+ProfileModal.displayName = "ProfileModal";

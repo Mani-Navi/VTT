@@ -1,16 +1,23 @@
 import { GRID_TYPES } from "../constants/tools.js";
 
-export function snapToGrid(x, y, gridSize = 60, gridType = "square", tokenSize = 1, snapEnabled = true) {
-  if (!snapEnabled || gridSize <= 0 || gridType === (GRID_TYPES?.NONE || "none") || gridType === "none") {
+export function snapToGrid(
+    x,
+    y,
+    gridSize = 60,
+    gridType = "square",
+    tokenSize = 1,
+    snapEnabled = true
+) {
+  const S = Number(gridSize) || 60;
+  if (!snapEnabled || S <= 0 || gridType === GRID_TYPES.NONE || gridType === "none") {
     return { x: Math.round(x), y: Math.round(y) };
   }
 
-  const S = Number(gridSize) || 60;
   const size = Number(tokenSize) || 1;
   const type = String(gridType || "square").toLowerCase();
 
   // ۱. گرید مربعی (Square)
-  if (type === "square" || type === (GRID_TYPES?.SQUARE || "square")) {
+  if (type === "square" || type === GRID_TYPES.SQUARE) {
     if (size % 2 === 1) {
       const cellX = Math.floor(x / S);
       const cellY = Math.floor(y / S);
@@ -29,7 +36,7 @@ export function snapToGrid(x, y, gridSize = 60, gridType = "square", tokenSize =
   }
 
   // ۲. گرید لوزی / ایزومتریک (Isometric / Diamond)
-  if (type === "isometric" || type === "diamond" || type === (GRID_TYPES?.DIMETRIC || "isometric")) {
+  if (type === "isometric" || type === "diamond" || type === GRID_TYPES.DIMETRIC) {
     const u = x - y;
     const v = x + y;
     const uCenter = Math.floor(u / S) * S + S / 2;
@@ -40,7 +47,7 @@ export function snapToGrid(x, y, gridSize = 60, gridType = "square", tokenSize =
   }
 
   // ۳. گرید شش‌ضلعی افقی (Hex Horizontal)
-  if (type === "hex_h" || type === (GRID_TYPES?.HEX_H || "hex_h")) {
+  if (type === "hex_h" || type === GRID_TYPES.HEX_H) {
     const radius = S / 2;
     const colStep = S * 0.75;
     const rowStep = S * 0.866;
@@ -71,7 +78,7 @@ export function snapToGrid(x, y, gridSize = 60, gridType = "square", tokenSize =
   }
 
   // ۴. گرید شش‌ضلعی عمودی (Hex Vertical)
-  if (type === "hex_v" || type === (GRID_TYPES?.HEX_V || "hex_v")) {
+  if (type === "hex_v" || type === GRID_TYPES.HEX_V) {
     const radius = S / 2;
     const colStep = S * 0.866;
     const rowStep = S * 0.75;

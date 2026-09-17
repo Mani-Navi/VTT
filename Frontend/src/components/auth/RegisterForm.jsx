@@ -76,7 +76,6 @@ export const RegisterForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-3.5 text-right" dir="rtl">
-            {/* دکمه ثبت نام سریع با گوگل */}
             <button
                 type="button"
                 aria-label="ثبت‌نام با گوگل"
@@ -234,3 +233,6 @@ export const RegisterForm = ({ onSuccess }) => {
         </div>
     );
 };
+
+// خروجی دوگانه برای پشتیبانی از هر دو نوع ایمپورت
+export default RegisterForm;

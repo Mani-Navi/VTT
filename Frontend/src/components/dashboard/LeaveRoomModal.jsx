@@ -1,9 +1,9 @@
-import React from "react";
+import React, { memo } from "react";
 import { Modal } from "../ui/Modal.jsx";
 import { Button } from "../ui/Button.jsx";
 import { LogOut } from "lucide-react";
 
-export const LeaveRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading }) => {
+export const LeaveRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoading }) => {
     if (!room) return null;
 
     return (
@@ -22,7 +22,8 @@ export const LeaveRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading }) 
                     <div>
                         <h4 className="text-sm font-bold text-amber-300">خروج از «{room.name}»</h4>
                         <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                            با خروج از این ماجراجویی، این اتاق از داشبورد شما حذف می‌شود. هر زمان تمایل داشتید می‌توانید مجدداً با کد دعوت به بازی بپیوندید.
+                            با خروج از این ماجراجویی، این اتاق از داشبورد شما حذف می‌شود. هر زمان تمایل داشتید
+                            می‌توانید مجدداً با کد دعوت به بازی بپیوندید.
                         </p>
                     </div>
                 </div>
@@ -45,4 +46,6 @@ export const LeaveRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading }) 
             </div>
         </Modal>
     );
-};
+});
+
+LeaveRoomModal.displayName = "LeaveRoomModal";

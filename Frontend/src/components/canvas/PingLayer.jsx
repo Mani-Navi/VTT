@@ -1,134 +1,164 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, memo } from "react";
 import { Group, Circle, Text, Rect } from "react-konva";
 import { useSceneStore } from "../../store/scene.store";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useAuthStore } from "../../store/auth.store";
 import { TOOLS } from "../../constants/tools";
 
-export const PingLayer = () => {
-  const pings = useSceneStore((state) => state.pings) || [];
-  const activeTool = useCanvasStore((state) => state.activeTool);
-  const laserPosition = useCanvasStore((state) => state.laserPosition);
-  const remoteLasers = useCanvasStore((state) => state.remoteLasers) || {};
-  const clearRemoteLaser = useCanvasStore((state) => state.clearRemoteLaser);
+const LASER_DASH_PATTERN = [4, 4];
 
-  const currentUser = useAuthStore((state) => state.user);
-  const currentUserId = String(currentUser?.id || currentUser?.userId || "");
+/**
+ * رندر مجزای نشانگر لیزری با رفرنس‌های پایدار
+ */
+function renderLaserDot(x, y, name = "", color = "#ef4444", isLocal = false) {
+    const key = isLocal ? "local-laser" : `laser-${name}-${x}-${y}`;
+    const tagWidth = Math.max(name.length * 8 + 20, 48);
+    const tagOffset = -Math.max(name.length * 4 + 10, 24);
 
-  const isLocalLaserActive = activeTool === TOOLS.LASER && Boolean(laserPosition);
-
-  // پاکسازی خودکار لیزرهای غیرفعال بعد از ۳ ثانیه
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      Object.values(remoteLasers).forEach((laser) => {
-        if (now - (laser.timestamp || 0) > 3000) {
-          clearRemoteLaser(laser.userId);
-        }
-      });
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [remoteLasers, clearRemoteLaser]);
-
-  const renderLaserDot = (x, y, name = "", color = "#ef4444", isLocal = false) => {
     return (
-        <Group key={isLocal ? "local-laser" : `laser-${name}-${x}-${y}`} x={x} y={y} listening={false}>
-          {/* هاله نئونی بیرونی */}
-          <Circle
-              radius={16}
-              fill="rgba(239, 68, 68, 0.2)"
-              stroke="#ef4444"
-              strokeWidth={1.5}
-          />
-          {/* نقطه مرکزی درخشان */}
-          <Circle
-              radius={6}
-              fill="#ef4444"
-              shadowColor="#ef4444"
-              shadowBlur={15}
-              shadowOpacity={1}
-          />
-          {/* نقطه روشن سفید در مرکز */}
-          <Circle radius={2.5} fill="#ffffff" />
+        <Group key={key} x={x} y={y} listening={false}>
+            {/* هاله نئونی بیرونی */}
+            <Circle
+                radius={16}
+                fill="rgba(239, 68, 68, 0.2)"
+                stroke={color}
+                strokeWidth={1.5}
+                listening={false}
+            />
+            {/* نقطه مرکزی درخشان */}
+            <Circle
+                radius={6}
+                fill={color}
+                shadowColor={color}
+                shadowBlur={15}
+                shadowOpacity={1}
+                listening={false}
+            />
+            {/* نقطه روشن سفید در مرکز */}
+            <Circle radius={2.5} fill="#ffffff" listening={false} />
 
-          {/* تگ نام بازیکن */}
-          {name && (
-              <Group y={-24}>
-                <Rect
-                    x={-Math.max(name.length * 4 + 10, 24)}
-                    y={0}
-                    width={Math.max(name.length * 8 + 20, 48)}
-                    height={16}
-                    fill="rgba(9, 10, 15, 0.9)"
-                    cornerRadius={4}
-                    stroke="#ef4444"
-                    strokeWidth={1}
-                />
-                <Text
-                    text={name}
-                    x={-Math.max(name.length * 4 + 10, 24)}
-                    y={2}
-                    width={Math.max(name.length * 8 + 20, 48)}
-                    align="center"
-                    fontSize={10}
-                    fontStyle="bold"
-                    fontFamily="Vazirmatn"
-                    fill="#fecaca"
-                />
-              </Group>
-          )}
+            {/* تگ نام بازیکن */}
+            {name && (
+                <Group y={-24} listening={false}>
+                    <Rect
+                        x={tagOffset}
+                        y={0}
+                        width={tagWidth}
+                        height={16}
+                        fill="rgba(9, 10, 15, 0.9)"
+                        cornerRadius={4}
+                        stroke={color}
+                        strokeWidth={1}
+                        listening={false}
+                    />
+                    <Text
+                        text={name}
+                        x={tagOffset}
+                        y={2}
+                        width={tagWidth}
+                        align="center"
+                        fontSize={10}
+                        fontStyle="bold"
+                        fontFamily="Vazirmatn"
+                        fill="#fecaca"
+                        listening={false}
+                    />
+                </Group>
+            )}
         </Group>
     );
-  };
+}
 
-  return (
-      <Group listening={false}>
-        {/* رادار پینگ‌ها */}
-        {pings.map((ping) => (
-            <Group key={ping.id} x={ping.x} y={ping.y}>
-              <Circle
-                  radius={25}
-                  stroke={ping.userColor || "#f59e0b"}
-                  strokeWidth={3}
-                  opacity={0.8}
-              />
-              <Circle
-                  radius={45}
-                  stroke={ping.userColor || "#f59e0b"}
-                  strokeWidth={2}
-                  opacity={0.4}
-                  dash={[4, 4]}
-              />
-              <Circle
-                  radius={8}
-                  fill={ping.userColor || "#f59e0b"}
-                  shadowColor={ping.userColor || "#f59e0b"}
-                  shadowBlur={12}
-              />
-              <Text
-                  text={ping.userName || "بازیکن"}
-                  x={-50}
-                  y={12}
-                  width={100}
-                  align="center"
-                  fontSize={11}
-                  fontStyle="bold"
-                  fill="#ffffff"
-                  shadowColor="#000000"
-                  shadowBlur={4}
-              />
-            </Group>
-        ))}
+export const PingLayer = memo(() => {
+    const pings = useSceneStore((state) => state.pings) || [];
+    const activeTool = useCanvasStore((state) => state.activeTool);
+    const laserPosition = useCanvasStore((state) => state.laserPosition);
+    const remoteLasers = useCanvasStore((state) => state.remoteLasers) || {};
+    const clearRemoteLaser = useCanvasStore((state) => state.clearRemoteLaser);
 
-        {/* لیزر کاربر جاری */}
-        {isLocalLaserActive &&
-            renderLaserDot(laserPosition.x, laserPosition.y, currentUser?.username || "شما", "#ef4444", true)}
+    const currentUser = useAuthStore((state) => state.user);
+    const currentUserId = String(currentUser?.id || currentUser?.userId || "");
 
-        {/* لیزر سایر بازیکنان در اتاق */}
-        {Object.values(remoteLasers).map((laser) => {
-          if (String(laser.userId) === currentUserId) return null;
-          return renderLaserDot(laser.x, laser.y, laser.userName || "بازیکن", laser.color || "#ef4444", false);
-        })}
-      </Group>
-  );
-};
+    const isLocalLaserActive = activeTool === TOOLS.LASER && Boolean(laserPosition);
+
+    // حفظ رفرنس به آخرین وضعیت لیزرها جهت ممانعت از ری‌لود اینتروال
+    const remoteLasersRef = useRef(remoteLasers);
+    useEffect(() => {
+        remoteLasersRef.current = remoteLasers;
+    }, [remoteLasers]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const currentRemote = remoteLasersRef.current;
+            Object.values(currentRemote).forEach((laser) => {
+                if (now - (laser.timestamp || 0) > 3000) {
+                    clearRemoteLaser(laser.userId);
+                }
+            });
+        }, 1500);
+
+        return () => clearInterval(interval);
+    }, [clearRemoteLaser]);
+
+    return (
+        <Group listening={false}>
+            {/* رادار پینگ‌ها */}
+            {pings.map((ping) => {
+                const userCol = ping.userColor || "#f59e0b";
+                return (
+                    <Group key={ping.id} x={ping.x} y={ping.y} listening={false}>
+                        <Circle
+                            radius={25}
+                            stroke={userCol}
+                            strokeWidth={3}
+                            opacity={0.8}
+                            listening={false}
+                        />
+                        <Circle
+                            radius={45}
+                            stroke={userCol}
+                            strokeWidth={2}
+                            opacity={0.4}
+                            dash={LASER_DASH_PATTERN}
+                            listening={false}
+                        />
+                        <Circle
+                            radius={8}
+                            fill={userCol}
+                            shadowColor={userCol}
+                            shadowBlur={12}
+                            listening={false}
+                        />
+                        <Text
+                            text={ping.userName || "بازیکن"}
+                            x={-50}
+                            y={12}
+                            width={100}
+                            align="center"
+                            fontSize={11}
+                            fontStyle="bold"
+                            fontFamily="Vazirmatn"
+                            fill="#ffffff"
+                            shadowColor="#000000"
+                            shadowBlur={4}
+                            listening={false}
+                        />
+                    </Group>
+                );
+            })}
+
+            {/* لیزر کاربر محلی */}
+            {isLocalLaserActive &&
+                renderLaserDot(laserPosition.x, laserPosition.y, currentUser?.username || "شما", "#ef4444", true)}
+
+            {/* لیزر سایر بازیکنان */}
+            {Object.values(remoteLasers).map((laser) => {
+                if (String(laser.userId) === currentUserId) return null;
+                return renderLaserDot(laser.x, laser.y, laser.userName || "بازیکن", laser.color || "#ef4444", false);
+            })}
+        </Group>
+    );
+});
+
+PingLayer.displayName = "PingLayer";

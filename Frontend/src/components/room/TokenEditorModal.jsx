@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import {
   Heart,
   Trash2,
@@ -25,8 +25,9 @@ import { useRoomStore } from "../../store/room.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { getAssetUrl, assetApi } from "../../api/asset.api";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
 
-const PRESET_TOKEN_ICONS = [
+const PRESET_TOKEN_ICONS = Object.freeze([
   { id: "knight", label: "شوالیه / جنگجو", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
   { id: "mage", label: "جادوگر / ویچ", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aria&backgroundColor=ffdfbf" },
   { id: "rogue", label: "روگ / قاتل", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow&backgroundColor=c0aede" },
@@ -37,9 +38,9 @@ const PRESET_TOKEN_ICONS = [
   { id: "elf", label: "الف / دروید", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Valkyrie&backgroundColor=b6e3f4" },
   { id: "monster", label: "هیولا / اورک", url: "https://api.dicebear.com/7.x/bottts/svg?seed=Golem&backgroundColor=ffd5dc" },
   { id: "dragon", label: "دراگون / تایتان", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon&backgroundColor=ffdfbf" },
-];
+]);
 
-const ALL_DND_CONDITIONS = [
+const ALL_DND_CONDITIONS = Object.freeze([
   { id: "blinded", nameFa: "کور شده", nameEn: "Blinded", icon: "🙈" },
   { id: "charmed", nameFa: "افسون شده", nameEn: "Charmed", icon: "💖" },
   { id: "deafened", nameFa: "ناشنوا", nameEn: "Deafened", icon: "🙉" },
@@ -56,9 +57,9 @@ const ALL_DND_CONDITIONS = [
   { id: "unconscious", nameFa: "بیهوش", nameEn: "Unconscious", icon: "💤" },
   { id: "exhaustion", nameFa: "خستگی شدید", nameEn: "Exhaustion", icon: "😫" },
   { id: "bleeding", nameFa: "خونریزی", nameEn: "Bleeding", icon: "🩸" },
-];
+]);
 
-const MAX_TOKEN_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_TOKEN_FILE_SIZE = 3 * 1024 * 1024;
 
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== "string") return false;
@@ -81,7 +82,7 @@ const safeAssetUrl = (url) => {
   return getAssetUrl ? getAssetUrl(trimmed) : trimmed;
 };
 
-export const TokenEditorModal = ({ roomData }) => {
+export const TokenEditorModal = memo(({ roomData }) => {
   const isEditing = useCanvasStore((state) => state.isTokenEditorOpen);
   const editingTokenId = useCanvasStore((state) => state.editingTokenId);
   const closeEditor = useCanvasStore((state) => state.closeTokenEditor);
@@ -137,13 +138,11 @@ export const TokenEditorModal = ({ roomData }) => {
 
   const isProp = Boolean(token?.isProp);
 
-  // ۱. تاگل‌های نمایش روی بوم
   const [showHp, setShowHp] = useState(true);
   const [showConditions, setShowConditions] = useState(true);
   const [showAc, setShowAc] = useState(true);
   const [showNotes, setShowNotes] = useState(false);
 
-  // ۲. تاگل‌های پرمیشن دسترسی پلیر
   const [allowPlayerHp, setAllowPlayerHp] = useState(true);
   const [allowPlayerConditions, setAllowPlayerConditions] = useState(true);
   const [allowPlayerAc, setAllowPlayerAc] = useState(true);
@@ -171,15 +170,15 @@ export const TokenEditorModal = ({ roomData }) => {
       setIsLocked(Boolean(token.isLocked));
       setGmNotes(token.gmNotes || "");
 
-      setShowHp(token.showHp === false ? false : true);
-      setShowConditions(token.showConditions === false ? false : true);
-      setShowAc(token.showAc === false ? false : true);
+      setShowHp(token.showHp !== false);
+      setShowConditions(token.showConditions !== false);
+      setShowAc(token.showAc !== false);
       setShowNotes(Boolean(token.showNotes));
 
-      setAllowPlayerHp(token.allowPlayerHp === false ? false : true);
-      setAllowPlayerConditions(token.allowPlayerConditions === false ? false : true);
-      setAllowPlayerAc(token.allowPlayerAc === false ? false : true);
-      setAllowPlayerSize(token.allowPlayerSize === false ? false : true);
+      setAllowPlayerHp(token.allowPlayerHp !== false);
+      setAllowPlayerConditions(token.allowPlayerConditions !== false);
+      setAllowPlayerAc(token.allowPlayerAc !== false);
+      setAllowPlayerSize(token.allowPlayerSize !== false);
 
       setSelectedConditions(token.conditions || []);
       setShowAddConditionPicker(false);
@@ -220,31 +219,16 @@ export const TokenEditorModal = ({ roomData }) => {
     setIsUploading(true);
 
     try {
-      let uploadedUrl = "";
-      if (assetApi && typeof assetApi.uploadAsset === "function") {
-        const res = await assetApi.uploadAsset(file, "TOKEN");
-        uploadedUrl = res.fileUrl || res.url || res.data?.fileUrl || "";
-      } else {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("type", "TOKEN");
-        const jwt = localStorage.getItem("vtt_jwt") || localStorage.getItem("token");
-        const res = await fetch("/api/assets/upload", {
-          method: "POST",
-          headers: {
-            Authorization: jwt ? `Bearer ${jwt}` : "",
-          },
-          body: formData,
-        });
-        const data = await res.json();
-        uploadedUrl = data.fileUrl || data.url || "";
-      }
+      const res = await assetApi.uploadAsset(file, name || "TOKEN", "TOKEN");
+      const uploadedUrl = res.fileUrl || res.url || res.data?.fileUrl || "";
 
       if (uploadedUrl) {
         setAvatarUrl(uploadedUrl);
       }
     } catch (err) {
-      console.error("خطا در آپلود تصویر توکن:", err);
+      if (import.meta.env.DEV) {
+        console.error("[TokenEditor] Upload error:", err);
+      }
       setUploadError("آپلود تصویر با خطا مواجه شد.");
     } finally {
       setIsUploading(false);
@@ -275,22 +259,24 @@ export const TokenEditorModal = ({ roomData }) => {
       allowPlayerConditions: isGM ? allowPlayerConditions : token.allowPlayerConditions,
       allowPlayerAc: isGM ? allowPlayerAc : token.allowPlayerAc,
       allowPlayerSize: isGM ? allowPlayerSize : token.allowPlayerSize,
-      ...(isGM ? {
-        isHidden,
-        isLocked,
-        gmNotes,
-      } : {}),
+      ...(isGM
+          ? {
+            isHidden,
+            isLocked,
+            gmNotes,
+          }
+          : {}),
     };
 
     updateToken(token.id, updated);
-    wsService.send("TOKEN_MOVE", { tokenId: String(token.id), ...updated });
+    wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", { tokenId: String(token.id), ...updated });
     closeEditor();
   };
 
   const handleDelete = () => {
     if (!isGM) return;
     removeToken(token.id);
-    wsService.send("TOKEN_MOVE", { tokenId: String(token.id), isDeleted: true });
+    wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", { tokenId: String(token.id), isDeleted: true });
     closeEditor();
   };
 
@@ -347,9 +333,10 @@ export const TokenEditorModal = ({ roomData }) => {
           titleFa={isProp ? "Object Properties" : "Token Properties & Conditions"}
           maxWidth="lg"
       >
-        <div className="space-y-4 max-h-[82vh] overflow-y-auto px-1 font-fa text-zinc-200 select-none custom-scrollbar" dir="rtl">
-
-          {/* ۱. مشخصات اصلی و آواتار کاراکتر */}
+        <div
+            className="space-y-4 max-h-[82vh] overflow-y-auto px-1 font-fa text-zinc-200 select-none custom-scrollbar"
+            dir="rtl"
+        >
           <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-3.5 backdrop-blur-md">
             <div className="flex items-center gap-4">
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-zinc-900 shrink-0 shadow-inner flex items-center justify-center group">
@@ -420,7 +407,6 @@ export const TokenEditorModal = ({ roomData }) => {
                 </div>
             )}
 
-            {/* گالری آیکون‌های آماده */}
             {showPresetPicker && (
                 <div className="p-3.5 bg-zinc-900/95 rounded-2xl border border-amber-500/50 space-y-2.5 animate-in fade-in zoom-in-95 shadow-xl">
                   <div className="flex items-center justify-between text-xs text-amber-400 font-bold border-b border-zinc-800 pb-2">
@@ -454,7 +440,9 @@ export const TokenEditorModal = ({ roomData }) => {
                               className="w-11 h-11 rounded-full object-cover bg-zinc-800 shadow"
                               loading="lazy"
                           />
-                          <span className="text-[10px] text-zinc-300 truncate w-full text-center font-medium">{preset.label}</span>
+                          <span className="text-[10px] text-zinc-300 truncate w-full text-center font-medium">
+                      {preset.label}
+                    </span>
                         </button>
                     ))}
                   </div>
@@ -474,7 +462,6 @@ export const TokenEditorModal = ({ roomData }) => {
             </div>
           </div>
 
-          {/* ۲. بخش نوار سلامتی (HP) */}
           {!isProp && (isGM || allowPlayerHp) && (
               <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-3.5">
                 <div className="flex items-center justify-between gap-2 border-b border-zinc-900 pb-2.5">
@@ -546,7 +533,11 @@ export const TokenEditorModal = ({ roomData }) => {
                 <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 p-0.5">
                   <div
                       className={`h-full rounded-full transition-all duration-300 ${
-                          hpPercentage > 50 ? "bg-emerald-500 shadow-sm shadow-emerald-500/50" : hpPercentage > 20 ? "bg-amber-500" : "bg-rose-500"
+                          hpPercentage > 50
+                              ? "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                              : hpPercentage > 20
+                                  ? "bg-amber-500"
+                                  : "bg-rose-500"
                       }`}
                       style={{ width: `${Math.min(100, Math.max(0, hpPercentage))}%` }}
                   />
@@ -578,7 +569,6 @@ export const TokenEditorModal = ({ roomData }) => {
               </div>
           )}
 
-          {/* ۳. وضعیت‌ها و شرایط (Conditions) */}
           {!isProp && (isGM || allowPlayerConditions) && (
               <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-3.5">
                 <div className="flex flex-col gap-2.5 border-b border-zinc-900 pb-3">
@@ -706,7 +696,9 @@ export const TokenEditorModal = ({ roomData }) => {
                                 <div className="flex flex-col truncate">
                                   <span className="text-xs truncate font-medium">{condDef.nameFa}</span>
                                   {condDef.nameEn && (
-                                      <span className="text-[10px] text-zinc-500 font-mono truncate">{condDef.nameEn}</span>
+                                      <span className="text-[10px] text-zinc-500 font-mono truncate">
+                              {condDef.nameEn}
+                            </span>
                                   )}
                                 </div>
                               </div>
@@ -736,7 +728,6 @@ export const TokenEditorModal = ({ roomData }) => {
               </div>
           )}
 
-          {/* ۴. زره و اندازه در گرید */}
           <div className="grid grid-cols-2 gap-3">
             {!isProp && (isGM || allowPlayerAc) && (
                 <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-2.5">
@@ -751,7 +742,9 @@ export const TokenEditorModal = ({ roomData }) => {
                               type="button"
                               onClick={() => setAllowPlayerAc(!allowPlayerAc)}
                               className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
-                                  allowPlayerAc ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                                  allowPlayerAc
+                                      ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                      : "bg-zinc-900 text-zinc-500 border border-zinc-800"
                               }`}
                           >
                             <Key className="w-2.5 h-2.5 text-amber-400" />
@@ -761,7 +754,9 @@ export const TokenEditorModal = ({ roomData }) => {
                               type="button"
                               onClick={() => setShowAc(!showAc)}
                               className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
-                                  showAc ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                                  showAc
+                                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                      : "bg-zinc-900 text-zinc-500 border border-zinc-800"
                               }`}
                           >
                             <Eye className="w-2.5 h-2.5 text-blue-400" />
@@ -780,7 +775,11 @@ export const TokenEditorModal = ({ roomData }) => {
             )}
 
             {(isGM || allowPlayerSize) && (
-                <div className={`p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-2.5 ${isProp || (!allowPlayerAc && !isGM) ? "col-span-2" : ""}`}>
+                <div
+                    className={`p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-2.5 ${
+                        isProp || (!allowPlayerAc && !isGM) ? "col-span-2" : ""
+                    }`}
+                >
                   <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
                     <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                       <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
@@ -791,7 +790,9 @@ export const TokenEditorModal = ({ roomData }) => {
                             type="button"
                             onClick={() => setAllowPlayerSize(!allowPlayerSize)}
                             className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
-                                allowPlayerSize ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                                allowPlayerSize
+                                    ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                    : "bg-zinc-900 text-zinc-500 border border-zinc-800"
                             }`}
                         >
                           <Key className="w-2.5 h-2.5 text-amber-400" />
@@ -814,7 +815,6 @@ export const TokenEditorModal = ({ roomData }) => {
             )}
           </div>
 
-          {/* ۵. شرح و یادداشت اختصاصی GM با تریگر نمایش روی توکن */}
           {isGM && (
               <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-2.5">
                 <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
@@ -848,7 +848,6 @@ export const TokenEditorModal = ({ roomData }) => {
               </div>
           )}
 
-          {/* فوتر مدال */}
           <div className="pt-3.5 flex items-center justify-between border-t border-zinc-800/80">
             {isGM && (
                 <button
@@ -873,4 +872,6 @@ export const TokenEditorModal = ({ roomData }) => {
         </div>
       </Modal>
   );
-};
+});
+
+TokenEditorModal.displayName = "TokenEditorModal";

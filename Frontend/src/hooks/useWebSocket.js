@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { wsService } from "../services/websocket.service";
 import { useSceneStore } from "../store/scene.store";
 import { useCanvasStore } from "../store/canvas.store";
 import { useWebSocketStore } from "../store/websocket.store";
+import { WS_EVENTS } from "../constants/wsEvents.js";
 
 export function useWebSocket(roomId, onMessage = null) {
   const status = useWebSocketStore((state) => state.status);
@@ -24,24 +25,24 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۲. توکن‌ها
-    const unsubToken = wsService.on("TOKEN_MOVE", (data) => {
+    // ۲. جابجایی اتمیک توکن
+    const unsubToken = wsService.on(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", (data) => {
       if (data) {
         useSceneStore.getState().syncTokenFromSocket(data);
       }
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۳. نقاشی نهایی
-    const unsubDraw = wsService.on("DRAWING_ADD", (data) => {
+    // ۳. افزودن اتمیک نقاشی
+    const unsubDraw = wsService.on(WS_EVENTS.DRAWING_ADDED || "DRAWING_ADD", (data) => {
       if (data) {
         useSceneStore.getState().addDrawing(data);
       }
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۳.۱. حذف نقاشی
-    const unsubDrawDelete = wsService.on("DRAWING_DELETE", (data) => {
+    // ۳.۱. حذف اتمیک نقاشی
+    const unsubDrawDelete = wsService.on(WS_EVENTS.DRAWING_DELETED || "DRAWING_DELETE", (data) => {
       const targetId = data?.id || data?.drawingId || data?.clientDrawingId || data;
       if (targetId) {
         useSceneStore.getState().removeDrawing(targetId);
@@ -49,7 +50,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۳.۲. رسم زنده نقاشی
+    // ۳.۲. جریان زنده رسم خطوط
     const unsubDrawLive = wsService.on("DRAWING_LIVE", (data) => {
       if (data) {
         useSceneStore.getState().setRemoteLiveDrawing(data);
@@ -60,7 +61,7 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveDrawing(null);
     });
 
-    // ۳.۳. نشانگر لیزری بلادرنگ
+    // ۳.۳. نشانگر لیزری
     const unsubLaserMove = wsService.on("LASER_MOVE", (data) => {
       if (data && data.x !== undefined && data.y !== undefined) {
         useCanvasStore.getState().updateRemoteLaser(data);
@@ -73,7 +74,7 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۳.۴. خط‌کش اندازه‌گیری بلادرنگ
+    // ۳.۴. خط‌کش اندازه‌گیری
     const unsubRulerUpdate = wsService.on("RULER_UPDATE", (data) => {
       if (data && data.startX !== undefined && data.currentX !== undefined) {
         useCanvasStore.getState().updateRemoteMeasurement(data);
@@ -86,18 +87,23 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۴. تغییر بلادرنگ پرمیشن‌های ابزارها
+    // ۴. تغییر دسترسی‌ها
     const unsubPerm = wsService.on("PERMISSION_UPDATED", (data) => {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
     });
 
-    // ۵. مه جنگ (Fog of War)
-    const unsubFog = wsService.on("FOG_UPDATE", (data) => {
+    // ۵. به‌روزرسانی مه جنگ
+    const unsubFog = wsService.on(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", (data) => {
       if (!data) return;
       const store = useSceneStore.getState();
       const current = store.currentScene;
 
-      if (data.mode === "fill_all" || data.type === "fill_all" || data.type === "FILL_ALL" || data.fogFilled === true) {
+      if (
+          data.mode === "fill_all" ||
+          data.type === "fill_all" ||
+          data.type === "FILL_ALL" ||
+          data.fogFilled === true
+      ) {
         if (current) {
           useSceneStore.setState({
             currentScene: { ...current, fogFilled: true, fogEnabled: true, fogShapes: [] },
@@ -119,18 +125,18 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveFog(null);
     });
 
-    const unsubFogClear = wsService.on("FOG_CLEAR", () => {
+    const unsubFogClear = wsService.on(WS_EVENTS.DRAWINGS_CLEARED || "FOG_CLEAR", () => {
       useSceneStore.getState().clearFog();
     });
 
-    // ۵.۱. آشکارسازی سراسری بلادرنگ مه
+    // ۵.۱. آشکارسازی سراسری مه
     const unsubFogGlobalReveal = wsService.on("FOG_GLOBAL_REVEAL", (data) => {
       if (data && data.isRevealed !== undefined) {
         useCanvasStore.getState().setFogGlobalReveal(Boolean(data.isRevealed));
       }
     });
 
-    // ۵.۲. اعمال بلادرنگ تنظیمات گرید و اتاق
+    // ۵.۲. تنظیمات گرید و اتاق
     const handleSettingsPayload = (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -158,7 +164,7 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     };
 
-    const unsubSettings = wsService.on("SETTINGS_UPDATE", handleSettingsPayload);
+    const unsubSettings = wsService.on(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", handleSettingsPayload);
 
     const unsubGrid = wsService.on("SCENE_GRID_UPDATE", (payload) => {
       if (!payload) return;
@@ -171,8 +177,8 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۵.۳. همگام‌سازی بلادرنگ زاویه دید و زوم دوربین (Sync View)
-    const unsubViewportSync = wsService.on("VIEWPORT_SYNC", (payload) => {
+    // ۵.۳. همگام‌سازی دوربین
+    const unsubViewportSync = wsService.on(WS_EVENTS.VIEWPORT_SYNC || "VIEWPORT_SYNC", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
       if (data && data.zoom !== undefined && data.stageX !== undefined && data.stageY !== undefined) {
@@ -190,7 +196,7 @@ export function useWebSocket(roomId, onMessage = null) {
     });
 
     // ۷. تغییر صحنه
-    const unsubScene = wsService.on("SCENE_CHANGE", async (data) => {
+    const unsubScene = wsService.on(WS_EVENTS.SCENE_ACTIVATED || "SCENE_CHANGE", async (data) => {
       if (data && data.sceneId) {
         const store = useSceneStore.getState();
         const exists = store.scenes.some((s) => s.id === data.sceneId);
@@ -219,8 +225,8 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۹. به‌روزرسانی مپ صحنه
-    const unsubSceneUpdate = wsService.on("SCENE_UPDATE", (data) => {
+    // ۹. به‌روزرسانی صحنه
+    const unsubSceneUpdate = wsService.on(WS_EVENTS.SCENE_UPDATED || "SCENE_UPDATE", (data) => {
       if (data && data.sceneId) {
         const nextMapUrl = data.mapUrl || data.assetUrl || "";
         useSceneStore.setState((state) => {
@@ -247,7 +253,10 @@ export function useWebSocket(roomId, onMessage = null) {
       if (data && data.sceneId && data.name) {
         useSceneStore.setState((state) => ({
           scenes: state.scenes.map((s) => (s.id === data.sceneId ? { ...s, name: data.name } : s)),
-          currentScene: state.currentScene?.id === data.sceneId ? { ...state.currentScene, name: data.name } : state.currentScene,
+          currentScene:
+              state.currentScene?.id === data.sceneId
+                  ? { ...state.currentScene, name: data.name }
+                  : state.currentScene,
         }));
       }
       if (onMessageRef.current) onMessageRef.current(data);
@@ -282,9 +291,9 @@ export function useWebSocket(roomId, onMessage = null) {
     };
   }, [roomId]);
 
-  const sendEvent = (type, data) => {
+  const sendEvent = useCallback((type, data) => {
     wsService.send(type, data);
-  };
+  }, []);
 
   return {
     status,
