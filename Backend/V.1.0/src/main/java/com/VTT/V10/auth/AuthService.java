@@ -5,6 +5,7 @@ import com.VTT.V10.auth.dto.GoogleAuthRequest;
 import com.VTT.V10.auth.dto.LoginRequest;
 import com.VTT.V10.auth.dto.RegisterRequest;
 import com.VTT.V10.auth.dto.UserDto;
+import com.VTT.V10.room.RoomMemberRepository;
 import com.VTT.V10.user.User;
 import com.VTT.V10.user.UserRepository;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -31,6 +33,7 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final RoomMemberRepository roomMemberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -47,7 +50,7 @@ public class AuthService {
                     new NetHttpTransport(),
                     GsonFactory.getDefaultInstance()
             )
-                    .setAudience(Collections.singletonList(googleClientId))
+                    .setAudience(Collections.singletonList(googleClientId.trim()))
                     .build();
             log.info("Google Token Verifier initialized successfully with audience verification.");
         } else {
@@ -112,10 +115,15 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * منطق هوشمند Find or Create برای ورود و ثبت‌نام با گوگل:
+     * ۱. اگر کاربر از قبل با این ایمیل وجود داشته باشد -> لاگین با همان اکانت (بدون ساخت اکانت تکراری)
+     * ۲. اگر کاربر وجود نداشته باشد -> ایجاد اکانت جدید و ورود خودکار
+     */
     @Transactional
     public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
         if (verifier == null) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "ورود با گوگل در حال حاضر فعال نیست (Client ID تنظیم نشده است)");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "ورود با گوگل در حال حاضر فعال نیست (Client ID در سرور تنظیم نشده است)");
         }
 
         if (request.getIdToken() == null || request.getIdToken().isBlank()) {
@@ -135,12 +143,44 @@ public class AuthService {
             String pictureUrl = (String) payload.get("picture");
             String googleSub = payload.getSubject();
 
-            User user = userRepository.findByEmail(email).orElseGet(() -> {
-                String baseUsername = (name != null ? name.replaceAll("\\s+", "_").toLowerCase() : email.split("@")[0]);
-                String generatedUsername = baseUsername;
+            Optional<User> existingUserOpt = userRepository.findByEmail(email);
+            User user;
 
+            if (existingUserOpt.isPresent()) {
+                // کاربر از قبل وجود دارد -> ورود با اکانت قبلی و بروزرسانی پیوند گوگل
+                user = existingUserOpt.get();
+                boolean shouldUpdate = false;
+
+                if (user.getGoogleId() == null) {
+                    user.setGoogleId(googleSub);
+                    shouldUpdate = true;
+                }
+                if (!user.isEmailVerified()) {
+                    user.setEmailVerified(true);
+                    shouldUpdate = true;
+                }
+                if (user.getAvatarUrl() == null && pictureUrl != null) {
+                    user.setAvatarUrl(pictureUrl);
+                    shouldUpdate = true;
+                }
+
+                if (shouldUpdate) {
+                    user = userRepository.save(user);
+                }
+                log.info("Google Sign-In: Existing account found for email: [{}]. Logged in successfully.", email);
+            } else {
+                // کاربر وجود ندارد -> ثبت‌نام اکانت جدید
+                String baseUsername = (name != null ? name.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase() : email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "_"));
+                if (baseUsername.length() < 3) {
+                    baseUsername = "user_" + baseUsername;
+                }
+                if (baseUsername.length() > 40) {
+                    baseUsername = baseUsername.substring(0, 40);
+                }
+
+                String generatedUsername = baseUsername;
                 int attempts = 0;
-                while (userRepository.existsByUsername(generatedUsername) && attempts < 5) {
+                while (userRepository.existsByUsername(generatedUsername) && attempts < 10) {
                     generatedUsername = baseUsername + "_" + (100 + SECURE_RANDOM.nextInt(900));
                     attempts++;
                 }
@@ -159,13 +199,8 @@ public class AuthService {
                         .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                         .build();
 
-                return userRepository.save(newUser);
-            });
-
-            // اگر کاربر قبلاً آواتار نداشته و گوگل عکس دارد، آپدیت شود
-            if (user.getAvatarUrl() == null && pictureUrl != null) {
-                user.setAvatarUrl(pictureUrl);
-                user = userRepository.save(user);
+                user = userRepository.save(newUser);
+                log.info("Google Sign-In: New account created for email: [{}], username: [{}].", email, generatedUsername);
             }
 
             String token = jwtService.generateToken(user);
@@ -188,6 +223,8 @@ public class AuthService {
     }
 
     private UserDto buildUserDto(User user) {
+        long rooms = roomMemberRepository.countByUserId(user.getId());
+
         return UserDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -195,6 +232,7 @@ public class AuthService {
                 .avatarUrl(user.getAvatarUrl())
                 .isEmailVerified(user.isEmailVerified())
                 .isPremium(user.isPremium())
+                .roomsCount(rooms)
                 .createdAt(user.getCreatedAt())
                 .build();
     }
