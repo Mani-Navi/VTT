@@ -79,7 +79,7 @@ public class SecurityConfig {
                 .filter(s -> !s.isBlank())
                 .toList();
 
-        config.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:3000", "http://localhost:5173") : origins);
+        config.setAllowedOrigins(origins.isEmpty() ? List.of("http://localhost:3000", "http://localhost:5173","https://vtt-pearl.vercel.app") : origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "Origin"));
         config.setAllowCredentials(true);

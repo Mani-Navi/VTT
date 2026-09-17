@@ -30,7 +30,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .toList();
 
         String[] originArray = origins.isEmpty()
-                ? new String[]{"http://localhost:3000", "http://localhost:5173"}
+                ? new String[]{"http://localhost:3000", "http://localhost:5173", "https://vtt-pearl.vercel.app"}
                 : origins.toArray(new String[0]);
 
         registry.addMapping("/**")
