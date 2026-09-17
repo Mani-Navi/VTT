@@ -61,9 +61,13 @@ public class RoomMember {
             this.isBanned = false;
         }
         if (this.roleTitle == null || this.roleTitle.isBlank()) {
-            this.roleTitle = (this.role == Role.ADMIN) ? "میزبان" : "بازیکن";
+            this.roleTitle = (this.role == Role.ADMIN || this.role == Role.GM) ? "میزبان" : "بازیکن";
         }
     }
 
-    public enum Role { ADMIN, PLAYER }
+    public enum Role {
+        ADMIN,
+        GM,
+        PLAYER
+    }
 }
