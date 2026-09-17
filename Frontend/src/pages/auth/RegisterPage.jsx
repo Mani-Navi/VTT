@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { RegisterForm } from "../../components/auth/RegisterForm";
+import { RegisterForm } from "../../components/auth/RegisterForm.jsx";
 import { useAuthStore } from "../../store/auth.store";
-import { Dices, Sparkles, ShieldCheck } from "lucide-react";
+import { Dices, Sparkles } from "lucide-react";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -21,17 +21,11 @@ export const RegisterPage = () => {
           className="h-screen w-full bg-[#090a0f] text-zinc-100 overflow-y-auto overflow-x-hidden font-fa select-none"
           dir="rtl"
       >
-        {/* هاله‌های نور ثابت در پس‌زمینه */}
         <div className="fixed -top-32 left-1/2 -translate-x-1/2 w-[36rem] h-[36rem] bg-amber-500/10 rounded-full blur-[130px] pointer-events-none" />
         <div className="fixed -bottom-32 left-1/4 w-[30rem] h-[30rem] bg-purple-600/5 rounded-full blur-[140px] pointer-events-none" />
 
-        {/* کانتینر با قابلیت سنتر و اسکرول آزاد در کل ارتفاع */}
         <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 sm:py-16">
-
-          {/* پنل اصلی دو ستونه */}
           <div className="w-full max-w-4xl bg-zinc-950/95 border border-zinc-800/90 rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-2xl grid grid-cols-1 lg:grid-cols-12 z-10 my-auto overflow-hidden">
-
-            {/* ستون راست (ویترین برندینگ Titipool) */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900 via-zinc-950 to-[#090a0f] border-l border-zinc-800/80 p-8 flex-col justify-between overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -72,7 +66,6 @@ export const RegisterPage = () => {
               </div>
             </div>
 
-            {/* ستون چپ (فرم ثبت‌نام با دسترسی کامل به تمامی فیلدها و دکمه) */}
             <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
               <div>
                 <div className="text-center mb-5">
@@ -100,10 +93,10 @@ export const RegisterPage = () => {
                 </Link>
               </div>
             </div>
-
           </div>
-
         </div>
       </div>
   );
 };
+
+export default RegisterPage;

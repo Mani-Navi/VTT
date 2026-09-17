@@ -17,7 +17,10 @@ export const useRoomStore = create((set) => ({
 
     updateRoomInStore: (updatedRoom) =>
         set((state) => ({
-            currentRoom: state.currentRoom?.id === updatedRoom.id ? { ...state.currentRoom, ...updatedRoom } : state.currentRoom,
+            currentRoom:
+                state.currentRoom?.id === updatedRoom.id
+                    ? { ...state.currentRoom, ...updatedRoom }
+                    : state.currentRoom,
             rooms: state.rooms.map((r) =>
                 r.id === updatedRoom.id ? { ...r, ...updatedRoom } : r
             ),

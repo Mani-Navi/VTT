@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import {
     Layers,
     Plus,
@@ -10,9 +10,10 @@ import {
 import { useSceneStore } from "../../store/scene.store";
 import { sceneApi } from "../../api/scene.api";
 import { wsService } from "../../services/websocket.service";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
 import { cn } from "../../utils/cn";
 
-export const SceneBar = ({ isGM = false, roomId = null }) => {
+export const SceneBar = memo(({ isGM = false, roomId = null }) => {
     const scenes = useSceneStore((state) => state.scenes);
     const currentScene = useSceneStore((state) => state.currentScene);
     const switchScene = useSceneStore((state) => state.switchScene);
@@ -23,7 +24,6 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
     const [newSceneName, setNewSceneName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // وضعیت ویرایش نام صحنه
     const [editingSceneId, setEditingSceneId] = useState(null);
     const [editingName, setEditingName] = useState("");
 
@@ -45,10 +45,12 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
             await loadScenes(roomId);
 
             if (created && created.id) {
-                wsService.send("SCENE_CHANGE", { sceneId: created.id });
+                wsService.send(WS_EVENTS.SCENE_ACTIVATED || "SCENE_CHANGE", { sceneId: created.id });
             }
         } catch (err) {
-            console.error("خطا در ایجاد صحنه:", err);
+            if (import.meta.env.DEV) {
+                console.error("خطا در ایجاد صحنه:", err);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -70,7 +72,9 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
                 activeSceneId: newActiveId,
             });
         } catch (err) {
-            console.error("خطا در حذف صحنه:", err);
+            if (import.meta.env.DEV) {
+                console.error("خطا در حذف صحنه:", err);
+            }
         }
     };
 
@@ -97,13 +101,11 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
             className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-3 py-1.5 bg-zinc-950/85 border border-zinc-800/90 rounded-2xl shadow-2xl shadow-black/70 backdrop-blur-xl font-fa select-none pointer-events-auto"
             dir="rtl"
         >
-            {/* نشان عنوان صحنه‌ها */}
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-zinc-300 text-xs font-semibold shrink-0">
                 <Layers className="w-4 h-4 text-amber-400" />
                 <span className="hidden sm:inline">صحنه‌ها</span>
             </div>
 
-            {/* لیست تب‌های صحنه‌ها */}
             <div className="flex items-center gap-1.5 max-w-[55vw] overflow-x-auto custom-scrollbar py-0.5 px-0.5">
                 {scenes.map((scene) => {
                     const isActive = currentScene?.id === scene.id;
@@ -155,11 +157,8 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
                             )}
                             title={isGM ? "برای سوییچ کلیک و برای ویرایش نام دابل‌کلیک کنید" : ""}
                         >
-                            <span className="truncate max-w-[150px] tracking-wide">
-                                {scene.name}
-                            </span>
+                            <span className="truncate max-w-[150px] tracking-wide">{scene.name}</span>
 
-                            {/* کنترلرهای هاور GM */}
                             {isGM && (
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-150 mr-0.5">
                                     <button
@@ -198,7 +197,6 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
                 })}
             </div>
 
-            {/* دکمه افزودن صحنه جدید */}
             {isGM && (
                 <div className="shrink-0">
                     {!isCreating ? (
@@ -212,7 +210,10 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
                             <span className="hidden md:inline">صحنه جدید</span>
                         </button>
                     ) : (
-                        <form onSubmit={handleCreateScene} className="flex items-center gap-1.5 bg-zinc-900 px-2 py-1 rounded-xl border border-amber-500/70 shadow-lg animate-in fade-in duration-150">
+                        <form
+                            onSubmit={handleCreateScene}
+                            className="flex items-center gap-1.5 bg-zinc-900 px-2 py-1 rounded-xl border border-amber-500/70 shadow-lg animate-in fade-in duration-150"
+                        >
                             <input
                                 type="text"
                                 value={newSceneName}
@@ -241,4 +242,6 @@ export const SceneBar = ({ isGM = false, roomId = null }) => {
             )}
         </div>
     );
-};
+});
+
+SceneBar.displayName = "SceneBar";

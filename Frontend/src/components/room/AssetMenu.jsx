@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   Image as ImageIcon,
   X,
@@ -19,18 +19,18 @@ import { TOKEN_PRESETS } from "../../constants/tokenPresets";
 import { Button } from "../ui/Button";
 import { cn } from "../../utils/cn";
 
-const SIZE_LIMITS = {
+const SIZE_LIMITS = Object.freeze({
   maps: { bytes: 15 * 1024 * 1024, label: "۱۵ مگابایت", type: "MAP" },
   tokens: { bytes: 3 * 1024 * 1024, label: "۳ مگابایت", type: "TOKEN" },
   props: { bytes: 4 * 1024 * 1024, label: "۴ مگابایت", type: "PROP" },
-};
+});
 
 const isValidUUID = (uuid) => {
   if (!uuid || typeof uuid !== "string") return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid.trim());
 };
 
-export const AssetMenu = ({ isGM = false, permissions = {} }) => {
+export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const isAssetOpen = useCanvasStore((state) => state.isAssetMenuOpen);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
 
@@ -54,21 +54,25 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
   const canAccessAssets = isGM || permissions?.canAssets === true;
   const canUploadMap = isGM || permissions?.canScene === true || permissions?.canMap === true;
 
-  useEffect(() => {
-    if (isAssetOpen && canAccessAssets) {
-      loadAssets();
-    }
-  }, [isAssetOpen, activeTab, canAccessAssets]);
-
-  const loadAssets = async () => {
+  const loadAssets = useCallback(async (isMounted) => {
     try {
       const typeParam = SIZE_LIMITS[activeTab]?.type || "TOKEN";
       const data = await assetApi.getAssets(typeParam);
-      setUserAssets(data || []);
+      if (isMounted) setUserAssets(data || []);
     } catch {
-      setUserAssets([]);
+      if (isMounted) setUserAssets([]);
     }
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isAssetOpen && canAccessAssets) {
+      loadAssets(isMounted);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAssetOpen, activeTab, canAccessAssets, loadAssets]);
 
   if (!isAssetOpen) return null;
 
@@ -98,7 +102,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     );
   }
 
-  // فقط ثبت نقشه و بستن منو (MapLayer خودکار تصویر را لود و دوربین را دقیق فیت می‌کند)
   const handleSelectMap = async (rawMapUrl, assetId = null) => {
     if (!canUploadMap) return;
 
@@ -158,7 +161,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
         await handleSelectMap(uploaded.fileUrl, uploaded.id);
       } else {
         handleAddToken(uploaded.fileUrl, uploaded.name, uploaded);
-        loadAssets();
+        loadAssets(true);
       }
     } catch (err) {
       setUploadError(err.response?.data?.message || "خطا در آپلود فایل. لطفاً مجدداً امتحان کنید.");
@@ -178,7 +181,8 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     try {
       const currentLimit = SIZE_LIMITS[activeTab];
       const name =
-          assetNameInput.trim() || (activeTab === "maps" ? "نقشه اینترنتی" : activeTab === "props" ? "شئ اینترنتی" : "توکن اینترنتی");
+          assetNameInput.trim() ||
+          (activeTab === "maps" ? "نقشه اینترنتی" : activeTab === "props" ? "شئ اینترنتی" : "توکن اینترنتی");
       const created = await assetApi.createAssetFromUrl(assetUrlInput.trim(), name, currentLimit.type);
 
       setAssetUrlInput("");
@@ -189,7 +193,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
         await handleSelectMap(created.fileUrl, created.id);
       } else {
         handleAddToken(created.fileUrl, created.name, created);
-        loadAssets();
+        loadAssets(true);
       }
     } catch (err) {
       setUploadError(err.response?.data?.message || "خطا در افزودن منبع از طریق لینک.");
@@ -202,7 +206,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
     e.stopPropagation();
     try {
       await assetApi.deleteAsset(assetId);
-      loadAssets();
+      loadAssets(true);
     } catch {
       setUploadError("خطا در حذف منبع.");
     }
@@ -502,7 +506,7 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
                         <button
                             type="button"
                             onClick={(e) => handleDeleteAsset(e, asset.id)}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             title="حذف"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -515,4 +519,6 @@ export const AssetMenu = ({ isGM = false, permissions = {} }) => {
         </div>
       </div>
   );
-};
+});
+
+AssetMenu.displayName = "AssetMenu";

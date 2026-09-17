@@ -1,14 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClipboard } from "../../hooks/useClipboard";
-import { Users, Clock, Copy, Check, Trash2, ArrowRight, Lock, Scroll, Crown, Swords, Link2, Settings2, LogOut } from "lucide-react";
+import {
+  Users,
+  Clock,
+  Copy,
+  Check,
+  Trash2,
+  ArrowRight,
+  Lock,
+  Scroll,
+  Crown,
+  Swords,
+  Link2,
+  Settings2,
+  LogOut,
+} from "lucide-react";
 import { Badge } from "../ui/Badge.jsx";
 import { Button } from "../ui/Button.jsx";
 
-export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave }) => {
+export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestLeave }) => {
   const navigate = useNavigate();
   const { copy, copied } = useClipboard();
   const [linkCopied, setLinkCopied] = useState(false);
+  const linkTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (linkTimerRef.current) {
+        clearTimeout(linkTimerRef.current);
+      }
+    };
+  }, []);
 
   const getDaysLeft = (expiresAt) => {
     if (!expiresAt) return 30;
@@ -24,7 +47,10 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
     const inviteUrl = `${window.location.origin}/dashboard?join=${room.code}`;
     navigator.clipboard.writeText(inviteUrl);
     setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    if (linkTimerRef.current) {
+      clearTimeout(linkTimerRef.current);
+    }
+    linkTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
   };
 
   return (
@@ -46,7 +72,6 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
         )}
 
         <div>
-          {/* هدر کارت: عنوان + برچسب GM / Player */}
           <div className="flex items-start justify-between gap-3 mb-2.5">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1">
@@ -57,12 +82,18 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
                   {room.name}
                 </h3>
                 {room.isProtected && (
-                    <span className="p-1 rounded-md bg-amber-500/10 text-amber-400 shrink-0" title="اتاق دارای رمز عبور است">
+                    <span
+                        className="p-1 rounded-md bg-amber-500/10 text-amber-400 shrink-0"
+                        title="اتاق دارای رمز عبور است"
+                    >
                   <Lock className="w-3.5 h-3.5" />
                 </span>
                 )}
                 {room.type === "OFFICIAL" && (
-                    <span className="p-1 rounded-md bg-amber-500/10 text-amber-500 shrink-0" title="قالب و سناریوی آماده Titipool">
+                    <span
+                        className="p-1 rounded-md bg-amber-500/10 text-amber-500 shrink-0"
+                        title="قالب و سناریوی آماده Titipool"
+                    >
                   <Scroll className="w-3.5 h-3.5" />
                 </span>
                 )}
@@ -81,12 +112,15 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
             </div>
 
             <Badge variant={isGM ? "gm" : "player"} className="shrink-0 font-semibold gap-1">
-              {isGM ? <Crown className="w-3.5 h-3.5 text-amber-400" /> : <Swords className="w-3.5 h-3.5 text-blue-400" />}
+              {isGM ? (
+                  <Crown className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                  <Swords className="w-3.5 h-3.5 text-blue-400" />
+              )}
               {isGM ? "دانجن‌مستر" : "بازیکن"}
             </Badge>
           </div>
 
-          {/* کد دعوت و کپی لینک مستقیم */}
           <div className="flex items-center gap-2 my-3.5">
             <button
                 type="button"
@@ -132,7 +166,6 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
           </div>
         </div>
 
-        {/* فوتر: اکشن‌ها */}
         <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-zinc-400 font-medium">
@@ -147,7 +180,6 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* دکمه‌های مخصوص GM */}
             {isGM && (
                 <>
                   <button
@@ -169,7 +201,6 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
                 </>
             )}
 
-            {/* دکمه مخصوص بازیکن: خروج از اتاق */}
             {!isGM && !isOptimistic && (
                 <button
                     type="button"
@@ -194,4 +225,6 @@ export const RoomCard = ({ room, onRequestDelete, onRequestEdit, onRequestLeave 
         </div>
       </div>
   );
-};
+});
+
+RoomCard.displayName = "RoomCard";

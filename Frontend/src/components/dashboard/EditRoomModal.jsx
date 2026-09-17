@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,7 +16,7 @@ const editRoomSchema = z.object({
     password: z.string().max(30, "رمز عبور حداکثر ۳۰ کاراکتر است").optional(),
 });
 
-export const EditRoomModal = ({ isOpen, onClose, onUpdate, room }) => {
+export const EditRoomModal = memo(({ isOpen, onClose, onUpdate, room }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [serverError, setServerError] = useState("");
 
@@ -84,9 +84,7 @@ export const EditRoomModal = ({ isOpen, onClose, onUpdate, room }) => {
                         <label className="text-xs font-semibold text-zinc-300">
                             نام ماجرا <span className="text-amber-400">*</span>
                         </label>
-                        <span className="text-[10px] text-zinc-500 font-mono">
-              {nameValue.length}/40
-            </span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{nameValue.length}/40</span>
                     </div>
                     <Input
                         placeholder="نام ماجرا..."
@@ -102,9 +100,7 @@ export const EditRoomModal = ({ isOpen, onClose, onUpdate, room }) => {
                         <label className="text-xs font-semibold text-zinc-300">
                             توضیحات و خلاصه ماجرا (اختیاری)
                         </label>
-                        <span className="text-[10px] text-zinc-500 font-mono">
-              {descValue.length}/200
-            </span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{descValue.length}/200</span>
                     </div>
                     <div className="relative">
             <textarea
@@ -118,7 +114,9 @@ export const EditRoomModal = ({ isOpen, onClose, onUpdate, room }) => {
                         <FileText className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 pointer-events-none" />
                     </div>
                     {errors.description && (
-                        <p className="text-[11px] text-rose-400 font-medium">{errors.description.message}</p>
+                        <p className="text-[11px] text-rose-400 font-medium">
+                            {errors.description.message}
+                        </p>
                     )}
                 </div>
 
@@ -157,4 +155,6 @@ export const EditRoomModal = ({ isOpen, onClose, onUpdate, room }) => {
             </form>
         </Modal>
     );
-};
+});
+
+EditRoomModal.displayName = "EditRoomModal";

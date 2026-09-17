@@ -4,12 +4,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 15000,
     headers: {
         "Content-Type": "application/json",
     },
 });
 
-// Request interceptor: خواندن توکن مستقیماً از localStorage
+// Request Interceptor: خواندن مستقیم توکن تازه از استوریج برای هر درخواست
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("vtt_jwt");
@@ -21,13 +22,15 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor: خروج و انتقال به صفحه لاگین در صورت خطای 401
+// Response Interceptor: پاکسازی نشست در صورت انقضا یا نامعتبر بودن ۴۰۱
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem("vtt_jwt");
-            window.location.href = "/login";
+            if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }

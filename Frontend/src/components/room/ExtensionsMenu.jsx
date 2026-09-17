@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { ListOrdered, X, SkipForward, Plus, Trash2, Send } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -7,7 +7,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { Button } from "../ui/Button";
 import { wsService } from "../../services/websocket.service";
 
-export const ExtensionsMenu = () => {
+export const ExtensionsMenu = memo(() => {
   const isExtOpen = useCanvasStore((state) => state.isExtensionsMenuOpen);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
 
@@ -55,7 +55,10 @@ export const ExtensionsMenu = () => {
   };
 
   return (
-      <div className="fixed top-16 left-6 z-40 w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-2xl shadow-2xl backdrop-blur-xl p-4 text-zinc-100 font-fa flex flex-col max-h-[85vh]" dir="rtl">
+      <div
+          className="fixed top-16 left-6 z-40 w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-2xl shadow-2xl backdrop-blur-xl p-4 text-zinc-100 font-fa flex flex-col max-h-[85vh]"
+          dir="rtl"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
@@ -69,7 +72,7 @@ export const ExtensionsMenu = () => {
           <button
               type="button"
               onClick={() => toggleMenu("extensions")}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -79,7 +82,7 @@ export const ExtensionsMenu = () => {
           <button
               type="button"
               onClick={() => setTab("initiative")}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                   tab === "initiative" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400"
               }`}
           >
@@ -88,7 +91,7 @@ export const ExtensionsMenu = () => {
           <button
               type="button"
               onClick={() => setTab("chat")}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                   tab === "chat" ? "bg-amber-500 text-zinc-950 font-bold" : "text-zinc-400"
               }`}
           >
@@ -110,7 +113,9 @@ export const ExtensionsMenu = () => {
                     <div
                         key={item.id}
                         className={`flex items-center justify-between p-2.5 rounded-xl border ${
-                            item.isCurrent ? "bg-amber-500/15 border-amber-500/60" : "bg-zinc-950/60 border-zinc-800"
+                            item.isCurrent
+                                ? "bg-amber-500/15 border-amber-500/60"
+                                : "bg-zinc-950/60 border-zinc-800"
                         }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -123,7 +128,7 @@ export const ExtensionsMenu = () => {
                           <button
                               type="button"
                               onClick={() => removeInitiativeItem(item.id)}
-                              className="p-1 text-zinc-500 hover:text-rose-400"
+                              className="p-1 text-zinc-500 hover:text-rose-400 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -159,7 +164,10 @@ export const ExtensionsMenu = () => {
             <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
               <div className="space-y-2 flex-1 overflow-y-auto pr-1">
                 {chatMessages.map((msg) => (
-                    <div key={msg.id} className="p-2 rounded-xl bg-zinc-950/70 border border-zinc-850 text-xs">
+                    <div
+                        key={msg.id}
+                        className="p-2 rounded-xl bg-zinc-950/70 border border-zinc-800 text-xs"
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-semibold text-amber-400">{msg.senderName}</span>
                         <span className="text-[10px] text-zinc-500 font-mono">{msg.timestamp}</span>
@@ -185,4 +193,6 @@ export const ExtensionsMenu = () => {
         )}
       </div>
   );
-};
+});
+
+ExtensionsMenu.displayName = "ExtensionsMenu";

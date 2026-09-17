@@ -13,6 +13,8 @@ import { RulerLayer } from "./RulerLayer.jsx";
 import { PingLayer } from "./PingLayer.jsx";
 import { wsService } from "../../services/websocket.service";
 import { drawingApi } from "../../api/drawing.api";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
+import { MIN_ZOOM, MAX_ZOOM } from "../../constants/canvas.js";
 import {
   ImagePlus,
   Lock,
@@ -23,7 +25,7 @@ import {
   Eye,
   UserCheck,
   Dices,
-  Scroll
+  Scroll,
 } from "lucide-react";
 
 const generateUUID = () => {
@@ -151,7 +153,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const mapWidth = currentMapDimensions.width || currentScene?.mapWidth || 2000;
   const mapHeight = currentMapDimensions.height || currentScene?.mapHeight || 1500;
 
-  // محاسبه موقعیت ماوس با احتساب حساسیت اسنپ اشکال
   const getPointerCanvasPos = useCallback(() => {
     const stage = stageRef.current;
     if (!stage) return { x: 0, y: 0 };
@@ -161,7 +162,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     let rawX = (pointer.x - stage.x()) / stage.scaleX();
     let rawY = (pointer.y - stage.y()) / stage.scaleY();
 
-    // اگر اسنپ فعال باشد، نقاط را به خطوط گرید نزدیک می‌کند
     const gridSize = currentScene?.grid?.size || 60;
     const snapThreshold = 18 * shapeSnapSensitivity;
 
@@ -184,7 +184,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
         removeDrawing(targetId);
 
-        wsService.send("DRAWING_DELETE", {
+        wsService.send(WS_EVENTS.DRAWING_DELETED || "DRAWING_DELETE", {
           id: targetId,
           drawingId: targetId,
           clientDrawingId: targetId,
@@ -194,7 +194,9 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         try {
           await drawingApi.deleteDrawing(targetId, sceneId);
         } catch (err) {
-          console.error("خطا در حذف دیتابیس نقاشی:", err);
+          if (import.meta.env.DEV) {
+            console.error("خطا در حذف دیتابیس نقاشی:", err);
+          }
         }
       },
       [removeDrawing, currentScene?.id]
@@ -205,7 +207,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     const textVal = inlineTextEditor.text ? inlineTextEditor.text.trim() : "";
 
     if (textVal) {
-      const uniqueId = inlineTextEditor.id || `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const uniqueId = inlineTextEditor.id || `draw-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
       let fontStyleStr = "normal";
       if (textIsBold && textIsItalic) fontStyleStr = "italic bold";
@@ -230,7 +232,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       };
 
       addDrawing(textPayload);
-      wsService.send("DRAWING_ADD", textPayload);
+      wsService.send(WS_EVENTS.DRAWING_ADDED || "DRAWING_ADD", textPayload);
     }
 
     isTextEditorOpenRef.current = false;
@@ -284,7 +286,18 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       }
       setPendingEmoji(null);
     }
-  }, [pendingEmoji, inlineTextEditor, dimensions, stageX, stageY, zoom, textFontFamily, textFontSize, textColor, setPendingEmoji]);
+  }, [
+    pendingEmoji,
+    inlineTextEditor,
+    dimensions,
+    stageX,
+    stageY,
+    zoom,
+    textFontFamily,
+    textFontSize,
+    textColor,
+    setPendingEmoji,
+  ]);
 
   useEffect(() => {
     const handleEscapeKey = (e) => {
@@ -310,343 +323,388 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     return () => window.removeEventListener("keydown", handleEscapeKey);
   }, [activeTool, endMeasurement, myIdentifier, inlineTextEditor]);
 
-  // هندلینگ هوشمند حالت‌های ورودی (MOUSE, TRACKPAD, AUTO) و ضریب حساسیت زوم
-  const handleWheel = (e) => {
-    e.evt.preventDefault();
-    const stage = stageRef.current;
-    if (!stage) return;
+  const handleWheel = useCallback(
+      (e) => {
+        e.evt.preventDefault();
+        const stage = stageRef.current;
+        if (!stage) return;
 
-    const isPinch = e.evt.ctrlKey;
-    const isTrackpadScroll = inputMode === "TRACKPAD" || (inputMode === "AUTO" && (Math.abs(e.evt.deltaX) > 0 || !Number.isInteger(e.evt.deltaY)));
+        const isPinch = e.evt.ctrlKey;
+        const isTrackpadScroll =
+            inputMode === "TRACKPAD" ||
+            (inputMode === "AUTO" &&
+                (Math.abs(e.evt.deltaX) > 0 || !Number.isInteger(e.evt.deltaY)));
 
-    // اگر حالت ترک‌پد باشد و کلید Ctrl فشرده نباشد، نقشه جابجا (Pan) می‌شود
-    if (isTrackpadScroll && !isPinch && inputMode !== "MOUSE") {
-      const nextX = stage.x() - e.evt.deltaX;
-      const nextY = stage.y() - e.evt.deltaY;
-      setStagePos(nextX, nextY);
-      return;
-    }
+        if (isTrackpadScroll && !isPinch && inputMode !== "MOUSE") {
+          const nextX = stage.x() - e.evt.deltaX;
+          const nextY = stage.y() - e.evt.deltaY;
+          setStagePos(nextX, nextY);
+          return;
+        }
 
-    // در غیر این صورت عمل زوم با احتساب ضریب حساسیت (zoomSensitivity) انجام می‌شود
-    const oldScale = stage.scaleX();
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+        const oldScale = stage.scaleX();
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
 
-    const baseFactor = 0.08 * zoomSensitivity;
-    const scaleBy = 1 + Math.max(0.02, Math.min(0.3, baseFactor));
-    const direction = e.evt.deltaY < 0 ? 1 : -1;
-    const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    const clampedScale = Math.min(Math.max(newScale, 0.2), 3.5);
+        const baseFactor = 0.08 * zoomSensitivity;
+        const scaleBy = 1 + Math.max(0.02, Math.min(0.3, baseFactor));
+        const direction = e.evt.deltaY < 0 ? 1 : -1;
+        const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+        const clampedScale = Math.min(Math.max(newScale, MIN_ZOOM), MAX_ZOOM);
 
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
+        const mousePointTo = {
+          x: (pointer.x - stage.x()) / oldScale,
+          y: (pointer.y - stage.y()) / oldScale,
+        };
 
-    const newPos = {
-      x: pointer.x - mousePointTo.x * clampedScale,
-      y: pointer.y - mousePointTo.y * clampedScale,
-    };
+        const newPos = {
+          x: pointer.x - mousePointTo.x * clampedScale,
+          y: pointer.y - mousePointTo.y * clampedScale,
+        };
 
-    setZoom(clampedScale);
-    setStagePos(newPos.x, newPos.y);
-  };
+        setZoom(clampedScale);
+        setStagePos(newPos.x, newPos.y);
+      },
+      [inputMode, zoomSensitivity, setZoom, setStagePos]
+  );
 
-  const handleMouseDown = (e) => {
-    if (!hasActiveMap) return;
+  const handleMouseDown = useCallback(
+      (e) => {
+        if (!hasActiveMap) return;
 
-    if (inlineTextEditor) {
-      finishInlineText();
-    }
+        if (inlineTextEditor) {
+          finishInlineText();
+        }
 
-    const isClickedOnEmpty = e.target === e.target.getStage() || e.target.name() === "map-background";
-    if (isClickedOnEmpty) {
-      clearSelection();
-    }
+        const isClickedOnEmpty =
+            e.target === e.target.getStage() || e.target.name() === "map-background";
+        if (isClickedOnEmpty) {
+          clearSelection();
+        }
 
-    if (isSelectMode || activeTool === TOOLS.PAN) {
-      return;
-    }
+        if (isSelectMode || activeTool === TOOLS.PAN) {
+          return;
+        }
 
-    const pos = getPointerCanvasPos();
-    if (pos.x < 0 || pos.x > mapWidth || pos.y < 0 || pos.y > mapHeight) return;
+        const pos = getPointerCanvasPos();
+        if (pos.x < 0 || pos.x > mapWidth || pos.y < 0 || pos.y > mapHeight) return;
 
-    if (isEraserActive) {
-      isInteracting.current = true;
-      return;
-    }
-
-    if (activeTool === TOOLS.TEXT) {
-      isTextEditorOpenRef.current = false;
-      setInlineTextEditor({
-        canvasX: pos.x,
-        canvasY: pos.y,
-        text: "",
-        fontFamily: textFontFamily,
-        fontSize: textFontSize,
-        fill: textColor,
-      });
-      return;
-    }
-
-    if (activeTool === TOOLS.RULER) {
-      if (e.evt.button === 0) {
-        if (!isInteracting.current) {
+        if (isEraserActive) {
           isInteracting.current = true;
-          startMeasurement(pos.x, pos.y);
-          wsService.send("RULER_UPDATE", {
-            startX: pos.x,
-            startY: pos.y,
-            currentX: pos.x,
-            currentY: pos.y,
-            waypoints: [],
-            userId: myIdentifier,
-            userName: user?.username || "Player",
-            userColor: isGM ? "#f59e0b" : "#38bdf8",
-            rulerType: rulerType,
-          });
-        } else {
-          addMeasurementWaypoint(pos.x, pos.y);
-          const currentMeas = useCanvasStore.getState().measurement;
-          wsService.send("RULER_UPDATE", {
-            ...(currentMeas || {}),
-            userId: myIdentifier,
-            userName: user?.username || "Player",
-            userColor: isGM ? "#f59e0b" : "#38bdf8",
-            rulerType: rulerType,
-          });
+          return;
         }
-      } else if (e.evt.button === 2) {
-        endMeasurement();
-        wsService.send("RULER_CLEAR", { userId: myIdentifier });
-        isInteracting.current = false;
-      }
-      return;
-    }
 
-    // چندضلعی نقاشی
-    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
-      if (e.evt.button === 2) {
-        setPolygonVertices([]);
-        setLiveDrawing(null);
-        liveDrawingRef.current = null;
-        return;
-      }
-
-      if (polygonVertices.length === 0) {
-        setPolygonVertices([pos.x, pos.y]);
-        const initPoly = {
-          type: DRAW_MODES.POLYGON,
-          points: [pos.x, pos.y, pos.x, pos.y],
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          fill: drawFillColor,
-          isGMLayer: isDrawGMLayer,
-        };
-        liveDrawingRef.current = initPoly;
-        setLiveDrawing(initPoly);
-      } else {
-        const startX = polygonVertices[0];
-        const startY = polygonVertices[1];
-        const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
-
-        if (distToStart < 25 && polygonVertices.length >= 6) {
-          const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          const finalPolygon = {
-            id: uniqueId,
-            clientDrawingId: uniqueId,
-            type: DRAW_MODES.POLYGON,
-            points: polygonVertices,
-            stroke: drawStrokeColor,
-            strokeWidth: drawStrokeWidth,
-            fill: drawFillColor,
-            isGMLayer: isDrawGMLayer,
-            sceneId: currentScene?.id,
-          };
-          addDrawing(finalPolygon);
-          wsService.send("DRAWING_ADD", finalPolygon);
-          setPolygonVertices([]);
-          setLiveDrawing(null);
-          liveDrawingRef.current = null;
-        } else {
-          const nextPoints = [...polygonVertices, pos.x, pos.y];
-          setPolygonVertices(nextPoints);
-          const currentPoly = {
-            type: DRAW_MODES.POLYGON,
-            points: [...nextPoints, pos.x, pos.y],
-            stroke: drawStrokeColor,
-            strokeWidth: drawStrokeWidth,
-            fill: drawFillColor,
-            isGMLayer: isDrawGMLayer,
-          };
-          liveDrawingRef.current = currentPoly;
-          setLiveDrawing(currentPoly);
-        }
-      }
-      return;
-    }
-
-    // چندضلعی مه جنگ
-    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON) {
-      if (e.evt.button === 2) {
-        setFogPolygonVertices([]);
-        setLiveFog(null);
-        liveFogRef.current = null;
-        return;
-      }
-
-      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
-      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
-
-      if (fogPolygonVertices.length === 0) {
-        setFogPolygonVertices([pos.x, pos.y]);
-        const initFogPoly = {
-          type: "polygon",
-          mode: modeName,
-          points: [pos.x, pos.y, pos.x, pos.y],
-          isCover: isCoverAction,
-        };
-        liveFogRef.current = initFogPoly;
-        setLiveFog(initFogPoly);
-      } else {
-        const startX = fogPolygonVertices[0];
-        const startY = fogPolygonVertices[1];
-        const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
-
-        if (distToStart < 25 && fogPolygonVertices.length >= 6) {
-          const uniqueFogId = generateUUID();
-          const finalFogShape = {
-            id: uniqueFogId,
-            type: "polygon",
-            mode: modeName,
-            points: fogPolygonVertices,
-            isCover: isCoverAction,
-            sceneId: currentScene?.id,
-          };
-
-          addFogShape(finalFogShape);
-          wsService.send("FOG_UPDATE", {
-            ...finalFogShape,
-            type: isCoverAction ? "HIDE" : "REVEAL",
-            points: finalFogShape,
+        if (activeTool === TOOLS.TEXT) {
+          isTextEditorOpenRef.current = false;
+          setInlineTextEditor({
+            canvasX: pos.x,
+            canvasY: pos.y,
+            text: "",
+            fontFamily: textFontFamily,
+            fontSize: textFontSize,
+            fill: textColor,
           });
-
-          setFogPolygonVertices([]);
-          setLiveFog(null);
-          liveFogRef.current = null;
-        } else {
-          const nextPoints = [...fogPolygonVertices, pos.x, pos.y];
-          setFogPolygonVertices(nextPoints);
-          const currentFogPoly = {
-            type: "polygon",
-            mode: modeName,
-            points: [...nextPoints, pos.x, pos.y],
-            isCover: isCoverAction,
-          };
-          liveFogRef.current = currentFogPoly;
-          setLiveFog(currentFogPoly);
+          return;
         }
-      }
-      return;
-    }
 
-    // سایر اشکال نقاشی
-    if (activeTool === TOOLS.DRAW) {
-      isInteracting.current = true;
-      setShapeStart(pos);
+        if (activeTool === TOOLS.RULER) {
+          if (e.evt.button === 0) {
+            if (!isInteracting.current) {
+              isInteracting.current = true;
+              startMeasurement(pos.x, pos.y);
+              wsService.send("RULER_UPDATE", {
+                startX: pos.x,
+                startY: pos.y,
+                currentX: pos.x,
+                currentY: pos.y,
+                waypoints: [],
+                userId: myIdentifier,
+                userName: user?.username || "Player",
+                userColor: isGM ? "#f59e0b" : "#38bdf8",
+                rulerType: rulerType,
+              });
+            } else {
+              addMeasurementWaypoint(pos.x, pos.y);
+              const currentMeas = useCanvasStore.getState().measurement;
+              wsService.send("RULER_UPDATE", {
+                ...(currentMeas || {}),
+                userId: myIdentifier,
+                userName: user?.username || "Player",
+                userColor: isGM ? "#f59e0b" : "#38bdf8",
+                rulerType: rulerType,
+              });
+            }
+          } else if (e.evt.button === 2) {
+            endMeasurement();
+            wsService.send("RULER_CLEAR", { userId: myIdentifier });
+            isInteracting.current = false;
+          }
+          return;
+        }
 
-      let initialDraw = null;
-      if (activeDrawShape === DRAW_MODES.MARKER || activeDrawShape === DRAW_MODES.BRUSH) {
-        const initialPoints = [pos.x, pos.y];
-        setCurrentLinePoints(initialPoints);
-        initialDraw = {
-          type: activeDrawShape,
-          points: initialPoints,
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          fill: activeDrawShape === DRAW_MODES.BRUSH ? drawFillColor : "transparent",
-          isGMLayer: isDrawGMLayer,
-        };
-      } else if (activeDrawShape === DRAW_MODES.RECTANGLE) {
-        initialDraw = {
-          type: DRAW_MODES.RECTANGLE,
-          x: pos.x,
-          y: pos.y,
-          width: 0,
-          height: 0,
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          fill: drawFillColor,
-          isGMLayer: isDrawGMLayer,
-        };
-      } else if (activeDrawShape === DRAW_MODES.CIRCLE || activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
-        initialDraw = {
-          type: activeDrawShape,
-          x: pos.x,
-          y: pos.y,
-          radius: 0,
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          fill: drawFillColor,
-          isGMLayer: isDrawGMLayer,
-        };
-      } else if (activeDrawShape === DRAW_MODES.LINE) {
-        initialDraw = {
-          type: DRAW_MODES.LINE,
-          points: [pos.x, pos.y, pos.x, pos.y],
-          stroke: drawStrokeColor,
-          strokeWidth: drawStrokeWidth,
-          isGMLayer: isDrawGMLayer,
-        };
-      }
+        if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON) {
+          if (e.evt.button === 2) {
+            setPolygonVertices([]);
+            setLiveDrawing(null);
+            liveDrawingRef.current = null;
+            return;
+          }
 
-      if (initialDraw) {
-        liveDrawingRef.current = initialDraw;
-        setLiveDrawing(initialDraw);
-        wsService.send("DRAWING_LIVE", { ...initialDraw, sceneId: currentScene?.id });
-      }
-      return;
-    }
+          if (polygonVertices.length === 0) {
+            setPolygonVertices([pos.x, pos.y]);
+            const initPoly = {
+              type: DRAW_MODES.POLYGON,
+              points: [pos.x, pos.y, pos.x, pos.y],
+              stroke: drawStrokeColor,
+              strokeWidth: drawStrokeWidth,
+              fill: drawFillColor,
+              isGMLayer: isDrawGMLayer,
+            };
+            liveDrawingRef.current = initPoly;
+            setLiveDrawing(initPoly);
+          } else {
+            const startX = polygonVertices[0];
+            const startY = polygonVertices[1];
+            const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
 
-    // اشکال هندسی مه جنگ
-    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape !== FOG_BRUSH_SHAPES.POLYGON) {
-      isInteracting.current = true;
-      setShapeStart(pos);
+            if (distToStart < 25 && polygonVertices.length >= 6) {
+              const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+              const finalPolygon = {
+                id: uniqueId,
+                clientDrawingId: uniqueId,
+                type: DRAW_MODES.POLYGON,
+                points: polygonVertices,
+                stroke: drawStrokeColor,
+                strokeWidth: drawStrokeWidth,
+                fill: drawFillColor,
+                isGMLayer: isDrawGMLayer,
+                sceneId: currentScene?.id,
+              };
+              addDrawing(finalPolygon);
+              wsService.send(WS_EVENTS.DRAWING_ADDED || "DRAWING_ADD", finalPolygon);
+              setPolygonVertices([]);
+              setLiveDrawing(null);
+              liveDrawingRef.current = null;
+            } else {
+              const nextPoints = [...polygonVertices, pos.x, pos.y];
+              setPolygonVertices(nextPoints);
+              const currentPoly = {
+                type: DRAW_MODES.POLYGON,
+                points: [...nextPoints, pos.x, pos.y],
+                stroke: drawStrokeColor,
+                strokeWidth: drawStrokeWidth,
+                fill: drawFillColor,
+                isGMLayer: isDrawGMLayer,
+              };
+              liveDrawingRef.current = currentPoly;
+              setLiveDrawing(currentPoly);
+            }
+          }
+          return;
+        }
 
-      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
-      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+        if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON) {
+          if (e.evt.button === 2) {
+            setFogPolygonVertices([]);
+            setLiveFog(null);
+            liveFogRef.current = null;
+            return;
+          }
 
-      let initialFog = null;
-      if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
-        initialFog = {
-          type: "rect",
-          mode: modeName,
-          x: pos.x,
-          y: pos.y,
-          width: 0,
-          height: 0,
-          isCover: isCoverAction,
-        };
-      } else if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE || fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE || fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON) {
-        initialFog = {
-          type: fogBrushShape,
-          mode: modeName,
-          x: pos.x,
-          y: pos.y,
-          radius: 0,
-          isCover: isCoverAction,
-        };
-      }
+          const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+          const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : isCoverAction ? "hide" : "reveal";
 
-      if (initialFog) {
-        liveFogRef.current = initialFog;
-        setLiveFog(initialFog);
-        wsService.send("FOG_LIVE", { ...initialFog, sceneId: currentScene?.id });
-      }
-    }
-  };
+          if (fogPolygonVertices.length === 0) {
+            setFogPolygonVertices([pos.x, pos.y]);
+            const initFogPoly = {
+              type: "polygon",
+              mode: modeName,
+              points: [pos.x, pos.y, pos.x, pos.y],
+              isCover: isCoverAction,
+            };
+            liveFogRef.current = initFogPoly;
+            setLiveFog(initFogPoly);
+          } else {
+            const startX = fogPolygonVertices[0];
+            const startY = fogPolygonVertices[1];
+            const distToStart = Math.hypot(pos.x - startX, pos.y - startY);
 
-  const handleMouseMove = () => {
+            if (distToStart < 25 && fogPolygonVertices.length >= 6) {
+              const uniqueFogId = generateUUID();
+              const finalFogShape = {
+                id: uniqueFogId,
+                type: "polygon",
+                mode: modeName,
+                points: fogPolygonVertices,
+                isCover: isCoverAction,
+                sceneId: currentScene?.id,
+              };
+
+              addFogShape(finalFogShape);
+              wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+                ...finalFogShape,
+                type: isCoverAction ? "HIDE" : "REVEAL",
+                points: finalFogShape,
+              });
+
+              setFogPolygonVertices([]);
+              setLiveFog(null);
+              liveFogRef.current = null;
+            } else {
+              const nextPoints = [...fogPolygonVertices, pos.x, pos.y];
+              setFogPolygonVertices(nextPoints);
+              const currentFogPoly = {
+                type: "polygon",
+                mode: modeName,
+                points: [...nextPoints, pos.x, pos.y],
+                isCover: isCoverAction,
+              };
+              liveFogRef.current = currentFogPoly;
+              setLiveFog(currentFogPoly);
+            }
+          }
+          return;
+        }
+
+        if (activeTool === TOOLS.DRAW) {
+          isInteracting.current = true;
+          setShapeStart(pos);
+
+          let initialDraw = null;
+          if (activeDrawShape === DRAW_MODES.MARKER || activeDrawShape === DRAW_MODES.BRUSH) {
+            const initialPoints = [pos.x, pos.y];
+            setCurrentLinePoints(initialPoints);
+            initialDraw = {
+              type: activeDrawShape,
+              points: initialPoints,
+              stroke: drawStrokeColor,
+              strokeWidth: drawStrokeWidth,
+              fill: activeDrawShape === DRAW_MODES.BRUSH ? drawFillColor : "transparent",
+              isGMLayer: isDrawGMLayer,
+            };
+          } else if (activeDrawShape === DRAW_MODES.RECTANGLE) {
+            initialDraw = {
+              type: DRAW_MODES.RECTANGLE,
+              x: pos.x,
+              y: pos.y,
+              width: 0,
+              height: 0,
+              stroke: drawStrokeColor,
+              strokeWidth: drawStrokeWidth,
+              fill: drawFillColor,
+              isGMLayer: isDrawGMLayer,
+            };
+          } else if (
+              activeDrawShape === DRAW_MODES.CIRCLE ||
+              activeDrawShape === DRAW_MODES.TRIANGLE ||
+              activeDrawShape === DRAW_MODES.HEXAGON
+          ) {
+            initialDraw = {
+              type: activeDrawShape,
+              x: pos.x,
+              y: pos.y,
+              radius: 0,
+              stroke: drawStrokeColor,
+              strokeWidth: drawStrokeWidth,
+              fill: drawFillColor,
+              isGMLayer: isDrawGMLayer,
+            };
+          } else if (activeDrawShape === DRAW_MODES.LINE) {
+            initialDraw = {
+              type: DRAW_MODES.LINE,
+              points: [pos.x, pos.y, pos.x, pos.y],
+              stroke: drawStrokeColor,
+              strokeWidth: drawStrokeWidth,
+              isGMLayer: isDrawGMLayer,
+            };
+          }
+
+          if (initialDraw) {
+            liveDrawingRef.current = initialDraw;
+            setLiveDrawing(initialDraw);
+            wsService.send("DRAWING_LIVE", { ...initialDraw, sceneId: currentScene?.id });
+          }
+          return;
+        }
+
+        if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape !== FOG_BRUSH_SHAPES.POLYGON) {
+          isInteracting.current = true;
+          setShapeStart(pos);
+
+          const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+          const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : isCoverAction ? "hide" : "reveal";
+
+          let initialFog = null;
+          if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
+            initialFog = {
+              type: "rect",
+              mode: modeName,
+              x: pos.x,
+              y: pos.y,
+              width: 0,
+              height: 0,
+              isCover: isCoverAction,
+            };
+          } else if (
+              fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE ||
+              fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE ||
+              fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON
+          ) {
+            initialFog = {
+              type: fogBrushShape,
+              mode: modeName,
+              x: pos.x,
+              y: pos.y,
+              radius: 0,
+              isCover: isCoverAction,
+            };
+          }
+
+          if (initialFog) {
+            liveFogRef.current = initialFog;
+            setLiveFog(initialFog);
+            wsService.send("FOG_LIVE", { ...initialFog, sceneId: currentScene?.id });
+          }
+        }
+      },
+      [
+        hasActiveMap,
+        inlineTextEditor,
+        finishInlineText,
+        clearSelection,
+        isSelectMode,
+        activeTool,
+        getPointerCanvasPos,
+        mapWidth,
+        mapHeight,
+        isEraserActive,
+        textFontFamily,
+        textFontSize,
+        textColor,
+        startMeasurement,
+        myIdentifier,
+        user?.username,
+        isGM,
+        rulerType,
+        addMeasurementWaypoint,
+        endMeasurement,
+        activeDrawShape,
+        polygonVertices,
+        drawStrokeColor,
+        drawStrokeWidth,
+        drawFillColor,
+        isDrawGMLayer,
+        currentScene?.id,
+        addDrawing,
+        canUseFog,
+        fogBrushShape,
+        fogAction,
+        fogPolygonVertices,
+        addFogShape,
+      ]
+  );
+
+  const handleMouseMove = useCallback(() => {
     if (!hasActiveMap) return;
     const pos = getPointerCanvasPos();
 
@@ -699,9 +757,14 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length > 0) {
+    if (
+        activeTool === TOOLS.FOG &&
+        canUseFog &&
+        fogBrushShape === FOG_BRUSH_SHAPES.POLYGON &&
+        fogPolygonVertices.length > 0
+    ) {
       const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
-      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : isCoverAction ? "hide" : "reveal";
       const fogPolyPreview = {
         type: "polygon",
         mode: modeName,
@@ -741,7 +804,11 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           fill: drawFillColor,
           isGMLayer: isDrawGMLayer,
         };
-      } else if (activeDrawShape === DRAW_MODES.CIRCLE || activeDrawShape === DRAW_MODES.TRIANGLE || activeDrawShape === DRAW_MODES.HEXAGON) {
+      } else if (
+          activeDrawShape === DRAW_MODES.CIRCLE ||
+          activeDrawShape === DRAW_MODES.TRIANGLE ||
+          activeDrawShape === DRAW_MODES.HEXAGON
+      ) {
         const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
         updatedDraw = {
           type: activeDrawShape,
@@ -777,7 +844,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (activeTool === TOOLS.FOG && canUseFog && shapeStart && fogBrushShape !== FOG_BRUSH_SHAPES.POLYGON) {
       const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
-      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
+      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : isCoverAction ? "hide" : "reveal";
       let updatedFog = null;
 
       if (fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE) {
@@ -790,7 +857,11 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           height: Math.abs(pos.y - shapeStart.y),
           isCover: isCoverAction,
         };
-      } else if (fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE || fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE || fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON) {
+      } else if (
+          fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE ||
+          fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE ||
+          fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON
+      ) {
         const radius = Math.hypot(pos.x - shapeStart.x, pos.y - shapeStart.y);
         updatedFog = {
           type: fogBrushShape,
@@ -813,9 +884,32 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         }
       }
     }
-  };
+  }, [
+    hasActiveMap,
+    getPointerCanvasPos,
+    activeTool,
+    setLaserPosition,
+    myIdentifier,
+    user?.username,
+    isGM,
+    updateMeasurement,
+    rulerType,
+    activeDrawShape,
+    polygonVertices,
+    drawStrokeColor,
+    drawStrokeWidth,
+    drawFillColor,
+    isDrawGMLayer,
+    canUseFog,
+    fogBrushShape,
+    fogPolygonVertices,
+    fogAction,
+    shapeStart,
+    currentLinePoints,
+    currentScene?.id,
+  ]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (activeTool === TOOLS.RULER) {
       return;
     }
@@ -833,7 +927,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     if (activeTool === TOOLS.DRAW && shapeStart) {
       const finalShape = liveDrawingRef.current;
       if (finalShape) {
-        const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
         const newDraw = {
           ...finalShape,
           id: uniqueId,
@@ -841,7 +935,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           sceneId: currentScene?.id,
         };
         addDrawing(newDraw);
-        wsService.send("DRAWING_ADD", newDraw);
+        wsService.send(WS_EVENTS.DRAWING_ADDED || "DRAWING_ADD", newDraw);
       }
 
       wsService.send("DRAWING_LIVE_END", { sceneId: currentScene?.id });
@@ -870,7 +964,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         };
 
         addFogShape(fogPayload);
-        wsService.send("FOG_UPDATE", fogPayload);
+        wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", fogPayload);
       }
 
       wsService.send("FOG_LIVE_END", { sceneId: currentScene?.id });
@@ -882,80 +976,123 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     isInteracting.current = false;
-  };
+  }, [
+    activeTool,
+    activeDrawShape,
+    fogBrushShape,
+    hasActiveMap,
+    shapeStart,
+    currentScene?.id,
+    addDrawing,
+    canUseFog,
+    addFogShape,
+  ]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (activeTool === TOOLS.LASER) {
       setLaserPosition(null);
       wsService.send("LASER_CLEAR", { userId: myIdentifier });
     }
-  };
+  }, [activeTool, setLaserPosition, myIdentifier]);
 
-  const handleDblClick = (e) => {
-    if (!hasActiveMap) return;
+  const handleDblClick = useCallback(
+      (e) => {
+        if (!hasActiveMap) return;
 
-    if (activeTool === TOOLS.DRAW && activeDrawShape === DRAW_MODES.POLYGON && polygonVertices.length >= 6) {
-      const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const finalPolygon = {
-        id: uniqueId,
-        clientDrawingId: uniqueId,
-        type: DRAW_MODES.POLYGON,
-        points: polygonVertices,
-        stroke: drawStrokeColor,
-        strokeWidth: drawStrokeWidth,
-        fill: drawFillColor,
-        isGMLayer: isDrawGMLayer,
-        sceneId: currentScene?.id,
-      };
-      addDrawing(finalPolygon);
-      wsService.send("DRAWING_ADD", finalPolygon);
-      setPolygonVertices([]);
-      setLiveDrawing(null);
-      liveDrawingRef.current = null;
-      return;
-    }
+        if (
+            activeTool === TOOLS.DRAW &&
+            activeDrawShape === DRAW_MODES.POLYGON &&
+            polygonVertices.length >= 6
+        ) {
+          const uniqueId = `draw-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+          const finalPolygon = {
+            id: uniqueId,
+            clientDrawingId: uniqueId,
+            type: DRAW_MODES.POLYGON,
+            points: polygonVertices,
+            stroke: drawStrokeColor,
+            strokeWidth: drawStrokeWidth,
+            fill: drawFillColor,
+            isGMLayer: isDrawGMLayer,
+            sceneId: currentScene?.id,
+          };
+          addDrawing(finalPolygon);
+          wsService.send(WS_EVENTS.DRAWING_ADDED || "DRAWING_ADD", finalPolygon);
+          setPolygonVertices([]);
+          setLiveDrawing(null);
+          liveDrawingRef.current = null;
+          return;
+        }
 
-    if (activeTool === TOOLS.FOG && canUseFog && fogBrushShape === FOG_BRUSH_SHAPES.POLYGON && fogPolygonVertices.length >= 6) {
-      const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
-      const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : (isCoverAction ? "hide" : "reveal");
-      const uniqueFogId = generateUUID();
+        if (
+            activeTool === TOOLS.FOG &&
+            canUseFog &&
+            fogBrushShape === FOG_BRUSH_SHAPES.POLYGON &&
+            fogPolygonVertices.length >= 6
+        ) {
+          const isCoverAction = fogAction === FOG_ACTIONS.HIDE;
+          const modeName = fogAction === FOG_ACTIONS.SLICE ? "slice" : isCoverAction ? "hide" : "reveal";
+          const uniqueFogId = generateUUID();
 
-      const finalFogShape = {
-        id: uniqueFogId,
-        type: "polygon",
-        mode: modeName,
-        points: fogPolygonVertices,
-        isCover: isCoverAction,
-        sceneId: currentScene?.id,
-      };
+          const finalFogShape = {
+            id: uniqueFogId,
+            type: "polygon",
+            mode: modeName,
+            points: fogPolygonVertices,
+            isCover: isCoverAction,
+            sceneId: currentScene?.id,
+          };
 
-      addFogShape(finalFogShape);
-      wsService.send("FOG_UPDATE", {
-        ...finalFogShape,
-        type: isCoverAction ? "HIDE" : "REVEAL",
-        points: finalFogShape,
-      });
+          addFogShape(finalFogShape);
+          wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+            ...finalFogShape,
+            type: isCoverAction ? "HIDE" : "REVEAL",
+            points: finalFogShape,
+          });
 
-      setFogPolygonVertices([]);
-      setLiveFog(null);
-      liveFogRef.current = null;
-      return;
-    }
+          setFogPolygonVertices([]);
+          setLiveFog(null);
+          liveFogRef.current = null;
+          return;
+        }
 
-    if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.PAN) return;
-    if (e.target.findAncestor?.("#tokens-layer-group")) return;
+        if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.PAN) return;
+        if (e.target.findAncestor?.("#tokens-layer-group")) return;
 
-    const pos = getPointerCanvasPos();
-    const pingData = {
-      userId: user?.id || "user-1",
-      userName: user?.username || "Player",
-      userColor: isGM ? "#f59e0b" : "#10b981",
-      x: pos.x,
-      y: pos.y,
-    };
-    addPing(pingData);
-    wsService.send("PING_CREATE", pingData);
-  };
+        const pos = getPointerCanvasPos();
+        const pingData = {
+          userId: user?.id || "user-1",
+          userName: user?.username || "Player",
+          userColor: isGM ? "#f59e0b" : "#10b981",
+          x: pos.x,
+          y: pos.y,
+        };
+        addPing(pingData);
+        wsService.send("PING_CREATE", pingData);
+      },
+      [
+        hasActiveMap,
+        activeTool,
+        activeDrawShape,
+        polygonVertices,
+        drawStrokeColor,
+        drawStrokeWidth,
+        drawFillColor,
+        isDrawGMLayer,
+        currentScene?.id,
+        addDrawing,
+        canUseFog,
+        fogBrushShape,
+        fogPolygonVertices,
+        fogAction,
+        addFogShape,
+        getPointerCanvasPos,
+        user?.id,
+        user?.username,
+        isGM,
+        addPing,
+      ]
+  );
 
   return (
       <div
@@ -973,8 +1110,9 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         <div
             className="absolute inset-0 opacity-[0.06] pointer-events-none"
             style={{
-              backgroundImage: "linear-gradient(#f59e0b 1px, transparent 1px), linear-gradient(to right, #f59e0b 1px, transparent 1px)",
-              backgroundSize: "60px 60px"
+              backgroundImage:
+                  "linear-gradient(#f59e0b 1px, transparent 1px), linear-gradient(to right, #f59e0b 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
             }}
         />
 
@@ -1016,10 +1154,18 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                     caretColor: inlineTextEditor.fill || textColor,
                     fontWeight: textIsBold ? "bold" : "normal",
                     fontStyle: textIsItalic ? "italic" : "normal",
-                    textShadow: textHasStroke ? `-1px -1px 0 ${textStrokeColor}, 1px -1px 0 ${textStrokeColor}, -1px 1px 0 ${textStrokeColor}, 1px 1px 0 ${textStrokeColor}` : "none",
+                    textShadow: textHasStroke
+                        ? `-1px -1px 0 ${textStrokeColor}, 1px -1px 0 ${textStrokeColor}, -1px 1px 0 ${textStrokeColor}, 1px 1px 0 ${textStrokeColor}`
+                        : "none",
                     lineHeight: "1.0",
                     height: "auto",
-                    width: `${Math.max(40, (inlineTextEditor.text.length + 2) * (inlineTextEditor.fontSize || textFontSize) * zoom * 0.75)}px`,
+                    width: `${Math.max(
+                        40,
+                        (inlineTextEditor.text.length + 2) *
+                        (inlineTextEditor.fontSize || textFontSize) *
+                        zoom *
+                        0.75
+                    )}px`,
                     background: "transparent",
                     border: "none",
                     outline: "none",
@@ -1036,7 +1182,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 dir="rtl"
             >
               <div className="relative z-10 max-w-2xl w-full bg-zinc-950/80 border border-zinc-800/80 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
-
                 <div className="flex flex-col items-center mb-6">
                   <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-xl shadow-amber-500/10">
                     <Compass className="w-8 h-8 animate-spin-slow stroke-[1.8]" />
@@ -1062,15 +1207,21 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                     <ul className="text-xs text-zinc-300 space-y-2 leading-relaxed">
                       <li className="flex items-start gap-2">
                         <MapIcon className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                        <span><strong>۱. آپلود نقشه:</strong> تصویر نبرد را از کتابخانه است‌ها بارگذاری کنید.</span>
+                        <span>
+                      <strong>۱. آپلود نقشه:</strong> تصویر نبرد را از کتابخانه است‌ها بارگذاری کنید.
+                    </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                        <span><strong>۲. تنظیمات گرید و صحنه:</strong> ابعاد و شرایط بازی را مشخص کنید.</span>
+                        <span>
+                      <strong>۲. تنظیمات گرید و صحنه:</strong> ابعاد و شرایط بازی را مشخص کنید.
+                    </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                        <span><strong>۳. مه جنگ و هیولاها:</strong> محیط را با مه پنهان و توکن‌ها را بچینید.</span>
+                        <span>
+                      <strong>۳. مه جنگ و هیولاها:</strong> محیط را با مه پنهان و توکن‌ها را بچینید.
+                    </span>
                       </li>
                     </ul>
                   </div>
@@ -1083,15 +1234,21 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                     <ul className="text-xs text-zinc-300 space-y-2 leading-relaxed">
                       <li className="flex items-start gap-2">
                         <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span><strong>۱. کاراکتر من:</strong> با دکمه پایین، توکن اختصاصی‌تان را روی مپ بیاورید.</span>
+                        <span>
+                      <strong>۱. کاراکتر من:</strong> با دکمه پایین، توکن اختصاصی‌تان را روی مپ بیاورید.
+                    </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span><strong>۲. وضعیت سلامت:</strong> مقدار HP، زره و شرایط را در صورت دسترسی ویرایش کنید.</span>
+                        <span>
+                      <strong>۲. وضعیت سلامت:</strong> مقدار HP، زره و شرایط را در صورت دسترسی ویرایش کنید.
+                    </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span><strong>۳. آماده‌باش:</strong> با بارگذاری نقشه توسط GM، سفر شما آغاز می‌شود!</span>
+                        <span>
+                      <strong>۳. آماده‌باش:</strong> با بارگذاری نقشه توسط GM، سفر شما آغاز می‌شود!
+                    </span>
                       </li>
                     </ul>
                   </div>
@@ -1113,7 +1270,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                       </div>
                   )}
                 </div>
-
               </div>
             </div>
         )}
@@ -1140,7 +1296,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
               }
             }}
         >
-          {/* لایه ۱: نقشه و گرید */}
+          {/* لایه ۱: نقشه و گرید - غیرفعال بودن قطعی لیسنر طبق سند */}
           <Layer id="layer-background" listening={false}>
             <MapLayer
                 mapUrl={activeMapUrl}
@@ -1149,17 +1305,13 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 onDimensionsChange={handleMapDimensions}
             />
             {currentScene?.grid && hasActiveMap && (
-                <GridLayer
-                    grid={currentScene.grid}
-                    width={mapWidth}
-                    height={mapHeight}
-                />
+                <GridLayer grid={currentScene.grid} width={mapWidth} height={mapHeight} />
             )}
           </Layer>
 
           {hasActiveMap && (
               <>
-                {/* لایه ۲: ترسیمات، متن و مه جنگ */}
+                {/* لایه ۲: ترسیمات، متن، مه، خط‌کش و پینگ */}
                 <Layer
                     id="layer-canvas-features"
                     clip={{ x: 0, y: 0, width: mapWidth, height: mapHeight }}
@@ -1189,17 +1341,16 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                       width={mapWidth}
                       height={mapHeight}
                       liveFog={liveFog}
-                      polygonVertices={fogPolygonVertices.length > 0 ? (liveFog?.points || fogPolygonVertices) : []}
+                      polygonVertices={
+                        fogPolygonVertices.length > 0 ? liveFog?.points || fogPolygonVertices : []
+                      }
                   />
                   <RulerLayer />
                   <PingLayer />
                 </Layer>
 
-                {/* لایه ۳: توکن‌ها */}
-                <Layer
-                    id="layer-tokens"
-                    listening={isSelectMode}
-                >
+                {/* لایه ۳: توکن‌ها - گوش‌دادن به رویدادها صرفاً در حالت انتخاب توکن */}
+                <Layer id="layer-tokens" listening={isSelectMode}>
                   <TokenLayer gridSize={currentScene?.grid?.size || 60} isGM={isGM} />
                 </Layer>
               </>

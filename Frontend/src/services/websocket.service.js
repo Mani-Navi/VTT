@@ -1,15 +1,19 @@
 import { Client } from "@stomp/stompjs";
 import { useWebSocketStore } from "../store/websocket.store.js";
+import { WS_EVENTS } from "../constants/wsEvents.js";
+import { ENV } from "../config/validateEnv";
 
 class WebSocketService {
   constructor() {
     this.client = null;
     this.listeners = new Map();
+    this.subscriptions = [];
     this.isConnected = false;
     this.currentRoomId = null;
 
+    // استفاده از رویداد مدرن pagehide به جای unload برای جلوگیری از اخطار مرورگر
     if (typeof window !== "undefined") {
-      window.addEventListener("beforeunload", () => {
+      window.addEventListener("pagehide", () => {
         this.sendPresenceLeave();
       });
     }
@@ -21,23 +25,26 @@ class WebSocketService {
     }
 
     this.currentRoomId = roomId;
-    const authToken = token || localStorage.getItem("vtt_jwt");
-
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.hostname}:8080/ws`;
+    const host = ENV.WS_URL || `${protocol}//${window.location.hostname}:8080/ws`;
 
     try {
+      this.clearSubscriptions();
+
       this.client = new Client({
         brokerURL: host.startsWith("ws") ? host : `${protocol}//${host.replace(/^https?:\/\//, "")}`,
-        connectHeaders: authToken
-            ? {
-              Authorization: `Bearer ${authToken}`,
-              roomId: roomId,
-            }
-            : { roomId: roomId },
-        reconnectDelay: 3000,
+        reconnectDelay: 2000,
         heartbeatIncoming: 20000,
         heartbeatOutgoing: 20000,
+        beforeConnect: () => {
+          const freshToken = localStorage.getItem("vtt_jwt") || token;
+          this.client.connectHeaders = freshToken
+              ? {
+                Authorization: `Bearer ${freshToken}`,
+                roomId: this.currentRoomId,
+              }
+              : { roomId: this.currentRoomId };
+        },
         debug: () => {},
       });
 
@@ -46,36 +53,37 @@ class WebSocketService {
         useWebSocketStore.getState().setStatus("CONNECTED");
 
         try {
-          this.client.subscribe(`/topic/room/${roomId}`, (message) => {
+          const subRoom = this.client.subscribe(`/topic/room/${roomId}`, (message) => {
             try {
               const payload = JSON.parse(message.body);
               this.handleIncomingMessage(payload);
             } catch (e) {
-              console.error("STOMP parse error:", e);
+              if (import.meta.env.DEV) console.error("STOMP parse error:", e);
             }
           });
 
-          this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
+          const subUsers = this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
             try {
               const onlineMembers = JSON.parse(message.body);
               this.trigger("USERS_UPDATE", onlineMembers);
             } catch (e) {
-              console.error("Users parse error:", e);
+              if (import.meta.env.DEV) console.error("Users parse error:", e);
             }
           });
 
-          this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
+          const subSettings = this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
             try {
               const settings = JSON.parse(message.body);
               this.trigger("SETTINGS_UPDATE", settings);
             } catch (e) {
-              console.error("Settings parse error:", e);
+              if (import.meta.env.DEV) console.error("Settings parse error:", e);
             }
           });
 
+          this.subscriptions.push(subRoom, subUsers, subSettings);
           this.sendPresenceJoin();
         } catch (subErr) {
-          console.warn("STOMP subscribe error:", subErr);
+          if (import.meta.env.DEV) console.warn("STOMP subscribe error:", subErr);
         }
       };
 
@@ -85,13 +93,24 @@ class WebSocketService {
       };
 
       this.client.onStompError = (frame) => {
-        console.warn("STOMP Error:", frame.headers ? frame.headers["message"] : "Unknown");
+        if (import.meta.env.DEV) {
+          console.warn("STOMP Error:", frame.headers ? frame.headers["message"] : "Unknown");
+        }
       };
 
       this.client.activate();
     } catch (err) {
-      console.error("WS activation error:", err);
+      if (import.meta.env.DEV) console.error("WS activation error:", err);
     }
+  }
+
+  clearSubscriptions() {
+    this.subscriptions.forEach((sub) => {
+      try {
+        sub.unsubscribe();
+      } catch (ignored) {}
+    });
+    this.subscriptions = [];
   }
 
   sendPresenceJoin() {
@@ -116,6 +135,7 @@ class WebSocketService {
 
   disconnect() {
     this.sendPresenceLeave();
+    this.clearSubscriptions();
     if (this.client && this.isConnected) {
       this.client.deactivate();
     }
@@ -130,6 +150,7 @@ class WebSocketService {
     let action = type;
 
     switch (type) {
+      case WS_EVENTS.TOKEN_MOVED:
       case "TOKEN_MOVE":
         destination = `/app/room/${this.currentRoomId}/token/move`;
         action = "MOVE";
@@ -138,15 +159,18 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/conditions`;
         action = "CONDITION_POOL_UPDATE";
         break;
+      case WS_EVENTS.ROLE_TITLE_UPDATE:
       case "ROLE_TITLE_UPDATE":
         destination = `/app/room/${this.currentRoomId}/role-title`;
         action = "ROLE_TITLE_UPDATE";
         break;
+      case WS_EVENTS.DRAWING_ADDED:
       case "DRAWING_ADD":
       case "DRAWING_UPDATE":
         destination = `/app/room/${this.currentRoomId}/drawing`;
         action = "ADD";
         break;
+      case WS_EVENTS.DRAWING_DELETED:
       case "DRAWING_DELETE":
       case "DRAWING_REMOVE":
         destination = `/app/room/${this.currentRoomId}/drawing/delete`;
@@ -157,6 +181,7 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/event`;
         action = type;
         break;
+      case WS_EVENTS.FOG_UPDATED:
       case "FOG_UPDATE":
       case "FOG_CLEAR":
         destination = `/app/room/${this.currentRoomId}/fog`;
@@ -171,10 +196,12 @@ class WebSocketService {
         destination = `/app/room/${this.currentRoomId}/dice`;
         action = "ROLL";
         break;
+      case WS_EVENTS.SETTINGS_UPDATED:
       case "SETTINGS_UPDATE":
         destination = `/app/room/${this.currentRoomId}/settings`;
         action = "UPDATE";
         break;
+      case WS_EVENTS.VIEWPORT_SYNC:
       case "VIEWPORT_SYNC":
         destination = `/app/room/${this.currentRoomId}/event`;
         action = "VIEWPORT_SYNC";
@@ -200,7 +227,7 @@ class WebSocketService {
         body: JSON.stringify(socketEvent),
       });
     } catch (err) {
-      console.warn("STOMP publish failed", err);
+      if (import.meta.env.DEV) console.warn("STOMP publish failed", err);
     }
   }
 
@@ -231,37 +258,61 @@ class WebSocketService {
 
     this.trigger("MESSAGE", payload);
 
-    if (action === "ADD" || action === "DRAWING_ADD") {
-      this.trigger("DRAWING_ADD", eventData);
-    } else if (action === "DELETE" || action === "DRAWING_DELETE" || action === "DRAWING_REMOVE") {
-      this.trigger("DRAWING_DELETE", eventData);
-    } else if (action === "DRAWING_LIVE") {
-      this.trigger("DRAWING_LIVE", eventData);
-    } else if (action === "DRAWING_LIVE_END") {
-      this.trigger("DRAWING_LIVE_END", eventData);
-    } else if (action === "MOVE" || action === "TOKEN_MOVE") {
-      this.trigger("TOKEN_MOVE", eventData);
-    } else if (action === "ROLE_TITLE_UPDATE") {
-      this.trigger("ROLE_TITLE_UPDATE", eventData);
-    } else if (action === "CONDITION_POOL_UPDATE") {
-      this.trigger("CONDITION_POOL_UPDATE", eventData);
-    } else if (action === "ROLL" || action === "DICE_ROLL") {
-      this.trigger("DICE_ROLL", eventData);
-    } else if (action === "VIEWPORT_SYNC") {
-      this.trigger("VIEWPORT_SYNC", eventData);
-    } else if (
-        action === "FOG_UPDATE" ||
-        (action === "UPDATE" && (eventData?.isCover !== undefined || eventData?.points !== undefined))
-    ) {
-      this.trigger("FOG_UPDATE", eventData);
-    } else if (action === "FOG_CLEAR" || (eventData && eventData.type === "CLEAR_ALL")) {
-      this.trigger("FOG_CLEAR", eventData);
-    } else if (action === "FOG_LIVE") {
-      this.trigger("FOG_LIVE", eventData);
-    } else if (action === "FOG_LIVE_END") {
-      this.trigger("FOG_LIVE_END", eventData);
-    } else if (action) {
-      this.trigger(action, eventData);
+    switch (action) {
+      case "ADD":
+      case "DRAWING_ADD":
+        this.trigger("DRAWING_ADD", eventData);
+        break;
+      case "DELETE":
+      case "DRAWING_DELETE":
+      case "DRAWING_REMOVE":
+        this.trigger("DRAWING_DELETE", eventData);
+        break;
+      case "DRAWING_LIVE":
+        this.trigger("DRAWING_LIVE", eventData);
+        break;
+      case "DRAWING_LIVE_END":
+        this.trigger("DRAWING_LIVE_END", eventData);
+        break;
+      case "MOVE":
+      case "TOKEN_MOVE":
+        this.trigger("TOKEN_MOVE", eventData);
+        break;
+      case "ROLE_TITLE_UPDATE":
+        this.trigger("ROLE_TITLE_UPDATE", eventData);
+        break;
+      case "CONDITION_POOL_UPDATE":
+        this.trigger("CONDITION_POOL_UPDATE", eventData);
+        break;
+      case "ROLL":
+      case "DICE_ROLL":
+        this.trigger("DICE_ROLL", eventData);
+        break;
+      case "VIEWPORT_SYNC":
+        this.trigger("VIEWPORT_SYNC", eventData);
+        break;
+      case "FOG_UPDATE":
+        this.trigger("FOG_UPDATE", eventData);
+        break;
+      case "UPDATE":
+        if (eventData?.isCover !== undefined || eventData?.points !== undefined) {
+          this.trigger("FOG_UPDATE", eventData);
+        }
+        break;
+      case "FOG_CLEAR":
+        this.trigger("FOG_CLEAR", eventData);
+        break;
+      case "FOG_LIVE":
+        this.trigger("FOG_LIVE", eventData);
+        break;
+      case "FOG_LIVE_END":
+        this.trigger("FOG_LIVE_END", eventData);
+        break;
+      default:
+        if (action) {
+          this.trigger(action, eventData);
+        }
+        break;
     }
   }
 }

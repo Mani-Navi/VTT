@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, Component } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     LogOut,
@@ -6,6 +6,7 @@ import {
     Minimize2,
     HelpCircle,
     PowerOff,
+    RefreshCw,
 } from "lucide-react";
 import { useSceneStore } from "../../store/scene.store.js";
 import { useAuthStore } from "../../store/auth.store";
@@ -24,6 +25,51 @@ import { SettingsMenu } from "../../components/room/SettingsMenu.jsx";
 import { AssetMenu } from "../../components/room/AssetMenu.jsx";
 import { TokenEditorModal } from "../../components/room/TokenEditorModal.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
+import { WS_EVENTS } from "../../constants/wsEvents.js";
+
+/**
+ * مرز خطای اختصاصی کانواس برای جلوگیری از سقوط کل صفحه اتاق در خطاهای Konva/WebGL
+ */
+class CanvasErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        if (import.meta.env.DEV) {
+            console.error("[Canvas Crash]:", error, errorInfo);
+        }
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center text-center p-6 z-10 font-fa">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
+                        <RefreshCw className="w-6 h-6 animate-spin" />
+                    </div>
+                    <h3 className="text-base font-bold text-zinc-100 mb-1">خطا در پردازش گرافیکی بوم بازی</h3>
+                    <p className="text-xs text-zinc-400 mb-4 max-w-sm">
+                        بافت گرافیکی یا شتاب‌دهنده وب‌جی‌ال مرورگر با وقفه مواجه شد.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => this.setState({ hasError: false })}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl shadow-lg transition-colors cursor-pointer"
+                    >
+                        راه‌اندازی مجدد کانواس
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 export const RoomPage = () => {
     const { roomId: urlParamId } = useParams();
@@ -59,7 +105,7 @@ export const RoomPage = () => {
 
             if (action === "ROOM_CLOSED") {
                 alert(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.");
-                window.location.href = "/dashboard";
+                navigate("/dashboard");
                 return;
             }
 
@@ -68,7 +114,7 @@ export const RoomPage = () => {
                 const incomingUname = String(data?.username || "").toLowerCase().trim();
                 if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
                     alert("شما توسط دانجن‌مستر از اتاق اخراج شدید.");
-                    window.location.href = "/dashboard";
+                    navigate("/dashboard");
                     return;
                 }
             }
@@ -78,17 +124,16 @@ export const RoomPage = () => {
                 const incomingUname = String(data?.username || "").toLowerCase().trim();
                 if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
                     alert("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.");
-                    window.location.href = "/dashboard";
+                    navigate("/dashboard");
                     return;
                 }
             }
 
-            if (action === "ROLE_TITLE_UPDATE") {
+            if (action === WS_EVENTS.ROLE_TITLE_UPDATE || action === "ROLE_TITLE_UPDATE") {
                 wsService.trigger("ROLE_TITLE_UPDATE", data);
             }
 
-            // ارسال آنی رویداد Mute به لیسنرهای فرانت‌اند
-            if (action === "MEMBER_MUTE_TOGGLED") {
+            if (action === WS_EVENTS.MEMBER_MUTE_TOGGLED || action === "MEMBER_MUTE_TOGGLED") {
                 wsService.trigger("MEMBER_MUTE_TOGGLED", data);
             }
 
@@ -107,11 +152,12 @@ export const RoomPage = () => {
                 const isTargetMe =
                     (currentUname && currentUname === incomingUname) ||
                     (data.userId && String(data.userId).toLowerCase().trim() === currentUid) ||
-                    (incomingMemberId && onlineMembers.some(
-                        (m) =>
-                            String(m.id || m.memberId).toLowerCase() === incomingMemberId &&
-                            (String(m.userId) === currentUid || String(m.username).toLowerCase() === currentUname)
-                    ));
+                    (incomingMemberId &&
+                        onlineMembers.some(
+                            (m) =>
+                                String(m.id || m.memberId).toLowerCase() === incomingMemberId &&
+                                (String(m.userId) === currentUid || String(m.username).toLowerCase() === currentUname)
+                        ));
 
                 if (isTargetMe) {
                     const updatedPerms = {
@@ -133,7 +179,7 @@ export const RoomPage = () => {
                 }
             }
         },
-        [user, setCurrentRoom, setAvailableConditions, onlineMembers]
+        [user, setCurrentRoom, setAvailableConditions, onlineMembers, navigate]
     );
 
     const { isConnected } = useWebSocket(effectiveRoomId, handleSocketMessage);
@@ -150,12 +196,14 @@ export const RoomPage = () => {
                 loadScenes(actualId);
             })
             .catch((err) => {
-                console.error("خطا در دریافت اطلاعات اتاق:", err);
+                if (import.meta.env.DEV) {
+                    console.error("خطا در دریافت اطلاعات اتاق:", err);
+                }
                 const message = err.response?.data?.message || "امکان ورود به این اتاق وجود ندارد";
                 alert(message);
-                window.location.href = "/dashboard";
+                navigate("/dashboard");
             });
-    }, [urlParamId, loadScenes, setCurrentRoom]);
+    }, [urlParamId, loadScenes, setCurrentRoom, navigate]);
 
     const handleCloseRoom = async () => {
         if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
@@ -163,9 +211,11 @@ export const RoomPage = () => {
         }
         try {
             await roomApi.closeRoom(effectiveRoomId);
-            window.location.href = "/dashboard";
+            navigate("/dashboard");
         } catch (err) {
-            console.error("خطا در بستن اتاق:", err);
+            if (import.meta.env.DEV) {
+                console.error("خطا در بستن اتاق:", err);
+            }
         }
     };
 
@@ -193,16 +243,16 @@ export const RoomPage = () => {
                 dir="ltr"
             >
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-xl text-[11px]">
-                    <span
-                        className={`w-2 h-2 rounded-full ${
-                            isConnected
-                                ? "bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse"
-                                : "bg-amber-500"
-                        }`}
-                    />
+          <span
+              className={`w-2 h-2 rounded-full ${
+                  isConnected
+                      ? "bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse"
+                      : "bg-amber-500"
+              }`}
+          />
                     <span className="text-zinc-300 font-mono text-[10px]">
-                        {isConnected ? "Live Sync" : "Connecting..."}
-                    </span>
+            {isConnected ? "Live Sync" : "Connecting..."}
+          </span>
                 </div>
 
                 <button
@@ -237,7 +287,7 @@ export const RoomPage = () => {
 
                 <button
                     type="button"
-                    onClick={() => (window.location.href = "/dashboard")}
+                    onClick={() => navigate("/dashboard")}
                     className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
                     title="خروج از اتاق"
                 >
@@ -245,20 +295,19 @@ export const RoomPage = () => {
                 </button>
             </header>
 
-            {/* بوم بازی */}
-            <GameCanvas isGM={isGM} permissions={userPermissions} />
+            {/* بوم بازی محافظت‌شده با ErrorBoundary طبق بند ۴ سند */}
+            <CanvasErrorBoundary>
+                <GameCanvas isGM={isGM} permissions={userPermissions} />
+            </CanvasErrorBoundary>
 
-            {/* نوار ابزار اصلی */}
             <Toolbar isGM={isGM} permissions={userPermissions} />
 
-            {/* پنل‌ها */}
             <DiceRoller />
             <Dice3DStage />
             <SettingsMenu isGM={isGM} />
             <AssetMenu isGM={isGM} permissions={userPermissions} />
             <TokenEditorModal roomData={roomData} />
 
-            {/* راهنما */}
             <Modal
                 isOpen={isHelpOpen}
                 onClose={() => setIsHelpOpen(false)}

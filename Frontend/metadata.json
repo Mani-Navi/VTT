@@ -1,6 +1,5 @@
 {
-  "name": "Persian VTT (Virtual Tabletop)",
-  "description": "A lightweight, modern virtual tabletop web platform inspired by Owlbear Rodeo tailored for Persian RPG and D&D players with interactive Konva canvas, tokens with dynamic health bars, status effect indicators (Prone, Invisible, Incapacitated), role-based visibility, fog of war, measurement rulers, 3D animated physics dice rolling, and real-time synchronization.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Titipool",
+  "description": "A modern virtual tabletop web platform for Persian RPG and D&D players with interactive Konva canvas, tokens with dynamic health bars, status effect indicators (Prone, Invisible, Incapacitated), role-based visibility, fog of war, measurement rulers, 3D animated physics dice rolling, and real-time synchronization.",
+  "requestFramePermissions": []
 }

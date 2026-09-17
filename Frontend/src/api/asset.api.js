@@ -6,7 +6,6 @@ export const getAssetUrl = (url) => {
   if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
 
-  // اگر مقدار صرفاً یک کلمه نامعتبر باشد
   if (!trimmed.includes("/") && !trimmed.startsWith("data:")) {
     return "";
   }
@@ -48,16 +47,24 @@ export const assetApi = {
     if (name) formData.append("name", name);
     formData.append("type", type);
 
-    if (metadata.dpi !== undefined) formData.append("dpi", metadata.dpi);
-    if (metadata.columns !== undefined) formData.append("columns", metadata.columns);
-    if (metadata.rows !== undefined) formData.append("rows", metadata.rows);
-    if (metadata.rotation !== undefined) formData.append("rotation", metadata.rotation);
-    if (metadata.isVisible !== undefined) formData.append("isVisible", metadata.isVisible);
-    if (metadata.isLocked !== undefined) formData.append("isLocked", metadata.isLocked);
-    if (metadata.defaultText) formData.append("defaultText", metadata.defaultText);
-    if (metadata.textColor) formData.append("textColor", metadata.textColor);
-    if (metadata.fontSize) formData.append("fontSize", metadata.fontSize);
-    if (metadata.fontFamily) formData.append("fontFamily", metadata.fontFamily);
+    const fields = [
+      "dpi",
+      "columns",
+      "rows",
+      "rotation",
+      "isVisible",
+      "isLocked",
+      "defaultText",
+      "textColor",
+      "fontSize",
+      "fontFamily",
+    ];
+
+    fields.forEach((field) => {
+      if (metadata[field] !== undefined && metadata[field] !== null) {
+        formData.append(field, metadata[field]);
+      }
+    });
 
     const res = await api.post("/assets/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },

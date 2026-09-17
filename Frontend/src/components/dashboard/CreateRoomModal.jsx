@@ -2,7 +2,17 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Sparkles, Scroll, Box, Lock, Eye, EyeOff, FileText, CheckCircle2, MousePointerClick, Image as ImageIcon } from "lucide-react";
+import {
+  Sparkles,
+  Scroll,
+  Box,
+  Eye,
+  EyeOff,
+  FileText,
+  CheckCircle2,
+  MousePointerClick,
+  Image as ImageIcon,
+} from "lucide-react";
 import { Modal } from "../ui/Modal.jsx";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
@@ -13,18 +23,12 @@ const createRoomSchema = z.object({
       .string()
       .min(3, "نام اتاق باید حداقل ۳ حرف باشد")
       .max(40, "نام اتاق نمی‌تواند بیشتر از ۴۰ حرف باشد"),
-  description: z
-      .string()
-      .max(200, "توضیحات اتاق نمی‌تواند بیشتر از ۲۰۰ حرف باشد")
-      .optional(),
-  password: z
-      .string()
-      .max(30, "رمز عبور حداکثر ۳۰ کاراکتر است")
-      .optional(),
+  description: z.string().max(200, "توضیحات اتاق نمی‌تواند بیشتر از ۲۰۰ حرف باشد").optional(),
+  password: z.string().max(30, "رمز عبور حداکثر ۳۰ کاراکتر است").optional(),
 });
 
 export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
-  const [tab, setTab] = useState("blank"); // "blank" | "template"
+  const [tab, setTab] = useState("blank");
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
@@ -51,14 +55,26 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
   const descValue = watch("description") || "";
 
   useEffect(() => {
+    let isMounted = true;
     if (isOpen && tab === "template" && templates.length === 0) {
       setIsLoadingTemplates(true);
       roomApi
           .getTemplates()
-          .then((data) => setTemplates(data))
-          .catch(() => {})
-          .finally(() => setIsLoadingTemplates(false));
+          .then((data) => {
+            if (isMounted) setTemplates(data);
+          })
+          .catch((err) => {
+            if (import.meta.env.DEV) {
+              console.warn("[CreateRoomModal] Failed to fetch templates:", err);
+            }
+          })
+          .finally(() => {
+            if (isMounted) setIsLoadingTemplates(false);
+          });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, tab, templates.length]);
 
   const handleSelectTemplate = (tpl) => {
@@ -70,17 +86,10 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
   const handleSwitchTab = (newTab) => {
     setTab(newTab);
     setServerError("");
-    if (newTab === "blank") {
-      setSelectedTemplate(null);
-      setValue("name", "");
-      setValue("description", "");
-      setValue("password", "");
-    } else {
-      setSelectedTemplate(null);
-      setValue("name", "");
-      setValue("description", "");
-      setValue("password", "");
-    }
+    setSelectedTemplate(null);
+    setValue("name", "");
+    setValue("description", "");
+    setValue("password", "");
   };
 
   const handleClose = () => {
@@ -123,7 +132,6 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           maxWidth="lg"
       >
         <div className="space-y-4" dir="rtl">
-          {/* انتخاب نوع ساخت اتاق */}
           <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800/80">
             <button
                 type="button"
@@ -151,7 +159,6 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
             </button>
           </div>
 
-          {/* لیست قالب‌های آماده همراه با پیش‌نمایش بندانگشتی مپ */}
           {tab === "template" && (
               <div className="space-y-2.5 p-3 bg-zinc-950/70 rounded-xl border border-zinc-800/90">
                 <div className="flex items-center justify-between">
@@ -185,10 +192,13 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                                         : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 text-zinc-300"
                                 }`}
                             >
-                              {/* بندانگشتی نقشه */}
                               <div className="w-14 h-14 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center relative">
                                 {tpl.baseMapUrl ? (
-                                    <img src={tpl.baseMapUrl} alt={tpl.title} className="w-full h-full object-cover" />
+                                    <img
+                                        src={tpl.baseMapUrl}
+                                        alt={tpl.title}
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
                                     <ImageIcon className="w-6 h-6 text-zinc-700" />
                                 )}
@@ -229,16 +239,16 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           )}
 
           {shouldShowForm && (
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 transition-all duration-300 animate-fadeIn">
-                {/* نام اتاق */}
+              <form
+                  onSubmit={handleSubmit(onSubmit)}
+                  className="space-y-3.5 transition-all duration-300 animate-fadeIn"
+              >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-zinc-300">
                       نام اتاق یا کمپین <span className="text-amber-400">*</span>
                     </label>
-                    <span className="text-[10px] text-zinc-500 font-mono">
-                  {nameValue.length}/40
-                </span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{nameValue.length}/40</span>
                   </div>
                   <Input
                       placeholder="مثلا: دخمه اشباح سرخ"
@@ -249,15 +259,12 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                   />
                 </div>
 
-                {/* توضیحات */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-zinc-300">
                       توضیحات و خلاصه ماجرا (اختیاری)
                     </label>
-                    <span className="text-[10px] text-zinc-500 font-mono">
-                  {descValue.length}/200
-                </span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{descValue.length}/200</span>
                   </div>
                   <div className="relative">
                 <textarea
@@ -271,11 +278,12 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                     <FileText className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500 pointer-events-none" />
                   </div>
                   {errors.description && (
-                      <p className="text-[11px] text-rose-400 font-medium">{errors.description.message}</p>
+                      <p className="text-[11px] text-rose-400 font-medium">
+                        {errors.description.message}
+                      </p>
                   )}
                 </div>
 
-                {/* رمز عبور */}
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-zinc-300">
                     رمز عبور اتاق (اختیاری جهت خصوصی‌سازی)

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, memo } from "react";
 import {
   MousePointer,
   Hand,
@@ -21,9 +21,10 @@ import { DrawSubToolbar } from "./DrawSubToolbar.jsx";
 import { TextSubToolbar } from "./TextSubToolbar.jsx";
 import { FogSubToolbar } from "./FogSubToolbar.jsx";
 import { TOOLS } from "../../constants/tools";
+import { MIN_ZOOM, MAX_ZOOM } from "../../constants/canvas.js";
 import { cn } from "../../utils/cn";
 
-export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
+export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
   const activeTool = useCanvasStore((state) => state.activeTool);
   const zoom = useCanvasStore((state) => state.zoom);
 
@@ -48,7 +49,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
   const currentUsername = String(currentUser?.username || "").toLowerCase().trim();
   const currentUserEmail = String(currentUser?.email || "").toLowerCase().trim();
 
-  // بررسی وجود توکن فعال بازیکن
   const myExistingToken = currentScene?.tokens?.find((t) => {
     const cb = String(t.controlledBy || "").toLowerCase().trim();
     const lbl = String(t.label || t.name || "").toLowerCase().trim();
@@ -58,20 +58,20 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     );
   });
 
-  // هندل کردن تاگل ابزارها (کلیک مجدد = دی‌سلکت و بازگشت به SELECT)
-  const handleToolClick = useCallback((toolId) => {
-    if (!hasActiveMap) return;
-    if (activeTool === toolId) {
-      setActiveTool(TOOLS.SELECT);
-    } else {
-      setActiveTool(toolId);
-    }
-  }, [activeTool, hasActiveMap, setActiveTool]);
+  const handleToolClick = useCallback(
+      (toolId) => {
+        if (!hasActiveMap) return;
+        if (activeTool === toolId) {
+          setActiveTool(TOOLS.SELECT);
+        } else {
+          setActiveTool(toolId);
+        }
+      },
+      [activeTool, hasActiveMap, setActiveTool]
+  );
 
-  // کلیدهای میانبر سراسری کیبورد
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // اگر کاربر داخل فیلد متنی در حال تایپ بود کلیدهای میانبر نادیده گرفته شوند
       const tagName = e.target.tagName.toLowerCase();
       if (tagName === "input" || tagName === "textarea" || e.target.isContentEditable) {
         return;
@@ -131,7 +131,7 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hasActiveMap, isGM, permissions, handleToolClick, setActiveTool, toggleMenu]);
 
-  const handleMyCharacterClick = () => {
+  const handleMyCharacterClick = useCallback(() => {
     if (!hasActiveMap) return;
 
     if (myExistingToken) {
@@ -151,7 +151,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
     const mapW = currentScene?.mapWidth || 2000;
     const mapH = currentScene?.mapHeight || 1500;
 
-    // ساخت توکن دقیقاً در مرکز نقشه فعال
     addToken({
       name: charName,
       label: charName,
@@ -168,7 +167,19 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
       showConditions: true,
       showAc: true,
     });
-  };
+  }, [
+    hasActiveMap,
+    myExistingToken,
+    currentUser?.username,
+    currentScene?.mapWidth,
+    currentScene?.mapHeight,
+    addToken,
+    currentUserId,
+    currentUsername,
+    toggleTokenSelection,
+    setActiveTool,
+    focusOnCoordinates,
+  ]);
 
   const primaryTools = [
     {
@@ -346,10 +357,12 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
           <button
               type="button"
               disabled={!hasActiveMap}
-              onClick={() => setZoom((z) => Math.max(z - 0.15, 0.2))}
+              onClick={() => setZoom((z) => Math.max(z - 0.15, MIN_ZOOM))}
               className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                  !hasActiveMap ? "text-zinc-700 cursor-not-allowed" : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
+                  !hasActiveMap
+                      ? "text-zinc-700 cursor-not-allowed"
+                      : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
               )}
               title="کوچک‌نمایی"
           >
@@ -361,7 +374,9 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
               onClick={resetView}
               className={cn(
                   "px-2 h-8 rounded-lg font-mono text-xs transition-colors",
-                  !hasActiveMap ? "text-zinc-700 cursor-not-allowed" : "text-zinc-300 hover:bg-zinc-800 cursor-pointer"
+                  !hasActiveMap
+                      ? "text-zinc-700 cursor-not-allowed"
+                      : "text-zinc-300 hover:bg-zinc-800 cursor-pointer"
               )}
               title="بازنشانی بزرگ‌نمایی"
           >
@@ -370,10 +385,12 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
           <button
               type="button"
               disabled={!hasActiveMap}
-              onClick={() => setZoom((z) => Math.min(z + 0.15, 3.5))}
+              onClick={() => setZoom((z) => Math.min(z + 0.15, MAX_ZOOM))}
               className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                  !hasActiveMap ? "text-zinc-700 cursor-not-allowed" : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
+                  !hasActiveMap
+                      ? "text-zinc-700 cursor-not-allowed"
+                      : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
               )}
               title="بزرگ‌نمایی"
           >
@@ -382,4 +399,6 @@ export const Toolbar = ({ isGM: propIsGM, permissions = {} }) => {
         </div>
       </>
   );
-};
+});
+
+Toolbar.displayName = "Toolbar";

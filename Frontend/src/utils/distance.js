@@ -13,7 +13,7 @@ export const calculateSegmentDistance = (
   const dxPixels = Math.abs(p2.x - p1.x);
   const dyPixels = Math.abs(p2.y - p1.y);
 
-  const S = Number(gridSize) || 60;
+  const S = Math.max(Number(gridSize) || 60, 1);
   const dx = dxPixels / S;
   const dy = dyPixels / S;
 
@@ -22,14 +22,12 @@ export const calculateSegmentDistance = (
   switch (rulerType) {
     case "dnd5e_5105":
     case "dnd5e": {
-      // قانون استاندارد 5e: بیشترین مقدار بین x و y
       gridUnits = Math.max(dx, dy);
       break;
     }
 
     case "dnd35_alternating":
     case "dnd35": {
-      // قانون 3.5e: حرکت مورب متناوب (۵، ۱۰، ۵، ۱۰)
       const minD = Math.min(dx, dy);
       const maxD = Math.max(dx, dy);
       gridUnits = Math.floor(minD * 1.5) + (maxD - minD);
@@ -37,13 +35,11 @@ export const calculateSegmentDistance = (
     }
 
     case "euclidean": {
-      // اقلیدسی: خط مستقیم فیثاغورس
       gridUnits = Math.sqrt(dx * dx + dy * dy);
       break;
     }
 
     case "manhattan": {
-      // منهتن: مجموع افقی و عمودی
       gridUnits = dx + dy;
       break;
     }
@@ -93,7 +89,8 @@ export const calculateTotalDistance = (
     totalRealDistance += seg.realDistance;
   }
 
-  const formattedDistance = totalRealDistance % 1 === 0 ? totalRealDistance : totalRealDistance.toFixed(1);
+  const formattedDistance =
+      totalRealDistance % 1 === 0 ? totalRealDistance : totalRealDistance.toFixed(1);
   const unitLabel = unit === "m" || unit === "meter" ? "متر" : "ft";
 
   return {

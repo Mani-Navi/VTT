@@ -1,9 +1,9 @@
-import React from "react";
+import React, { memo } from "react";
 import { Modal } from "../ui/Modal.jsx";
 import { Button } from "../ui/Button.jsx";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
-export const DeleteRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading }) => {
+export const DeleteRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoading }) => {
     if (!room) return null;
 
     return (
@@ -22,7 +22,8 @@ export const DeleteRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading })
                     <div>
                         <h4 className="text-sm font-bold text-rose-300">آیا از حذف این اتاق اطمینان دارید؟</h4>
                         <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                            اتاق <span className="font-bold text-zinc-200">«{room.name}»</span> و تمامی توکن‌ها، نقشه‌ها و ژورنال‌های آن برای همیشه پاک خواهند شد و این عملیات قابل بازگشت نیست.
+                            اتاق <span className="font-bold text-zinc-200">«{room.name}»</span> و تمامی توکن‌ها،
+                            نقشه‌ها و ژورنال‌های آن برای همیشه پاک خواهند شد و این عملیات قابل بازگشت نیست.
                         </p>
                     </div>
                 </div>
@@ -45,4 +46,6 @@ export const DeleteRoomModal = ({ isOpen, onClose, onConfirm, room, isLoading })
             </div>
         </Modal>
     );
-};
+});
+
+DeleteRoomModal.displayName = "DeleteRoomModal";
