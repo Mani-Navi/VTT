@@ -322,7 +322,7 @@ public class RoomService {
 
         String defaultMapUrl = (room.getTemplate() != null && room.getTemplate().getBaseMapUrl() != null)
                 ? room.getTemplate().getBaseMapUrl()
-                : "";
+                : null;
 
         Scene defaultScene = Scene.builder()
                 .room(room)
