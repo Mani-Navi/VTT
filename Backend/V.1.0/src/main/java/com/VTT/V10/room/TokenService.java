@@ -31,6 +31,7 @@ public class TokenService {
     private final PlayerPermissionRepository playerPermissionRepository;
 
     @Async
+    @Transactional
     public void asyncUpdateTokenFromEvent(TokenMoveEvent data, String userEmail, UUID roomId) {
         updateTokenFromEvent(data, userEmail, roomId);
     }
@@ -149,11 +150,20 @@ public class TokenService {
             boolean isOwner = false;
             boolean hasEditTokenPermission = false;
 
-            if (userEmail != null) {
+            // اعتبارسنجی سازنده اصلی اتاق
+            Room room = token.getScene() != null ? token.getScene().getRoom() : null;
+            if (room != null && room.getOwner() != null && userEmail != null) {
+                if (room.getOwner().getEmail().equalsIgnoreCase(userEmail)) {
+                    isGM = true;
+                    isOwner = true;
+                }
+            }
+
+            if (userEmail != null && !isGM) {
                 var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, userEmail);
                 if (memberOpt.isPresent()) {
                     RoomMember member = memberOpt.get();
-                    isGM = member.getRole() == RoomMember.Role.ADMIN;
+                    isGM = member.getRole() == RoomMember.Role.ADMIN || member.getRole() == RoomMember.Role.GM;
                     String uid = member.getUser() != null ? member.getUser().getId().toString() : "";
                     String uName = member.getUser() != null ? member.getUser().getUsername() : "";
 
@@ -172,12 +182,14 @@ public class TokenService {
             }
 
             if (!isGM && !isOwner) {
+                log.warn("Token update rejected: User {} is not GM or Owner of token {}", userEmail, tokenId);
                 return;
             }
 
             if (Boolean.TRUE.equals(data.getIsDeleted())) {
                 if (isGM) {
                     tokenRepository.deleteById(tokenId);
+                    tokenRepository.flush();
                 }
                 return;
             }
@@ -232,8 +244,12 @@ public class TokenService {
                 if (data.getAllowPlayerSize() != null) token.setAllowPlayerSize(data.getAllowPlayerSize());
             }
 
-            tokenRepository.save(token);
-        } catch (IllegalArgumentException ignored) {
+            tokenRepository.saveAndFlush(token);
+            if (log.isDebugEnabled()) {
+                log.debug("Token {} updated and flushed successfully in DB", tokenId);
+            }
+        } catch (Exception e) {
+            log.warn("Token event update error: {}", e.getMessage());
         }
     }
 
