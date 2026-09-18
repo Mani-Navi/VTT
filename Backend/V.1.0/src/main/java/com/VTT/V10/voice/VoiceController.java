@@ -8,13 +8,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,18 +33,18 @@ public class VoiceController {
     private final Map<UUID, UserRateLimitWindow> rateLimiters = new ConcurrentHashMap<>();
 
     @GetMapping("/token")
-    public CompletableFuture<ResponseEntity<VoiceTokenResponse>> getToken(
+    public ResponseEntity<VoiceTokenResponse> getToken(
             @RequestParam(required = false) UUID roomId,
-            Principal principal
+            Authentication authentication
     ) {
-        if (principal == null) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "کاربر احراز هویت نشده است");
         }
         if (roomId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "شناسه اتاق (roomId) الزامی است");
         }
 
-        User user = userService.getByEmail(principal.getName());
+        User user = userService.getByEmail(authentication.getName());
 
         // ۱. اعتبارسنجی عضویت کاربر در اتاق
         if (!roomService.isUserMemberOfRoom(roomId, user.getId())) {
@@ -53,12 +52,12 @@ public class VoiceController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید");
         }
 
-        // ۲. اعمال Rate Limit به ازای هر کاربر
+        // ۲. اعمال Rate Limit
         checkRateLimit(user.getId());
 
-        // ۳. صدور ناهمگام توکن صوتی
-        return voiceService.generateTokenAsync(roomId, user.getId(), user.getUsername())
-                .thenApply(token -> ResponseEntity.ok(new VoiceTokenResponse(token, config.getUrl())));
+        // ۳. صدور مستقیم توکن صوتی بدون باگ اسپرینگ سکیوریتی ASYNC
+        String token = voiceService.generateToken(roomId, user.getId(), user.getUsername());
+        return ResponseEntity.ok(new VoiceTokenResponse(token, config.getUrl()));
     }
 
     private void checkRateLimit(UUID userId) {
