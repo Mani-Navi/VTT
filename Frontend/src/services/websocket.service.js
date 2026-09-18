@@ -11,7 +11,6 @@ class WebSocketService {
     this.isConnected = false;
     this.currentRoomId = null;
 
-    // استفاده از رویداد مدرن pagehide به جای unload برای جلوگیری از اخطار مرورگر
     if (typeof window !== "undefined") {
       window.addEventListener("pagehide", () => {
         this.sendPresenceLeave();
@@ -261,12 +260,18 @@ class WebSocketService {
     switch (action) {
       case "ADD":
       case "DRAWING_ADD":
+      case "DRAWING_ADDED":
         this.trigger("DRAWING_ADD", eventData);
+        this.trigger("DRAWING_ADDED", eventData);
+        this.trigger(WS_EVENTS.DRAWING_ADDED, eventData);
         break;
       case "DELETE":
       case "DRAWING_DELETE":
+      case "DRAWING_DELETED":
       case "DRAWING_REMOVE":
         this.trigger("DRAWING_DELETE", eventData);
+        this.trigger("DRAWING_DELETED", eventData);
+        this.trigger(WS_EVENTS.DRAWING_DELETED, eventData);
         break;
       case "DRAWING_LIVE":
         this.trigger("DRAWING_LIVE", eventData);
@@ -276,10 +281,14 @@ class WebSocketService {
         break;
       case "MOVE":
       case "TOKEN_MOVE":
+      case "TOKEN_MOVED":
         this.trigger("TOKEN_MOVE", eventData);
+        this.trigger("TOKEN_MOVED", eventData);
+        this.trigger(WS_EVENTS.TOKEN_MOVED, eventData);
         break;
       case "ROLE_TITLE_UPDATE":
         this.trigger("ROLE_TITLE_UPDATE", eventData);
+        this.trigger(WS_EVENTS.ROLE_TITLE_UPDATE, eventData);
         break;
       case "CONDITION_POOL_UPDATE":
         this.trigger("CONDITION_POOL_UPDATE", eventData);
@@ -290,17 +299,23 @@ class WebSocketService {
         break;
       case "VIEWPORT_SYNC":
         this.trigger("VIEWPORT_SYNC", eventData);
+        this.trigger(WS_EVENTS.VIEWPORT_SYNC, eventData);
         break;
       case "FOG_UPDATE":
+      case "FOG_UPDATED":
         this.trigger("FOG_UPDATE", eventData);
+        this.trigger("FOG_UPDATED", eventData);
+        this.trigger(WS_EVENTS.FOG_UPDATED, eventData);
         break;
       case "UPDATE":
         if (eventData?.isCover !== undefined || eventData?.points !== undefined) {
           this.trigger("FOG_UPDATE", eventData);
+          this.trigger("FOG_UPDATED", eventData);
         }
         break;
       case "FOG_CLEAR":
         this.trigger("FOG_CLEAR", eventData);
+        this.trigger(WS_EVENTS.DRAWINGS_CLEARED, eventData);
         break;
       case "FOG_LIVE":
         this.trigger("FOG_LIVE", eventData);
