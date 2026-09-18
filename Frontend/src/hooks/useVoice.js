@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Room, RoomEvent, ConnectionState, Track } from "livekit-client";
 import { getVoiceToken } from "../api/voice.api";
+import { ENV } from "../config/validateEnv";
 
 export function useVoice(roomId, isMutedByGM = false) {
     const [participants, setParticipants] = useState([]);
@@ -79,6 +80,9 @@ export function useVoice(roomId, isMutedByGM = false) {
             const { token, url } = await getVoiceToken(roomId);
             if (!isMountedRef.current) return;
 
+            // استفاده از آدرس پروداکشن در صورت خالی یا لوکال بودن
+            const targetLiveKitUrl = (url && !url.includes("localhost")) ? url : ENV.LIVEKIT_URL;
+
             const room = new Room({
                 adaptiveStream: true,
                 dynacast: true,
@@ -141,7 +145,7 @@ export function useVoice(roomId, isMutedByGM = false) {
                 isMicEnabledRef.current = false;
             });
 
-            await room.connect(url, token);
+            await room.connect(targetLiveKitUrl, token);
             if (!isMountedRef.current) {
                 room.disconnect();
                 return;
