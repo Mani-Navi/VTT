@@ -57,6 +57,7 @@ export const useSceneStore = create((set, get) => ({
     isLoading: false,
     availableConditions: [],
     roomSettings: null,
+    currentRoomId: null,
 
     setRoomSettings: (settings) => {
         set({ roomSettings: settings });
@@ -72,6 +73,7 @@ export const useSceneStore = create((set, get) => ({
             isLoading: false,
             availableConditions: [],
             roomSettings: null,
+            currentRoomId: null,
         });
     },
 
@@ -137,7 +139,7 @@ export const useSceneStore = create((set, get) => ({
 
     loadScenes: async (roomId) => {
         if (!roomId) return;
-        set({ isLoading: true });
+        set({ isLoading: true, currentRoomId: roomId });
         try {
             let [scenes, roomSettings] = await Promise.all([
                 sceneApi.getScenes(roomId),
@@ -649,10 +651,11 @@ export const useSceneStore = create((set, get) => ({
         }, 4000);
     },
 
-    switchScene: async (sceneId, shouldBroadcast = true) => {
+    switchScene: async (sceneId, shouldBroadcast = true, explicitRoomId = null) => {
         if (!sceneId) return;
         const strTargetId = String(sceneId).toLowerCase();
         const state = get();
+        const activeRoomId = explicitRoomId || state.currentRoomId;
 
         set({
             scenes: state.scenes.map((s) => ({
@@ -670,9 +673,37 @@ export const useSceneStore = create((set, get) => ({
         }
 
         try {
+            // در کلاینت بازیکن اگر تنظیمات در کش نبود، فوراً واکشی شود
+            let roomSettings = state.roomSettings;
+            if (!roomSettings && activeRoomId) {
+                try {
+                    roomSettings = await settingsApi.getSettings(activeRoomId);
+                    set({ roomSettings });
+                } catch (ignored) {}
+            }
+
             const fullState = await sceneApi.getSceneState(sceneId);
             const sceneData = fullState.scene || {};
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
+
+            // اعمال فوری و قطعی تنظیمات اتاق روی بوم بازیکن
+            if (roomSettings) {
+                if (roomSettings.measurementType) {
+                    useCanvasStore.getState().setRulerType(roomSettings.measurementType);
+                }
+                if (roomSettings.inputMode) {
+                    useCanvasStore.getState().setInputMode(roomSettings.inputMode);
+                }
+                if (roomSettings.zoomSensitivity !== undefined) {
+                    useCanvasStore.getState().setZoomSensitivity(roomSettings.zoomSensitivity);
+                }
+                if (roomSettings.shapeSnapSensitivity !== undefined) {
+                    useCanvasStore.getState().setShapeSnapSensitivity(roomSettings.shapeSnapSensitivity);
+                }
+                if (roomSettings.gmFogBlend !== undefined) {
+                    useCanvasStore.getState().setGmFogBlend(roomSettings.gmFogBlend);
+                }
+            }
 
             const loadedTokens = (fullState.tokens || []).map((t) => ({
                 ...t,
@@ -700,25 +731,17 @@ export const useSceneStore = create((set, get) => ({
 
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];
 
-            // به جای مقادیر هاردکدشده، تنظیمات فعال اتاق و گرید جاری حفظ می‌شود
-            const currentRoomSettings = state.roomSettings;
-            const existingGrid = state.currentScene?.grid;
-
             const finalGrid = {
                 enabled: true,
-                type: currentRoomSettings?.gridType || existingGrid?.type || sceneData.gridType || "square",
-                lineType: currentRoomSettings?.lineType || existingGrid?.lineType || "solid",
-                size: Number(currentRoomSettings?.gridSize || existingGrid?.size || sceneData.gridSize || 60),
-                color: currentRoomSettings?.gridColor || existingGrid?.color || sceneData.gridColor || "#000000",
-                opacity: currentRoomSettings?.gridOpacity !== undefined
-                    ? Number(currentRoomSettings.gridOpacity)
-                    : (existingGrid?.opacity !== undefined ? Number(existingGrid.opacity) : (sceneData.gridOpacity || 0.35)),
-                lineWidth: currentRoomSettings?.lineWidth !== undefined
-                    ? Number(currentRoomSettings.lineWidth)
-                    : (existingGrid?.lineWidth !== undefined ? Number(existingGrid.lineWidth) : 1.5),
-                snapToGrid: currentRoomSettings?.isGridSnapping !== undefined
-                    ? Boolean(currentRoomSettings.isGridSnapping)
-                    : (existingGrid?.snapToGrid !== undefined ? Boolean(existingGrid.snapToGrid) : true),
+                type: roomSettings?.gridType || sceneData.gridType || "square",
+                lineType: roomSettings?.lineType || "solid",
+                size: Number(roomSettings?.gridSize || sceneData.gridSize || 60),
+                color: roomSettings?.gridColor || sceneData.gridColor || "#000000",
+                opacity: roomSettings?.gridOpacity !== undefined
+                    ? Number(roomSettings.gridOpacity)
+                    : (sceneData.gridOpacity !== undefined ? Number(sceneData.gridOpacity) : 0.35),
+                lineWidth: roomSettings?.lineWidth !== undefined ? Number(roomSettings.lineWidth) : 1.5,
+                snapToGrid: roomSettings?.isGridSnapping !== undefined ? Boolean(roomSettings.isGridSnapping) : true,
             };
 
             const sceneWithState = {

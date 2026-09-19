@@ -223,7 +223,7 @@ export function useWebSocket(roomId, onMessage = null) {
         if (!exists) {
           await store.loadScenes(roomId);
         }
-        await store.switchScene(strId, false);
+        await store.switchScene(strId, false, roomId);
       }
       if (onMessageRef.current) onMessageRef.current(data);
     });
@@ -237,7 +237,7 @@ export function useWebSocket(roomId, onMessage = null) {
         store.addSceneFromSocket(newScene);
 
         if (newScene.isActive) {
-          await store.switchScene(String(newScene.id), false);
+          await store.switchScene(String(newScene.id), false, roomId);
         }
       } else {
         await store.loadScenes(roomId);
@@ -254,7 +254,7 @@ export function useWebSocket(roomId, onMessage = null) {
         }));
 
         if (data.activeSceneId) {
-          await useSceneStore.getState().switchScene(String(data.activeSceneId), false);
+          await useSceneStore.getState().switchScene(String(data.activeSceneId), false, roomId);
         }
       }
       if (onMessageRef.current) onMessageRef.current(data);

@@ -44,13 +44,8 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
             setIsCreating(false);
 
             if (created && created.id) {
-                // ۱. اضافه کردن سریع صحنه به استیت محلی GM
                 useSceneStore.getState().addSceneFromSocket(created);
-
-                // ۲. سوییچ به صحنه جدید و اطلاع‌رسانی مطمئن
-                await switchScene(created.id, true);
-
-                // ۳. ارسال زودهنگام کلاینتی برای برادکست بدون تاخیر
+                await switchScene(created.id, true, roomId);
                 wsService.send("SCENE_CREATED", { scene: created, sceneId: String(created.id) });
             }
         } catch (err) {
@@ -74,7 +69,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
             useSceneStore.setState({ scenes: remaining });
             if (nextActive) {
-                await switchScene(nextActive, true);
+                await switchScene(nextActive, true, roomId);
             }
 
             wsService.send("SCENE_DELETE", {
@@ -155,7 +150,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                     return (
                         <div
                             key={scene.id}
-                            onClick={() => isGM && switchScene(scene.id)}
+                            onClick={() => isGM && switchScene(scene.id, true, roomId)}
                             onDoubleClick={(e) => isGM && startEditing(scene, e)}
                             className={cn(
                                 "group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0",
