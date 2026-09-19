@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -93,60 +94,46 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "نام فایل نامعتبر است");
         }
 
-        // پردازش و بهینه‌سازی تصویر
+        // ۱. ذخیره ایمن فایل اصلی روی دیسک با کپی مستقیم استریم
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
         Integer width = null;
         Integer height = null;
-        long finalFileSize = file.getSize();
+        long finalFileSize = Files.size(targetLocation);
 
+        // ۲. بهینه‌سازی و استخراج متادیتا به روش ایمن (بدون خطر قطع فرآیند)
         if (contentType != null && contentType.startsWith("image/") && !contentType.contains("svg") && !contentType.contains("gif")) {
             try {
-                BufferedImage originalImage = ImageIO.read(file.getInputStream());
-                if (originalImage != null) {
-                    width = originalImage.getWidth();
-                    height = originalImage.getHeight();
+                File savedFile = targetLocation.toFile();
+                BufferedImage bimg = ImageIO.read(savedFile);
+                if (bimg != null) {
+                    width = bimg.getWidth();
+                    height = bimg.getHeight();
 
-                    File destFile = targetLocation.toFile();
-
+                    // بهینه‌سازی نقشه در صورت بیش از حد بزرگ بودن
                     if (assetType == Asset.AssetType.MAP) {
-                        // نقشه‌ها: حفظ حداکثر رزولوشن 4K با فشرده‌سازی بسیار باکیفیت
                         int maxDim = 3840;
                         if (width > maxDim || height > maxDim) {
-                            Thumbnails.of(originalImage)
+                            Thumbnails.of(savedFile)
                                     .size(maxDim, maxDim)
                                     .outputQuality(0.85)
-                                    .toFile(destFile);
-                        } else {
-                            Thumbnails.of(originalImage)
-                                    .scale(1.0)
-                                    .outputQuality(0.85)
-                                    .toFile(destFile);
+                                    .toFile(savedFile);
+                            finalFileSize = Files.size(targetLocation);
                         }
-                    } else {
-                        // توکن‌ها و اشیاء: رزولوشن حداکثر ۱۰۲۴ با حفظ کامل کانال آلفا
+                    } else if (assetType == Asset.AssetType.TOKEN || assetType == Asset.AssetType.PROP) {
                         int maxDim = 1024;
                         if (width > maxDim || height > maxDim) {
-                            Thumbnails.of(originalImage)
+                            Thumbnails.of(savedFile)
                                     .size(maxDim, maxDim)
                                     .outputQuality(0.90)
-                                    .toFile(destFile);
-                        } else {
-                            Thumbnails.of(originalImage)
-                                    .scale(1.0)
-                                    .outputQuality(0.90)
-                                    .toFile(destFile);
+                                    .toFile(savedFile);
+                            finalFileSize = Files.size(targetLocation);
                         }
                     }
-
-                    finalFileSize = Files.size(targetLocation);
-                } else {
-                    file.transferTo(targetLocation);
                 }
-            } catch (Exception e) {
-                log.warn("Image compression failed, saving original stream: {}", e.getMessage());
-                file.transferTo(targetLocation);
+            } catch (Throwable t) {
+                log.warn("Image optimization skipped for {}: {}", uniqueFileName, t.getMessage());
             }
-        } else {
-            file.transferTo(targetLocation);
         }
 
         String finalName = (name != null && !name.isBlank()) ? name : cleanOriginalFilename;
