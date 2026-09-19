@@ -44,16 +44,14 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
             setIsCreating(false);
 
             if (created && created.id) {
-                // اضافه کردن سریع صحنه به استیت محلی بدون کوئری‌های سنگین
-                useSceneStore.setState((state) => ({
-                    scenes: [...state.scenes, created],
-                }));
+                // ۱. اضافه کردن سریع صحنه به استیت محلی GM
+                useSceneStore.getState().addSceneFromSocket(created);
 
-                // سوییچ آنی به صحنه جدید
+                // ۲. سوییچ به صحنه جدید
                 await switchScene(created.id, false);
 
-                // برادکست سریع به بازیکنان
-                wsService.send("SCENE_CREATED", { scene: created });
+                // ۳. برادکست مستقیم ساخت و اکتیو شدن به تمام بازیکنان
+                wsService.send("SCENE_CREATED", { scene: created, sceneId: created.id });
                 wsService.send("SCENE_ACTIVATED", { sceneId: created.id });
             }
         } catch (err) {

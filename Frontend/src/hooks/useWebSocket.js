@@ -181,28 +181,37 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۷. تغییر/سوییچ صحنه
+// ۷. تغییر/سوییچ صحنه
     const unsubScene = wsService.on("SCENE_ACTIVATED", async (data) => {
-      if (data && data.sceneId) {
+      const targetSceneId = data?.sceneId || data?.id || data;
+      if (targetSceneId) {
+        const strId = String(targetSceneId);
         const store = useSceneStore.getState();
-        store.switchScene(data.sceneId, false);
+        const exists = store.scenes.some((s) => String(s.id).toLowerCase() === strId.toLowerCase());
+
+        // اگر صحنه در لیست پلیر نبود، فوراً لیست صحنه‌ها را سینک کن تا تب ظاهر شود
+        if (!exists) {
+          await store.loadScenes(roomId);
+        } else {
+          store.switchScene(strId, false);
+        }
       }
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. ساخت صحنه جدید
-    const unsubSceneCreate = wsService.on("SCENE_CREATED", (data) => {
-      if (data && data.scene) {
-        const store = useSceneStore.getState();
-        const exists = store.scenes.some((s) => s.id === data.scene.id);
-        if (!exists) {
-          useSceneStore.setState((state) => ({
-            scenes: [...state.scenes, data.scene],
-          }));
+    // ۸. ساخت آنی صحنه جدید روی SceneBar بازیکن
+    const unsubSceneCreate = wsService.on("SCENE_CREATED", async (data) => {
+      const newScene = data?.scene || data;
+      if (newScene && newScene.id) {
+        // اضافه کردن مستقیم به نوار صحنه‌ها بدون معطلی
+        useSceneStore.getState().addSceneFromSocket(newScene);
+
+        if (newScene.isActive) {
+          useSceneStore.getState().switchScene(String(newScene.id), false);
         }
-        if (data.scene.isActive) {
-          store.switchScene(data.scene.id, false);
-        }
+      } else {
+        // فال‌بک مطمئن
+        await useSceneStore.getState().loadScenes(roomId);
       }
     });
 

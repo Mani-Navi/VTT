@@ -61,6 +61,25 @@ export const useSceneStore = create((set, get) => ({
         set({ availableConditions: Array.isArray(conditions) ? conditions : [] });
     },
 
+    addSceneFromSocket: (newScene) => {
+        if (!newScene || !newScene.id) return;
+        const targetId = String(newScene.id).toLowerCase();
+
+        set((state) => {
+            const exists = state.scenes.some((s) => String(s.id).toLowerCase() === targetId);
+            if (exists) {
+                return {
+                    scenes: state.scenes.map((s) =>
+                        String(s.id).toLowerCase() === targetId ? { ...s, ...newScene } : s
+                    ),
+                };
+            }
+            return {
+                scenes: [...state.scenes, newScene],
+            };
+        });
+    },
+
     setRemoteLiveDrawing: (drawData) => {
         set({ remoteLiveDrawing: drawData });
     },
