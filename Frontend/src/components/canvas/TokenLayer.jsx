@@ -136,7 +136,6 @@ const SingleToken = memo(
                     groupRef.current.position({ x: snappedX, y: snappedY });
                 }
 
-                // بروزرسانی استور و ارسال فوری به سوکت بر اساس بخش ۵.۴
                 moveToken(token.id, snappedX, snappedY);
 
                 wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", {
@@ -521,7 +520,6 @@ export const TokenLayer = memo(({ gridSize = 60, isGM: propIsGM }) => {
     const gridType = currentScene?.grid?.type || "square";
     const snapEnabled = currentScene?.grid?.snapToGrid !== false;
 
-    // دسته‌بندی مموایز شده توکن‌ها برای سلول‌های گرید
     const cellGroups = useMemo(() => {
         const groups = {};
         userTokens.forEach((t) => {
@@ -586,22 +584,28 @@ export const TokenLayer = memo(({ gridSize = 60, isGM: propIsGM }) => {
 
     if (!currentScene || !currentScene.tokens) return null;
 
-    // تنظیم listening بر اساس حالت انتخاب توکن بر اساس بند ۲ جدول کانواس
     const isSelectMode = activeTool === "select" || activeTool === "SELECT";
 
     return (
         <Group id="tokens-layer-group" listening={isSelectMode}>
             {userTokens.map((token, index) => {
-                const tokenOwner = token.controlledBy ? String(token.controlledBy).toLowerCase() : "";
-                const userId = currentUser?.id ? String(currentUser.id).toLowerCase() : "";
-                const userName = currentUser?.username ? String(currentUser.username).toLowerCase() : "";
-                const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase() : "";
+                const tokenOwner = token.controlledBy ? String(token.controlledBy).toLowerCase().trim() : "";
+                const userId = currentUser?.id ? String(currentUser.id).toLowerCase().trim() : "";
+                const userAltId = currentUser?.userId ? String(currentUser.userId).toLowerCase().trim() : "";
+                const userName = currentUser?.username ? String(currentUser.username).toLowerCase().trim() : "";
+                const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase().trim() : "";
+                const tokenLabel = String(token.label || token.name || "").toLowerCase().trim();
 
                 const isOwner = Boolean(
                     !isGM
                         ? (tokenOwner &&
-                            (tokenOwner === userId || tokenOwner === userName || tokenOwner === userEmail)) ||
-                        userTokens.length === 1 ||
+                            (tokenOwner === userId ||
+                                (userAltId && tokenOwner === userAltId) ||
+                                (userName && tokenOwner === userName) ||
+                                (userEmail && tokenOwner === userEmail))) ||
+                        (userName && tokenLabel === userName) ||
+                        (userEmail && tokenLabel === userEmail) ||
+                        (!token.isProp && userTokens.filter((t) => !t.isProp).length === 1) ||
                         index === 0
                         : true
                 );

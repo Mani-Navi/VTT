@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
+import { useAuthStore } from "../../store/auth.store";
 import { assetApi, getAssetUrl } from "../../api/asset.api";
 import { MAP_PRESETS } from "../../constants/mapPresets";
 import { TOKEN_PRESETS } from "../../constants/tokenPresets";
@@ -34,6 +35,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const isAssetOpen = useCanvasStore((state) => state.isAssetMenuOpen);
   const toggleMenu = useCanvasStore((state) => state.toggleMenu);
 
+  const currentUser = useAuthStore((state) => state.user);
   const currentScene = useSceneStore((state) => state.currentScene);
   const setMapForCurrentScene = useSceneStore((state) => state.setMapForCurrentScene);
   const addToken = useSceneStore((state) => state.addToken);
@@ -119,6 +121,8 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
     const validAssetId = isValidUUID(extraData.id) ? extraData.id : null;
     const isPropItem = activeTab === "props" || Boolean(extraData.isProp);
 
+    const ownerId = !isPropItem && currentUser?.id ? String(currentUser.id) : null;
+
     const newToken = {
       name: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
       label: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
@@ -134,6 +138,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
       isProp: isPropItem,
       goldValue: extraData.goldValue || 0,
       xpValue: extraData.xpValue || 0,
+      controlledBy: ownerId,
     };
 
     addToken(newToken);
