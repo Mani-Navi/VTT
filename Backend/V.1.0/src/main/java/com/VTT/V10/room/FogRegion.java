@@ -1,5 +1,6 @@
 package com.VTT.V10.room;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -28,7 +29,7 @@ public class FogRegion {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
-    private Object points;
+    private JsonNode points;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

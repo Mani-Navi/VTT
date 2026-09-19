@@ -117,6 +117,11 @@ public class DrawingService {
             }
         }
 
+        // اگر متن یا شکلی points نداشت، با آرایه خالی [] مقداردهی کن تا قید NOT NULL نقض نشود
+        if (pointsNode == null) {
+            pointsNode = objectMapper.createArrayNode();
+        }
+
         Drawing drawing;
         if (existingOpt.isPresent()) {
             drawing = existingOpt.get();
@@ -147,7 +152,7 @@ public class DrawingService {
             if (event.getScaleX() != null) drawing.setScaleX(event.getScaleX());
             if (event.getScaleY() != null) drawing.setScaleY(event.getScaleY());
             if (event.getRotation() != null) drawing.setRotation(event.getRotation());
-            if (pointsNode != null) drawing.setPoints(pointsNode);
+            drawing.setPoints(pointsNode);
             if (event.getIsGMLayer() != null) drawing.setIsGMLayer(event.getIsGMLayer());
         } else {
             drawing = Drawing.builder()
@@ -237,7 +242,7 @@ public class DrawingService {
                 .height(d.getHeight())
                 .radius(d.getRadius())
                 .scaleX(d.getScaleX() != null ? d.getScaleX() : 1.0)
-                .scaleY(d.getScaleY() != null ? d.getScaleY() : 1.0)
+                .scaleY(d.getScaleY() != null ? eventZeroSafe(d.getScaleY()) : 1.0)
                 .rotation(d.getRotation() != null ? d.getRotation() : 0.0)
                 .text(d.getText())
                 .fontFamily(d.getFontFamily())
@@ -247,5 +252,9 @@ public class DrawingService {
                 .isGMLayer(d.getIsGMLayer())
                 .isVisible(d.getIsVisible())
                 .build();
+    }
+
+    private Double eventZeroSafe(Double val) {
+        return val != null ? val : 1.0;
     }
 }

@@ -2,6 +2,8 @@ package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.FogResponse;
 import com.VTT.V10.websocket.dto.FogEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ public class FogService {
 
     private final FogRegionRepository fogRepository;
     private final SceneRepository sceneRepository;
+    private final ObjectMapper objectMapper;
 
     @Async
     @Transactional
@@ -33,7 +36,7 @@ public class FogService {
             }
             handleFogUpdate(event);
         } catch (Exception e) {
-            log.warn("Async Fog update warning: {}", e.getMessage());
+            log.error("Async Fog update error: {}", e.getMessage(), e);
         }
     }
 
@@ -67,18 +70,33 @@ public class FogService {
         if ("CLEAR_ALL".equalsIgnoreCase(eventType)) {
             fogRepository.deleteBySceneId(event.getSceneId());
             scene.setFogFilled(false);
-            sceneRepository.save(scene);
+            sceneRepository.saveAndFlush(scene);
             return;
         }
 
         if ("FILL_ALL".equalsIgnoreCase(eventType) || "fill_all".equalsIgnoreCase(eventType)) {
             fogRepository.deleteBySceneId(event.getSceneId());
             scene.setFogFilled(true);
-            sceneRepository.save(scene);
+            sceneRepository.saveAndFlush(scene);
             return;
         }
 
         if (event.getPoints() == null) {
+            return;
+        }
+
+        JsonNode pointsNode = null;
+        if (event.getPoints() instanceof JsonNode jn) {
+            pointsNode = jn;
+        } else {
+            try {
+                pointsNode = objectMapper.valueToTree(event.getPoints());
+            } catch (Exception ex) {
+                log.warn("Could not convert fog points to JsonNode: {}", ex.getMessage());
+            }
+        }
+
+        if (pointsNode == null) {
             return;
         }
 
@@ -90,11 +108,8 @@ public class FogService {
         }
 
         String incomingId = null;
-        if (event.getPoints() instanceof Map) {
-            Object rawId = ((Map<?, ?>) event.getPoints()).get("id");
-            if (rawId != null) {
-                incomingId = rawId.toString().trim();
-            }
+        if (pointsNode.has("id")) {
+            incomingId = pointsNode.get("id").asText();
         }
 
         List<FogRegion> existingRegions = fogRepository.findBySceneId(event.getSceneId());
@@ -106,9 +121,9 @@ public class FogService {
                     matchedRegion = r;
                     break;
                 }
-                if (r.getPoints() instanceof Map) {
-                    Object storedId = ((Map<?, ?>) r.getPoints()).get("id");
-                    if (storedId != null && storedId.toString().trim().equalsIgnoreCase(incomingId)) {
+                if (r.getPoints() != null && r.getPoints().has("id")) {
+                    String storedId = r.getPoints().get("id").asText();
+                    if (storedId.equalsIgnoreCase(incomingId)) {
                         matchedRegion = r;
                         break;
                     }
@@ -117,19 +132,19 @@ public class FogService {
         }
 
         if (matchedRegion != null) {
-            matchedRegion.setPoints(event.getPoints());
+            matchedRegion.setPoints(pointsNode);
             matchedRegion.setType(fogType);
-            fogRepository.save(matchedRegion);
+            fogRepository.saveAndFlush(matchedRegion);
             return;
         }
 
         FogRegion newRegion = FogRegion.builder()
                 .scene(scene)
-                .points(event.getPoints())
+                .points(pointsNode)
                 .type(fogType)
                 .build();
 
-        fogRepository.save(newRegion);
+        fogRepository.saveAndFlush(newRegion);
     }
 
     @Transactional(readOnly = true)
