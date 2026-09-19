@@ -30,7 +30,6 @@ import {
 
 const passwordSchema = z
     .object({
-        currentPassword: z.string().min(1, "رمز عبور فعلی را وارد کنید"),
         newPassword: z.string().min(8, "حداقل ۸ کاراکتر").max(72, "حداکثر ۷۲ کاراکتر"),
         confirmPassword: z.string(),
     })
@@ -54,7 +53,6 @@ const checkPasswordCriteria = (pass = "") => [
 export const ProfilePage = () => {
     const navigate = useNavigate();
 
-    // سلکتورهای اتمیک جهت جلوگیری از رندرهای آبشاری (قانون شماره ۲)
     const user = useAuthStore((state) => state.user);
     const updateUser = useAuthStore((state) => state.updateUser);
     const setAuth = useAuthStore((state) => state.setAuth);
@@ -63,7 +61,6 @@ export const ProfilePage = () => {
     const [activeTab, setActiveTab] = useState("overview");
     const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
-    const [showCurrentPass, setShowCurrentPass] = useState(false);
     const [showNewPass, setShowNewPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [showEmailPass, setShowEmailPass] = useState(false);
@@ -170,11 +167,11 @@ export const ProfilePage = () => {
 
     const onSubmitPassword = async (data) => {
         try {
-            await userApi.changePassword(data);
+            await userApi.changePassword({ newPassword: data.newPassword });
             resetPassForm();
             showFeedback("success", "رمز عبور با موفقیت تغییر کرد.");
         } catch (err) {
-            showFeedback("error", err.response?.data?.message || "رمز فعلی اشتباه است.");
+            showFeedback("error", err.response?.data?.message || "خطا در تغییر رمز عبور.");
         }
     };
 
@@ -440,26 +437,7 @@ export const ProfilePage = () => {
                             <form onSubmit={handlePassSubmit(onSubmitPassword)} className="space-y-4 max-w-md animate-fadeIn">
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100">تغییر رمز عبور</h3>
-                                    <p className="text-xs text-zinc-400 mt-0.5">رمز عبور فعلی و رمز عبور جدید را وارد کنید</p>
-                                </div>
-
-                                <div className="relative">
-                                    <Input
-                                        label="رمز عبور فعلی"
-                                        type={showCurrentPass ? "text" : "password"}
-                                        placeholder="••••••••"
-                                        error={passErrors.currentPassword?.message}
-                                        disabled={isPassSubmitting}
-                                        {...registerPass("currentPassword")}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCurrentPass(!showCurrentPass)}
-                                        className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
-                                        tabIndex={-1}
-                                    >
-                                        {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
+                                    <p className="text-xs text-zinc-400 mt-0.5">رمز عبور جدید را وارد کنید</p>
                                 </div>
 
                                 <div className="space-y-1.5">
