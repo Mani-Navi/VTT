@@ -95,16 +95,23 @@ public class RoomService {
     @Transactional(readOnly = true)
     public boolean isHostOrAdmin(UUID roomId, String email) {
         try {
-            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (roomId == null || email == null) return false;
+
+            Optional<User> userOpt = userRepository.findByEmail(email.trim().toLowerCase());
             Optional<Room> roomOpt = roomRepository.findById(roomId);
+
             if (userOpt.isPresent() && roomOpt.isPresent()) {
                 Room room = roomOpt.get();
                 if (room.getOwner() != null && room.getOwner().getId().equals(userOpt.get().getId())) {
                     return true;
                 }
+                if (room.getOwner() != null && room.getOwner().getEmail().equalsIgnoreCase(email)) {
+                    return true;
+                }
             }
+
             return memberRepository.findByRoomIdAndUserEmail(roomId, email)
-                    .map(m -> m.getRole() == RoomMember.Role.ADMIN)
+                    .map(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                     .orElse(false);
         } catch (Exception e) {
             return false;
@@ -227,7 +234,7 @@ public class RoomService {
                 .orElse(null);
 
         boolean isGM = room.getOwner().getId().equals(user.getId()) ||
-                (member != null && member.getRole() == RoomMember.Role.ADMIN);
+                (member != null && (member.getRole() == RoomMember.Role.ADMIN || member.getRole() == RoomMember.Role.GM));
 
         if (member == null && !isGM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید");
@@ -259,7 +266,6 @@ public class RoomService {
         User owner = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "کاربر یافت نشد"));
 
-        // کوئری مستقیم و بهینه در دیتابیس به جای لود کردن همه اتاق‌ها
         if (roomRepository.existsByOwnerIdAndNameIgnoreCase(owner.getId(), request.getName().trim())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "شما قبلاً اتاقی با همین نام ایجاد کرده‌اید");
         }
@@ -588,7 +594,7 @@ public class RoomService {
         RoomMember requester = memberRepository.findByRoomIdAndUserEmail(roomId, requesterEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز"));
 
-        if (requester.getRole() != RoomMember.Role.ADMIN) {
+        if (requester.getRole() != RoomMember.Role.ADMIN && requester.getRole() != RoomMember.Role.GM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها GM اجازه اخراج بازیکن را دارد");
         }
 
@@ -620,7 +626,7 @@ public class RoomService {
         RoomMember requester = memberRepository.findByRoomIdAndUserEmail(roomId, requesterEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز"));
 
-        if (requester.getRole() != RoomMember.Role.ADMIN) {
+        if (requester.getRole() != RoomMember.Role.ADMIN && requester.getRole() != RoomMember.Role.GM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها GM اجازه مسدودسازی بازیکن را دارد");
         }
 
@@ -652,7 +658,7 @@ public class RoomService {
         RoomMember requester = memberRepository.findByRoomIdAndUserEmail(roomId, requesterEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز"));
 
-        if (requester.getRole() != RoomMember.Role.ADMIN) {
+        if (requester.getRole() != RoomMember.Role.ADMIN && requester.getRole() != RoomMember.Role.GM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها GM اجازه تغییر وضعیت صدا را دارد");
         }
 
@@ -681,7 +687,7 @@ public class RoomService {
         RoomMember requester = memberRepository.findByRoomIdAndUserEmail(roomId, requesterEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز"));
 
-        if (requester.getRole() != RoomMember.Role.ADMIN) {
+        if (requester.getRole() != RoomMember.Role.ADMIN && requester.getRole() != RoomMember.Role.GM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها GM اجازه تغییر نقش اعضا را دارد");
         }
 
@@ -803,7 +809,7 @@ public class RoomService {
             role = memberOpt.get().getRole();
         }
 
-        boolean isGM = isOwner || role == RoomMember.Role.ADMIN;
+        boolean isGM = isOwner || role == RoomMember.Role.ADMIN || role == RoomMember.Role.GM;
 
         RoomResponse.UserPermissionDto permissionsDto;
         if (isGM) {

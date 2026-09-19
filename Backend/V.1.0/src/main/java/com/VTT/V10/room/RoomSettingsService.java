@@ -47,7 +47,7 @@ public class RoomSettingsService {
                 .isGridSnapping(true)
                 .build();
 
-        return repository.save(settings);
+        return repository.saveAndFlush(settings);
     }
 
     @Transactional
@@ -80,7 +80,7 @@ public class RoomSettingsService {
             if (request.getIsGridSnapping() != null) settings.setIsGridSnapping(request.getIsGridSnapping());
         }
 
-        RoomSettings saved = repository.save(settings);
+        RoomSettings saved = repository.saveAndFlush(settings);
         return convertToResponse(saved);
     }
 
@@ -107,7 +107,7 @@ public class RoomSettingsService {
                 .isGridSnapping(true)
                 .build();
 
-        return convertToResponse(repository.save(settings));
+        return convertToResponse(repository.saveAndFlush(settings));
     }
 
     private void validateMembership(UUID roomId, String email) {
@@ -122,11 +122,11 @@ public class RoomSettingsService {
                 .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
                 .isPresent();
 
-        boolean isAdmin = memberRepository.findByRoomIdAndUserEmail(roomId, email)
-                .filter(m -> m.getRole() == RoomMember.Role.ADMIN)
+        boolean isGM = memberRepository.findByRoomIdAndUserEmail(roomId, email)
+                .filter(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                 .isPresent();
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isGM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها دانجن‌مستر (GM) اجازه تغییر تنظیمات را دارد");
         }
     }
