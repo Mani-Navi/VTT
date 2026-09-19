@@ -7,18 +7,20 @@ import com.VTT.V10.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -91,7 +93,61 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "نام فایل نامعتبر است");
         }
 
-        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        // پردازش و بهینه‌سازی تصویر
+        Integer width = null;
+        Integer height = null;
+        long finalFileSize = file.getSize();
+
+        if (contentType != null && contentType.startsWith("image/") && !contentType.contains("svg") && !contentType.contains("gif")) {
+            try {
+                BufferedImage originalImage = ImageIO.read(file.getInputStream());
+                if (originalImage != null) {
+                    width = originalImage.getWidth();
+                    height = originalImage.getHeight();
+
+                    File destFile = targetLocation.toFile();
+
+                    if (assetType == Asset.AssetType.MAP) {
+                        // نقشه‌ها: حفظ حداکثر رزولوشن 4K با فشرده‌سازی بسیار باکیفیت
+                        int maxDim = 3840;
+                        if (width > maxDim || height > maxDim) {
+                            Thumbnails.of(originalImage)
+                                    .size(maxDim, maxDim)
+                                    .outputQuality(0.85)
+                                    .toFile(destFile);
+                        } else {
+                            Thumbnails.of(originalImage)
+                                    .scale(1.0)
+                                    .outputQuality(0.85)
+                                    .toFile(destFile);
+                        }
+                    } else {
+                        // توکن‌ها و اشیاء: رزولوشن حداکثر ۱۰۲۴ با حفظ کامل کانال آلفا
+                        int maxDim = 1024;
+                        if (width > maxDim || height > maxDim) {
+                            Thumbnails.of(originalImage)
+                                    .size(maxDim, maxDim)
+                                    .outputQuality(0.90)
+                                    .toFile(destFile);
+                        } else {
+                            Thumbnails.of(originalImage)
+                                    .scale(1.0)
+                                    .outputQuality(0.90)
+                                    .toFile(destFile);
+                        }
+                    }
+
+                    finalFileSize = Files.size(targetLocation);
+                } else {
+                    file.transferTo(targetLocation);
+                }
+            } catch (Exception e) {
+                log.warn("Image compression failed, saving original stream: {}", e.getMessage());
+                file.transferTo(targetLocation);
+            }
+        } else {
+            file.transferTo(targetLocation);
+        }
 
         String finalName = (name != null && !name.isBlank()) ? name : cleanOriginalFilename;
         String publicFileUrl = "/uploads/" + uniqueFileName;
@@ -100,8 +156,10 @@ public class AssetService {
                 .name(finalName)
                 .type(assetType)
                 .fileUrl(publicFileUrl)
-                .fileSize(file.getSize())
+                .fileSize(finalFileSize)
                 .mimeType(contentType)
+                .width(width)
+                .height(height)
                 .dpi(dpi != null ? dpi : 150)
                 .gridColumns(columns != null ? columns : 1)
                 .gridRows(rows != null ? rows : 1)
@@ -220,7 +278,7 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز");
         }
 
-        // ۱. پاک‌سازی ارجاعات خارجی با استفاده از کوئری امن پارامتری
+        // ۱. پاک‌سازی ارجاعات خارجی با کوئری امن
         entityManager.createNativeQuery("UPDATE tokens SET asset_id = NULL WHERE asset_id = :assetId")
                 .setParameter("assetId", assetId)
                 .executeUpdate();
@@ -229,7 +287,7 @@ public class AssetService {
                 .setParameter("assetId", assetId)
                 .executeUpdate();
 
-        // ۲. حذف فیزیکی امن با مهار کامل Path Traversal
+        // ۲. حذف فیزیکی امن
         try {
             if (asset.getFileUrl() != null && asset.getFileUrl().startsWith("/uploads/")) {
                 String subPath = asset.getFileUrl().substring("/uploads/".length());

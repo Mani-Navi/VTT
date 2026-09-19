@@ -61,6 +61,13 @@
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 
+		<!-- Image Processing & Compression -->
+		<dependency>
+			<groupId>net.coobird</groupId>
+			<artifactId>thumbnailator</artifactId>
+			<version>0.4.20</version>
+		</dependency>
+
 		<!-- Third Party Client (Excluded conflicting commons-logging) -->
 		<dependency>
 			<groupId>com.google.api-client</groupId>
