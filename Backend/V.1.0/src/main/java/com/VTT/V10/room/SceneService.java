@@ -7,6 +7,7 @@ import com.VTT.V10.room.dto.SceneResponse;
 import com.VTT.V10.room.dto.SceneStateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,6 +32,7 @@ public class SceneService {
     private final DrawingRepository drawingRepository;
     private final FogService fogService;
     private final FogRegionRepository fogRegionRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public SceneResponse createScene(CreateSceneRequest request, String userEmail) {
@@ -73,7 +75,15 @@ public class SceneService {
                 .build();
 
         sceneRepository.save(scene);
-        return convertToResponse(scene);
+        SceneResponse response = convertToResponse(scene);
+
+        // برادکست آنی ایجاد صحنه به تمام بازیکنان اتاق
+        broadcastToRoom(room.getId(), "SCENE_CREATED", Map.of("scene", response, "sceneId", scene.getId().toString()));
+        if (shouldBeActive) {
+            broadcastToRoom(room.getId(), "SCENE_ACTIVATED", Map.of("sceneId", scene.getId().toString()));
+        }
+
+        return response;
     }
 
     @Transactional
@@ -87,7 +97,10 @@ public class SceneService {
             scene.setName(newName.trim());
             sceneRepository.save(scene);
         }
-        return convertToResponse(scene);
+
+        SceneResponse response = convertToResponse(scene);
+        broadcastToRoom(scene.getRoom().getId(), "SCENE_RENAME", Map.of("sceneId", scene.getId().toString(), "name", scene.getName()));
+        return response;
     }
 
     @Transactional
@@ -118,7 +131,9 @@ public class SceneService {
         }
 
         sceneRepository.save(scene);
-        return convertToResponse(scene);
+        SceneResponse response = convertToResponse(scene);
+        broadcastToRoom(scene.getRoom().getId(), "SCENE_UPDATED", Map.of("sceneId", scene.getId().toString(), "mapUrl", response.getMapUrl(), "assetUrl", response.getMapUrl()));
+        return response;
     }
 
     @Transactional
@@ -132,7 +147,9 @@ public class SceneService {
         scene.setIsActive(true);
         sceneRepository.save(scene);
 
-        return convertToResponse(scene);
+        SceneResponse response = convertToResponse(scene);
+        broadcastToRoom(scene.getRoom().getId(), "SCENE_ACTIVATED", Map.of("sceneId", scene.getId().toString()));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -176,14 +193,29 @@ public class SceneService {
 
         sceneRepository.delete(scene);
 
+        UUID nextActiveId = null;
         if (Boolean.TRUE.equals(scene.getIsActive())) {
             List<Scene> remaining = sceneRepository.findByRoomId(roomId);
             if (!remaining.isEmpty()) {
                 Scene newActive = remaining.get(0);
                 newActive.setIsActive(true);
                 sceneRepository.save(newActive);
+                nextActiveId = newActive.getId();
             }
         }
+
+        broadcastToRoom(roomId, "SCENE_DELETE", Map.of("sceneId", sceneId.toString(), "activeSceneId", nextActiveId != null ? nextActiveId.toString() : ""));
+    }
+
+    private void broadcastToRoom(UUID roomId, String action, Object data) {
+        try {
+            Map<String, Object> payload = Map.of(
+                    "roomId", roomId.toString(),
+                    "action", action,
+                    "data", data
+            );
+            messagingTemplate.convertAndSend("/topic/room/" + roomId, payload);
+        } catch (Exception ignored) {}
     }
 
     private void validateMembership(UUID roomId, String email) {
