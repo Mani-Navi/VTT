@@ -171,6 +171,8 @@ export function useWebSocket(roomId, onMessage = null) {
       }
 
       const store = useSceneStore.getState();
+      store.setRoomSettings(data);
+
       const current = store.currentScene;
       if (current) {
         const updatedGrid = {

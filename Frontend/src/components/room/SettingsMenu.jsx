@@ -62,6 +62,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
   const setGmFogBlend = useCanvasStore((state) => state.setGmFogBlend);
 
   const currentScene = useSceneStore((state) => state.currentScene);
+  const setRoomSettings = useSceneStore((state) => state.setRoomSettings);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -76,6 +77,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           .then((data) => {
             if (data) {
               setSettings((prev) => ({ ...prev, ...data }));
+              setRoomSettings(data);
               if (data.measurementType) setRulerType(data.measurementType);
               if (data.inputMode) setInputMode(data.inputMode);
               if (data.zoomSensitivity) setZoomSensitivity(data.zoomSensitivity);
@@ -98,6 +100,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
     setZoomSensitivity,
     setShapeSnapSensitivity,
     setGmFogBlend,
+    setRoomSettings,
   ]);
 
   if (!isSettingsOpen) return null;
@@ -130,6 +133,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
   const handleChange = (patch) => {
     const updated = { ...settings, ...patch };
     setSettings(updated);
+    setRoomSettings(updated);
 
     if (patch.measurementType) setRulerType(patch.measurementType);
     if (patch.inputMode) setInputMode(patch.inputMode);
@@ -158,6 +162,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
     try {
       const saved = await settingsApi.updateSettings(roomId, settings);
       const activeData = saved || settings;
+      setRoomSettings(activeData);
 
       if (currentScene) {
         const finalGrid = {
@@ -199,6 +204,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
 
       const finalDefaults = defaults || DEFAULT_SETTINGS;
       setSettings(finalDefaults);
+      setRoomSettings(finalDefaults);
 
       if (finalDefaults.measurementType) setRulerType(finalDefaults.measurementType);
       if (finalDefaults.inputMode) setInputMode(finalDefaults.inputMode);

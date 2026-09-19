@@ -56,6 +56,11 @@ export const useSceneStore = create((set, get) => ({
     remoteLiveFog: null,
     isLoading: false,
     availableConditions: [],
+    roomSettings: null,
+
+    setRoomSettings: (settings) => {
+        set({ roomSettings: settings });
+    },
 
     resetSceneStore: () => {
         set({
@@ -66,6 +71,7 @@ export const useSceneStore = create((set, get) => ({
             remoteLiveFog: null,
             isLoading: false,
             availableConditions: [],
+            roomSettings: null,
         });
     },
 
@@ -237,6 +243,7 @@ export const useSceneStore = create((set, get) => ({
                 scenes: scenes,
                 currentScene: sceneWithState,
                 availableConditions: Array.isArray(persistentConditions) ? persistentConditions : [],
+                roomSettings: roomSettings || null,
                 isLoading: false,
             });
         } catch (err) {
@@ -693,6 +700,27 @@ export const useSceneStore = create((set, get) => ({
 
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];
 
+            // به جای مقادیر هاردکدشده، تنظیمات فعال اتاق و گرید جاری حفظ می‌شود
+            const currentRoomSettings = state.roomSettings;
+            const existingGrid = state.currentScene?.grid;
+
+            const finalGrid = {
+                enabled: true,
+                type: currentRoomSettings?.gridType || existingGrid?.type || sceneData.gridType || "square",
+                lineType: currentRoomSettings?.lineType || existingGrid?.lineType || "solid",
+                size: Number(currentRoomSettings?.gridSize || existingGrid?.size || sceneData.gridSize || 60),
+                color: currentRoomSettings?.gridColor || existingGrid?.color || sceneData.gridColor || "#000000",
+                opacity: currentRoomSettings?.gridOpacity !== undefined
+                    ? Number(currentRoomSettings.gridOpacity)
+                    : (existingGrid?.opacity !== undefined ? Number(existingGrid.opacity) : (sceneData.gridOpacity || 0.35)),
+                lineWidth: currentRoomSettings?.lineWidth !== undefined
+                    ? Number(currentRoomSettings.lineWidth)
+                    : (existingGrid?.lineWidth !== undefined ? Number(existingGrid.lineWidth) : 1.5),
+                snapToGrid: currentRoomSettings?.isGridSnapping !== undefined
+                    ? Boolean(currentRoomSettings.isGridSnapping)
+                    : (existingGrid?.snapToGrid !== undefined ? Boolean(existingGrid.snapToGrid) : true),
+            };
+
             const sceneWithState = {
                 ...sceneData,
                 id: String(sceneData.id || sceneId),
@@ -706,14 +734,7 @@ export const useSceneStore = create((set, get) => ({
                 fogEnabled: normalizedFog.length > 0 || Boolean(sceneData.fogFilled),
                 fogFilled: Boolean(sceneData.fogFilled),
                 isFogRevealed: isRevealedSaved,
-                grid: {
-                    enabled: true,
-                    type: sceneData.gridType || "square",
-                    size: sceneData.gridSize || 60,
-                    color: sceneData.gridColor || "#000000",
-                    opacity: 0.35,
-                    snapToGrid: true,
-                },
+                grid: finalGrid,
             };
 
             set({
