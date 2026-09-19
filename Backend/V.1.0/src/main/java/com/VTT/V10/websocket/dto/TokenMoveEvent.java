@@ -27,6 +27,7 @@ public class TokenMoveEvent {
     private Integer maxHp;
     private Integer ac;
 
+    private String controlledBy;
     private String gmNotes;
     private Boolean isHidden;
     private Boolean isLocked;

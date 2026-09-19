@@ -48,7 +48,9 @@ public class TokenService {
             requester = roomMemberRepository.findByRoomIdAndUserEmail(room.getId(), userEmail).orElse(null);
         }
 
-        boolean isGM = requester != null && requester.getRole() == RoomMember.Role.ADMIN;
+        boolean isGM = (room.getOwner() != null && userEmail != null && room.getOwner().getEmail().equalsIgnoreCase(userEmail)) ||
+                (requester != null && (requester.getRole() == RoomMember.Role.ADMIN || requester.getRole() == RoomMember.Role.GM));
+
         boolean hasEditTokenPerm = false;
         String finalControlledBy = "";
 
@@ -71,8 +73,10 @@ public class TokenService {
             } else {
                 finalControlledBy = (request.getControlledBy() != null && !request.getControlledBy().isBlank())
                         ? request.getControlledBy()
-                        : "";
+                        : (requester.getUser() != null ? requester.getUser().getId().toString() : "");
             }
+        } else if (isGM) {
+            finalControlledBy = request.getControlledBy() != null ? request.getControlledBy() : "";
         }
 
         Asset asset = null;
@@ -94,7 +98,7 @@ public class TokenService {
             }
         }
 
-        boolean defaultPlayerAccess = isGM || hasEditTokenPerm;
+        boolean defaultPlayerAccess = isGM || hasEditTokenPerm || !Boolean.TRUE.equals(request.getIsProp());
 
         try {
             Token token = Token.builder()
@@ -120,10 +124,10 @@ public class TokenService {
                     .showAc(request.getShowAc() != null ? request.getShowAc() : true)
                     .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
                     .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
-                    .allowPlayerHp(isGM ? (request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true) : defaultPlayerAccess)
-                    .allowPlayerConditions(isGM ? (request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true) : defaultPlayerAccess)
-                    .allowPlayerAc(isGM ? (request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true) : defaultPlayerAccess)
-                    .allowPlayerSize(isGM ? (request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true) : defaultPlayerAccess)
+                    .allowPlayerHp(request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : defaultPlayerAccess)
+                    .allowPlayerConditions(request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : defaultPlayerAccess)
+                    .allowPlayerAc(request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : defaultPlayerAccess)
+                    .allowPlayerSize(request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : defaultPlayerAccess)
                     .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
                     .build();
 
@@ -150,7 +154,6 @@ public class TokenService {
             boolean isOwner = false;
             boolean hasEditTokenPermission = false;
 
-            // اعتبارسنجی سازنده اصلی اتاق
             Room room = token.getScene() != null ? token.getScene().getRoom() : null;
             if (room != null && room.getOwner() != null && userEmail != null) {
                 if (room.getOwner().getEmail().equalsIgnoreCase(userEmail)) {
@@ -187,7 +190,7 @@ public class TokenService {
             }
 
             if (Boolean.TRUE.equals(data.getIsDeleted())) {
-                if (isGM) {
+                if (isGM || isOwner) {
                     tokenRepository.deleteById(tokenId);
                     tokenRepository.flush();
                 }
@@ -226,6 +229,9 @@ public class TokenService {
             }
 
             if (isGM) {
+                if (data.getControlledBy() != null && !data.getControlledBy().isBlank()) {
+                    token.setControlledBy(data.getControlledBy());
+                }
                 if (data.getGmNotes() != null) token.setGmNotes(data.getGmNotes());
                 if (data.getGoldValue() != null) token.setGoldValue(data.getGoldValue());
                 if (data.getXpValue() != null) token.setXpValue(data.getXpValue());

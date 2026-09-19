@@ -77,7 +77,6 @@ public class SceneService {
         sceneRepository.save(scene);
         SceneResponse response = convertToResponse(scene);
 
-        // برادکست آنی ایجاد صحنه به تمام بازیکنان اتاق
         broadcastToRoom(room.getId(), "SCENE_CREATED", Map.of("scene", response, "sceneId", scene.getId().toString()));
         if (shouldBeActive) {
             broadcastToRoom(room.getId(), "SCENE_ACTIVATED", Map.of("sceneId", scene.getId().toString()));
@@ -232,11 +231,11 @@ public class SceneService {
                 .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
                 .isPresent();
 
-        boolean isAdmin = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email)
-                .filter(m -> m.getRole() == RoomMember.Role.ADMIN)
+        boolean isGM = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email)
+                .filter(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                 .isPresent();
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isGM) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها دانجن‌مستر (GM) اجازه این عملیات را دارد");
         }
     }

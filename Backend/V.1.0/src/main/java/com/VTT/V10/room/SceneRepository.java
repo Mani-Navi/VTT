@@ -19,7 +19,7 @@ public interface SceneRepository extends JpaRepository<Scene, UUID> {
 
     long countByRoomId(UUID roomId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Scene s SET s.isActive = false WHERE s.room.id = :roomId")
     void deactivateAllScenesInRoom(@Param("roomId") UUID roomId);
 }
