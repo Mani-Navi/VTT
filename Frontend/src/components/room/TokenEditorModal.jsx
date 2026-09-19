@@ -180,7 +180,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
       setAllowPlayerAc(token.allowPlayerAc !== false);
       setAllowPlayerSize(token.allowPlayerSize !== false);
 
-      setSelectedConditions(token.conditions || []);
+      setSelectedConditions(Array.isArray(token.conditions) ? token.conditions : []);
       setShowAddConditionPicker(false);
       setShowPresetPicker(false);
       setUploadError("");
@@ -269,7 +269,11 @@ export const TokenEditorModal = memo(({ roomData }) => {
     };
 
     updateToken(token.id, updated);
-    wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", { tokenId: String(token.id), ...updated });
+    wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", {
+      tokenId: String(token.id),
+      id: String(token.id),
+      ...updated,
+    });
     closeEditor();
   };
 

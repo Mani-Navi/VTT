@@ -25,7 +25,6 @@ class WebSocketService {
       return;
     }
 
-    // اگر کلاینت قبلی هنوز باز است، فوراً قطع و تخلیه شود
     if (this.client) {
       try {
         this.clearSubscriptions();
@@ -166,6 +165,7 @@ class WebSocketService {
     switch (type) {
       case WS_EVENTS.TOKEN_MOVED:
       case "TOKEN_MOVE":
+      case "TOKEN_UPDATE":
         destination = `/app/room/${this.currentRoomId}/token/move`;
         action = "MOVE";
         break;
@@ -297,6 +297,8 @@ class WebSocketService {
       case "MOVE":
       case "TOKEN_MOVE":
       case "TOKEN_MOVED":
+      case "TOKEN_UPDATE":
+      case "TOKEN_UPDATED":
         this.trigger("TOKEN_MOVE", eventData);
         this.trigger("TOKEN_MOVED", eventData);
         this.trigger(WS_EVENTS.TOKEN_MOVED, eventData);

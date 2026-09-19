@@ -133,7 +133,6 @@ export const useSceneStore = create((set, get) => ({
         if (!roomId) return;
         set({ isLoading: true });
         try {
-            // دریافت تنظیمات به شکل غیرمسدودکننده در پس‌زمینه
             settingsApi
                 .getSettings(roomId)
                 .then((roomSettings) => {
@@ -182,6 +181,7 @@ export const useSceneStore = create((set, get) => ({
                         allowPlayerConditions: t.allowPlayerConditions !== undefined ? Boolean(t.allowPlayerConditions) : true,
                         allowPlayerAc: t.allowPlayerAc !== undefined ? Boolean(t.allowPlayerAc) : true,
                         allowPlayerSize: t.allowPlayerSize !== undefined ? Boolean(t.allowPlayerSize) : true,
+                        conditions: Array.isArray(t.conditions) ? t.conditions : [],
                     });
                 }
             }
@@ -282,6 +282,11 @@ export const useSceneStore = create((set, get) => ({
             let updatedTokens;
             if (existsIndex !== -1) {
                 const oldToken = currentTokens[existsIndex];
+                const resolvedConditions =
+                    cleanSocketData.conditions !== undefined
+                        ? (Array.isArray(cleanSocketData.conditions) ? cleanSocketData.conditions : [])
+                        : (oldToken.conditions || []);
+
                 updatedTokens = currentTokens.map((t, idx) =>
                     idx === existsIndex
                         ? {
@@ -301,6 +306,7 @@ export const useSceneStore = create((set, get) => ({
                             allowPlayerConditions: cleanSocketData.allowPlayerConditions !== undefined ? Boolean(cleanSocketData.allowPlayerConditions) : oldToken.allowPlayerConditions,
                             allowPlayerAc: cleanSocketData.allowPlayerAc !== undefined ? Boolean(cleanSocketData.allowPlayerAc) : oldToken.allowPlayerAc,
                             allowPlayerSize: cleanSocketData.allowPlayerSize !== undefined ? Boolean(cleanSocketData.allowPlayerSize) : oldToken.allowPlayerSize,
+                            conditions: resolvedConditions,
                         }
                         : t
                 );
@@ -326,6 +332,7 @@ export const useSceneStore = create((set, get) => ({
                     allowPlayerConditions: cleanSocketData.allowPlayerConditions !== undefined ? Boolean(cleanSocketData.allowPlayerConditions) : true,
                     allowPlayerAc: cleanSocketData.allowPlayerAc !== undefined ? Boolean(cleanSocketData.allowPlayerAc) : true,
                     allowPlayerSize: cleanSocketData.allowPlayerSize !== undefined ? Boolean(cleanSocketData.allowPlayerSize) : true,
+                    conditions: Array.isArray(cleanSocketData.conditions) ? cleanSocketData.conditions : [],
                 };
                 updatedTokens = [...currentTokens, newToken];
             }
@@ -350,16 +357,13 @@ export const useSceneStore = create((set, get) => ({
             assetUrl: mapUrl,
         };
 
-        // ۱. تغییر آنی نقشه روی صفحه در ۱ میلی‌ثانیه
         set({
             currentScene: updatedScene,
             scenes: state.scenes.map((s) => (s.id === current.id ? { ...s, mapUrl, assetUrl: mapUrl } : s)),
         });
 
-        // ۲. ارسال در لحظه به تمام بازیکنان
         wsService.send("SCENE_UPDATED", { sceneId: current.id, mapUrl, assetId });
 
-        // ۳. ذخیره در دیتابیس در پس‌زمینه
         try {
             await sceneApi.updateSceneMap(current.id, { mapUrl, assetId });
         } catch (err) {
@@ -440,6 +444,7 @@ export const useSceneStore = create((set, get) => ({
                 assetUrl: savedToken.avatarUrl || savedToken.assetUrl || tokenData.avatarUrl,
                 x: centerPos.x,
                 y: centerPos.y,
+                conditions: Array.isArray(savedToken.conditions) ? savedToken.conditions : [],
             };
 
             const updatedTokens = [...(state.currentScene.tokens || []), fullToken];
@@ -628,7 +633,6 @@ export const useSceneStore = create((set, get) => ({
         const strTargetId = String(sceneId).toLowerCase();
         const state = get();
 
-        // ۱. تغییر آنی وضعیت تب انتخاب شده و currentScene.id در کمتر از ۱ میلی‌ثانیه
         set({
             scenes: state.scenes.map((s) => ({
                 ...s,
@@ -639,13 +643,11 @@ export const useSceneStore = create((set, get) => ({
                 : { id: String(sceneId) },
         });
 
-        // ۲. شلیک مستقیم به وب‌سوکت برای سوییچ سایر کلاینت‌ها
         if (shouldBroadcast) {
             wsService.send("SCENE_ACTIVATED", { sceneId: String(sceneId) });
             sceneApi.activateScene(sceneId).catch(() => {});
         }
 
-        // ۳. لود کامل محتویات صحنه جدید
         try {
             const fullState = await sceneApi.getSceneState(sceneId);
             const sceneData = fullState.scene || {};
@@ -666,6 +668,7 @@ export const useSceneStore = create((set, get) => ({
                 allowPlayerConditions: t.allowPlayerConditions !== undefined ? Boolean(t.allowPlayerConditions) : true,
                 allowPlayerAc: t.allowPlayerAc !== undefined ? Boolean(t.allowPlayerAc) : true,
                 allowPlayerSize: t.allowPlayerSize !== undefined ? Boolean(t.allowPlayerSize) : true,
+                conditions: Array.isArray(t.conditions) ? t.conditions : [],
             }));
 
             const rawFogRegions = fullState.fogRegions || sceneData.fogShapes || [];

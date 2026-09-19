@@ -25,12 +25,27 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۲. جابجایی توکن
+    // ۲. جابجایی و ویرایش مشخصات توکن
     const unsubToken = wsService.on(WS_EVENTS.TOKEN_MOVED, (data) => {
       if (data) {
         useSceneStore.getState().syncTokenFromSocket(data);
       }
       if (onMessageRef.current) onMessageRef.current(data);
+    });
+
+    // ۲.۱. همگام‌سازی آنی فهرست وضعیت‌ها (Condition Pool) برای بازیکنان
+    const unsubConditions = wsService.on("CONDITION_POOL_UPDATE", (data) => {
+      if (data) {
+        const conditionsList =
+            data.availableConditions ||
+            data.conditions ||
+            (Array.isArray(data) ? data : null);
+
+        if (conditionsList && Array.isArray(conditionsList)) {
+          useSceneStore.getState().setAvailableConditions(conditionsList);
+        }
+      }
+      if (onMessageRef.current) onMessageRef.current({ action: "CONDITION_POOL_UPDATE", data });
     });
 
     // ۳. افزودن و حذف نقاشی
@@ -189,7 +204,6 @@ export function useWebSocket(roomId, onMessage = null) {
         const store = useSceneStore.getState();
         const exists = store.scenes.some((s) => String(s.id).toLowerCase() === strId.toLowerCase());
 
-        // اگر صحنه در کش محلی نبود ابتدا بارگذاری کرده و سپس قطعی سوییچ کن
         if (!exists) {
           await store.loadScenes(roomId);
         }
@@ -268,6 +282,7 @@ export function useWebSocket(roomId, onMessage = null) {
     return () => {
       unsubUsers();
       unsubToken();
+      unsubConditions();
       unsubDraw();
       unsubDrawDelete();
       unsubDrawLive();
