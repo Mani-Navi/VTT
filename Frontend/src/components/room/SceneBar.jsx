@@ -47,12 +47,11 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                 // ۱. اضافه کردن سریع صحنه به استیت محلی GM
                 useSceneStore.getState().addSceneFromSocket(created);
 
-                // ۲. سوییچ به صحنه جدید
-                await switchScene(created.id, false);
+                // ۲. سوییچ به صحنه جدید و اطلاع‌رسانی مطمئن
+                await switchScene(created.id, true);
 
-                // ۳. برادکست مستقیم ساخت و اکتیو شدن به تمام بازیکنان
-                wsService.send("SCENE_CREATED", { scene: created, sceneId: created.id });
-                wsService.send("SCENE_ACTIVATED", { sceneId: created.id });
+                // ۳. ارسال زودهنگام کلاینتی برای برادکست بدون تاخیر
+                wsService.send("SCENE_CREATED", { scene: created, sceneId: String(created.id) });
             }
         } catch (err) {
             if (import.meta.env.DEV) {
@@ -70,17 +69,17 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
         try {
             await sceneApi.deleteScene(sceneId);
 
-            const remaining = scenes.filter((s) => s.id !== sceneId);
+            const remaining = scenes.filter((s) => String(s.id).toLowerCase() !== String(sceneId).toLowerCase());
             const nextActive = remaining.length > 0 ? remaining[0].id : null;
 
             useSceneStore.setState({ scenes: remaining });
             if (nextActive) {
-                await switchScene(nextActive, false);
+                await switchScene(nextActive, true);
             }
 
             wsService.send("SCENE_DELETE", {
-                sceneId: sceneId,
-                activeSceneId: nextActive,
+                sceneId: String(sceneId),
+                activeSceneId: nextActive ? String(nextActive) : null,
             });
         } catch (err) {
             if (import.meta.env.DEV) {
@@ -119,7 +118,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
             <div className="flex items-center gap-1.5 max-w-[55vw] overflow-x-auto custom-scrollbar py-0.5 px-0.5">
                 {scenes.map((scene) => {
-                    const isActive = currentScene?.id === scene.id;
+                    const isActive = String(currentScene?.id || "").toLowerCase() === String(scene.id || "").toLowerCase();
                     const isEditingThis = editingSceneId === scene.id;
 
                     if (isEditingThis && isGM) {

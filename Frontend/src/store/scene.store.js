@@ -179,6 +179,7 @@ export const useSceneStore = create((set, get) => ({
 
             const sceneWithState = {
                 ...sceneData,
+                id: String(sceneData.id || active.id),
                 assetUrl: finalMapUrl,
                 mapUrl: finalMapUrl,
                 mapWidth: sceneData.mapWidth || 2000,
@@ -354,10 +355,14 @@ export const useSceneStore = create((set, get) => ({
     renameScene: async (sceneId, newName) => {
         if (!sceneId || !newName?.trim()) return;
         const trimmed = newName.trim();
+        const targetId = String(sceneId).toLowerCase();
 
         set((state) => ({
-            scenes: state.scenes.map((s) => (s.id === sceneId ? { ...s, name: trimmed } : s)),
-            currentScene: state.currentScene?.id === sceneId ? { ...state.currentScene, name: trimmed } : state.currentScene,
+            scenes: state.scenes.map((s) => (String(s.id).toLowerCase() === targetId ? { ...s, name: trimmed } : s)),
+            currentScene:
+                String(state.currentScene?.id || "").toLowerCase() === targetId
+                    ? { ...state.currentScene, name: trimmed }
+                    : state.currentScene,
         }));
 
         try {
@@ -604,23 +609,28 @@ export const useSceneStore = create((set, get) => ({
     },
 
     switchScene: async (sceneId, shouldBroadcast = true) => {
+        if (!sceneId) return;
+        const strTargetId = String(sceneId).toLowerCase();
         const state = get();
 
-        // تغییر آنی وضعیت تب انتخاب شده در کمتر از ۱ میلی‌ثانیه
+        // ۱. تغییر آنی وضعیت تب انتخاب شده و currentScene.id در کمتر از ۱ میلی‌ثانیه
         set({
             scenes: state.scenes.map((s) => ({
                 ...s,
-                isActive: s.id === sceneId,
+                isActive: String(s.id).toLowerCase() === strTargetId,
             })),
+            currentScene: state.currentScene
+                ? { ...state.currentScene, id: String(sceneId) }
+                : { id: String(sceneId) },
         });
 
-        // شلیک درجا به وب‌سوکت برای سوییچ بقیه بازیکنان
+        // ۲. شلیک مستقیم به وب‌سوکت برای سوییچ سایر کلاینت‌ها
         if (shouldBroadcast) {
-            wsService.send("SCENE_ACTIVATED", { sceneId });
+            wsService.send("SCENE_ACTIVATED", { sceneId: String(sceneId) });
             sceneApi.activateScene(sceneId).catch(() => {});
         }
 
-        // لود استیت صحنه
+        // ۳. لود کامل محتویات صحنه جدید
         try {
             const fullState = await sceneApi.getSceneState(sceneId);
             const sceneData = fullState.scene || {};
@@ -653,6 +663,7 @@ export const useSceneStore = create((set, get) => ({
 
             const sceneWithState = {
                 ...sceneData,
+                id: String(sceneData.id || sceneId),
                 assetUrl: finalMapUrl,
                 mapUrl: finalMapUrl,
                 mapWidth: sceneData.mapWidth || 2000,

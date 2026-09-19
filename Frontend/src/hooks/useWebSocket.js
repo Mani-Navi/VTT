@@ -181,49 +181,50 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-// ۷. تغییر/سوییچ صحنه
+    // ۷. تغییر/سوییچ صحنه
     const unsubScene = wsService.on("SCENE_ACTIVATED", async (data) => {
-      const targetSceneId = data?.sceneId || data?.id || data;
+      const targetSceneId = data?.sceneId || data?.id || (typeof data === "string" ? data : null);
       if (targetSceneId) {
         const strId = String(targetSceneId);
         const store = useSceneStore.getState();
         const exists = store.scenes.some((s) => String(s.id).toLowerCase() === strId.toLowerCase());
 
-        // اگر صحنه در لیست پلیر نبود، فوراً لیست صحنه‌ها را سینک کن تا تب ظاهر شود
+        // اگر صحنه در کش محلی نبود ابتدا بارگذاری کرده و سپس قطعی سوییچ کن
         if (!exists) {
           await store.loadScenes(roomId);
-        } else {
-          store.switchScene(strId, false);
         }
+        await store.switchScene(strId, false);
       }
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
     // ۸. ساخت آنی صحنه جدید روی SceneBar بازیکن
     const unsubSceneCreate = wsService.on("SCENE_CREATED", async (data) => {
-      const newScene = data?.scene || data;
+      const newScene = data?.scene || (data?.id ? data : null);
+      const store = useSceneStore.getState();
+
       if (newScene && newScene.id) {
-        // اضافه کردن مستقیم به نوار صحنه‌ها بدون معطلی
-        useSceneStore.getState().addSceneFromSocket(newScene);
+        store.addSceneFromSocket(newScene);
 
         if (newScene.isActive) {
-          useSceneStore.getState().switchScene(String(newScene.id), false);
+          await store.switchScene(String(newScene.id), false);
         }
       } else {
-        // فال‌بک مطمئن
-        await useSceneStore.getState().loadScenes(roomId);
+        await store.loadScenes(roomId);
       }
+      if (onMessageRef.current) onMessageRef.current(data);
     });
 
     // ۹. حذف صحنه
     const unsubSceneDelete = wsService.on("SCENE_DELETE", async (data) => {
       if (data && data.sceneId) {
+        const targetId = String(data.sceneId).toLowerCase();
         useSceneStore.setState((state) => ({
-          scenes: state.scenes.filter((s) => s.id !== data.sceneId),
+          scenes: state.scenes.filter((s) => String(s.id).toLowerCase() !== targetId),
         }));
 
         if (data.activeSceneId) {
-          useSceneStore.getState().switchScene(data.activeSceneId, false);
+          await useSceneStore.getState().switchScene(String(data.activeSceneId), false);
         }
       }
       if (onMessageRef.current) onMessageRef.current(data);
@@ -232,12 +233,13 @@ export function useWebSocket(roomId, onMessage = null) {
     // ۱۰. به‌روزرسانی مپ صحنه (در لحظه و زنده)
     const unsubSceneUpdate = wsService.on("SCENE_UPDATED", (data) => {
       if (data && data.sceneId) {
+        const targetId = String(data.sceneId).toLowerCase();
         const nextMapUrl = data.mapUrl || data.assetUrl || "";
         useSceneStore.setState((state) => {
-          const isCurrent = state.currentScene?.id === data.sceneId;
+          const isCurrent = String(state.currentScene?.id || "").toLowerCase() === targetId;
           return {
             scenes: state.scenes.map((s) =>
-                s.id === data.sceneId ? { ...s, mapUrl: nextMapUrl, assetUrl: nextMapUrl } : s
+                String(s.id).toLowerCase() === targetId ? { ...s, mapUrl: nextMapUrl, assetUrl: nextMapUrl } : s
             ),
             currentScene: isCurrent
                 ? { ...state.currentScene, mapUrl: nextMapUrl, assetUrl: nextMapUrl }
@@ -251,10 +253,11 @@ export function useWebSocket(roomId, onMessage = null) {
     // ۱۱. تغییر نام صحنه
     const unsubRename = wsService.on("SCENE_RENAME", (data) => {
       if (data && data.sceneId && data.name) {
+        const targetId = String(data.sceneId).toLowerCase();
         useSceneStore.setState((state) => ({
-          scenes: state.scenes.map((s) => (s.id === data.sceneId ? { ...s, name: data.name } : s)),
+          scenes: state.scenes.map((s) => (String(s.id).toLowerCase() === targetId ? { ...s, name: data.name } : s)),
           currentScene:
-              state.currentScene?.id === data.sceneId
+              String(state.currentScene?.id || "").toLowerCase() === targetId
                   ? { ...state.currentScene, name: data.name }
                   : state.currentScene,
         }));
