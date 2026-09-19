@@ -57,6 +57,18 @@ export const useSceneStore = create((set, get) => ({
     isLoading: false,
     availableConditions: [],
 
+    resetSceneStore: () => {
+        set({
+            currentScene: null,
+            scenes: [],
+            pings: [],
+            remoteLiveDrawing: null,
+            remoteLiveFog: null,
+            isLoading: false,
+            availableConditions: [],
+        });
+    },
+
     setAvailableConditions: (conditions) => {
         set({ availableConditions: Array.isArray(conditions) ? conditions : [] });
     },
@@ -121,10 +133,17 @@ export const useSceneStore = create((set, get) => ({
         if (!roomId) return;
         set({ isLoading: true });
         try {
-            let [scenes, roomSettings] = await Promise.all([
-                sceneApi.getScenes(roomId),
-                settingsApi.getSettings(roomId).catch(() => null),
-            ]);
+            // دریافت تنظیمات به شکل غیرمسدودکننده در پس‌زمینه
+            settingsApi
+                .getSettings(roomId)
+                .then((roomSettings) => {
+                    if (roomSettings?.measurementType) {
+                        useCanvasStore.getState().setRulerType(roomSettings.measurementType);
+                    }
+                })
+                .catch(() => {});
+
+            let scenes = await sceneApi.getScenes(roomId);
 
             if (!scenes || scenes.length === 0) {
                 const defaultScene = await sceneApi.createScene({
@@ -173,10 +192,6 @@ export const useSceneStore = create((set, get) => ({
 
             useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
 
-            if (roomSettings?.measurementType) {
-                useCanvasStore.getState().setRulerType(roomSettings.measurementType);
-            }
-
             const sceneWithState = {
                 ...sceneData,
                 id: String(sceneData.id || active.id),
@@ -192,13 +207,13 @@ export const useSceneStore = create((set, get) => ({
                 isFogRevealed: isRevealedSaved,
                 grid: {
                     enabled: true,
-                    type: roomSettings?.gridType || sceneData.gridType || "square",
-                    size: Number(roomSettings?.gridSize || sceneData.gridSize || 60),
-                    color: roomSettings?.gridColor || sceneData.gridColor || "#000000",
-                    opacity: roomSettings?.gridOpacity !== undefined ? Number(roomSettings.gridOpacity) : 0.35,
-                    lineWidth: roomSettings?.lineWidth !== undefined ? Number(roomSettings.lineWidth) : 1.5,
-                    lineType: roomSettings?.lineType || "solid",
-                    snapToGrid: roomSettings?.isGridSnapping !== undefined ? Boolean(roomSettings.isGridSnapping) : true,
+                    type: sceneData.gridType || "square",
+                    size: Number(sceneData.gridSize || 60),
+                    color: sceneData.gridColor || "#000000",
+                    opacity: sceneData.gridOpacity !== undefined ? Number(sceneData.gridOpacity) : 0.35,
+                    lineWidth: 1.5,
+                    lineType: "solid",
+                    snapToGrid: true,
                 },
             };
 

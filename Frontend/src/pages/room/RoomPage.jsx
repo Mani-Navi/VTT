@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, Component } from "react";
+import React, { useEffect, useState, useCallback, Component } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     LogOut,
@@ -9,6 +9,7 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { useSceneStore } from "../../store/scene.store.js";
+import { useCanvasStore } from "../../store/canvas.store.js";
 import { useAuthStore } from "../../store/auth.store";
 import { useRoomStore } from "../../store/room.store";
 import { useWebSocket } from "../../hooks/useWebSocket.js";
@@ -85,11 +86,23 @@ export const RoomPage = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-    const effectiveRoomId = useMemo(() => {
-        return roomData?.id ? String(roomData.id) : urlParamId;
-    }, [roomData?.id, urlParamId]);
-
+    const effectiveRoomId = urlParamId;
     const { isGM, permissions: userPermissions } = usePermissions(roomData);
+
+    // پاکسازی سریع دیتای اتاق قبلی به محض لود اتاق جدید یا خروج
+    useEffect(() => {
+        setRoomData(null);
+        setOnlineMembers([]);
+        useSceneStore.getState().resetSceneStore();
+        useCanvasStore.getState().resetCanvasStore();
+
+        return () => {
+            setRoomData(null);
+            setOnlineMembers([]);
+            useSceneStore.getState().resetSceneStore();
+            useCanvasStore.getState().resetCanvasStore();
+        };
+    }, [urlParamId]);
 
     const handleSocketMessage = useCallback(
         (event) => {

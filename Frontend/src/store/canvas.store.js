@@ -54,6 +54,27 @@ export const useCanvasStore = create((set, get) => ({
     measurement: null,
     remoteMeasurements: {},
 
+    resetCanvasStore: () =>
+        set({
+            activeTool: TOOLS.SELECT,
+            zoom: 1.0,
+            stageX: 0,
+            stageY: 0,
+            selectedTokenIds: [],
+            selectedDrawingId: null,
+            selectedFogId: null,
+            isTokenEditorOpen: false,
+            editingTokenId: null,
+            isAssetMenuOpen: false,
+            isSettingsMenuOpen: false,
+            isDiceRollerOpen: false,
+            laserPosition: null,
+            remoteLasers: {},
+            measurement: null,
+            remoteMeasurements: {},
+            isFogRevealedGlobally: false,
+        }),
+
     setInputMode: (mode) => set({ inputMode: mode }),
     setZoomSensitivity: (val) => set({ zoomSensitivity: Number(val) || 1.0 }),
     setShapeSnapSensitivity: (val) => set({ shapeSnapSensitivity: Number(val) || 0.5 }),

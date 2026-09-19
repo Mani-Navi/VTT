@@ -19,8 +19,19 @@ class WebSocketService {
   }
 
   connect(roomId, token) {
+    if (!roomId) return;
+
     if (this.isConnected && this.currentRoomId === roomId) {
       return;
+    }
+
+    // اگر کلاینت قبلی هنوز باز است، فوراً قطع و تخلیه شود
+    if (this.client) {
+      try {
+        this.clearSubscriptions();
+        this.client.deactivate();
+      } catch (ignored) {}
+      this.client = null;
     }
 
     this.currentRoomId = roomId;
@@ -135,10 +146,14 @@ class WebSocketService {
   disconnect() {
     this.sendPresenceLeave();
     this.clearSubscriptions();
-    if (this.client && this.isConnected) {
-      this.client.deactivate();
+    if (this.client) {
+      try {
+        this.client.deactivate();
+      } catch (ignored) {}
+      this.client = null;
     }
     this.isConnected = false;
+    this.currentRoomId = null;
     useWebSocketStore.getState().setStatus("DISCONNECTED");
   }
 
