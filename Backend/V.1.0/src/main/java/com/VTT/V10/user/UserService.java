@@ -63,10 +63,6 @@ public class UserService {
     public void changePassword(String userEmail, ChangePasswordRequest request) {
         User user = getByEmail(userEmail);
 
-        if (user.getPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "رمز عبور فعلی نادرست است");
-        }
-
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }

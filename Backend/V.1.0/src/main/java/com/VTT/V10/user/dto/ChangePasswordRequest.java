@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChangePasswordRequest {
 
-    @NotBlank(message = "رمز عبور فعلی الزامی است")
-    private String currentPassword;
-
     @NotBlank(message = "رمز عبور جدید الزامی است")
     @Size(min = 8, max = 72, message = "رمز عبور باید بین ۸ تا ۷۲ کاراکتر باشد")
     private String newPassword;
