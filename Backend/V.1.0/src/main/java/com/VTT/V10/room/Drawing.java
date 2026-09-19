@@ -1,5 +1,6 @@
 package com.VTT.V10.room;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -61,7 +62,7 @@ public class Drawing {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private Object points;
+    private JsonNode points;
 
     @Builder.Default
     private Boolean isGMLayer = false;

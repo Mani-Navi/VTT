@@ -2,6 +2,8 @@ package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.DrawingResponse;
 import com.VTT.V10.websocket.dto.DrawingEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ public class DrawingService {
 
     private final DrawingRepository drawingRepository;
     private final SceneRepository sceneRepository;
+    private final ObjectMapper objectMapper;
 
     @Async
     @Transactional
@@ -43,7 +46,7 @@ public class DrawingService {
                 saveOrUpdateDrawing(sceneId, event);
             }
         } catch (Exception e) {
-            log.warn("Async Drawing save warning: {}", e.getMessage());
+            log.error("Async Drawing save error: {}", e.getMessage(), e);
         }
     }
 
@@ -100,6 +103,20 @@ public class DrawingService {
         String finalStroke = event.getStroke() != null ? event.getStroke() : event.getColor();
         Double finalStrokeWidth = event.getStrokeWidth() != null ? event.getStrokeWidth() : event.getLineWidth();
 
+        // تبدیل ایمن Object points به JsonNode
+        JsonNode pointsNode = null;
+        if (event.getPoints() != null) {
+            if (event.getPoints() instanceof JsonNode jn) {
+                pointsNode = jn;
+            } else {
+                try {
+                    pointsNode = objectMapper.valueToTree(event.getPoints());
+                } catch (Exception ex) {
+                    log.warn("Could not convert points to JsonNode: {}", ex.getMessage());
+                }
+            }
+        }
+
         Drawing drawing;
         if (existingOpt.isPresent()) {
             drawing = existingOpt.get();
@@ -130,7 +147,7 @@ public class DrawingService {
             if (event.getScaleX() != null) drawing.setScaleX(event.getScaleX());
             if (event.getScaleY() != null) drawing.setScaleY(event.getScaleY());
             if (event.getRotation() != null) drawing.setRotation(event.getRotation());
-            if (event.getPoints() != null) drawing.setPoints(event.getPoints());
+            if (pointsNode != null) drawing.setPoints(pointsNode);
             if (event.getIsGMLayer() != null) drawing.setIsGMLayer(event.getIsGMLayer());
         } else {
             drawing = Drawing.builder()
@@ -155,7 +172,7 @@ public class DrawingService {
                     .scaleX(event.getScaleX() != null ? event.getScaleX() : 1.0)
                     .scaleY(event.getScaleY() != null ? event.getScaleY() : 1.0)
                     .rotation(event.getRotation() != null ? event.getRotation() : 0.0)
-                    .points(event.getPoints())
+                    .points(pointsNode)
                     .isGMLayer(Boolean.TRUE.equals(event.getIsGMLayer()))
                     .isVisible(true)
                     .build();
