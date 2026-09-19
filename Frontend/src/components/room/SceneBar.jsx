@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from "react";
+import React, { useState, memo } from "react";
 import {
     Layers,
     Plus,
@@ -10,14 +10,12 @@ import {
 import { useSceneStore } from "../../store/scene.store";
 import { sceneApi } from "../../api/scene.api";
 import { wsService } from "../../services/websocket.service";
-import { WS_EVENTS } from "../../constants/wsEvents.js";
 import { cn } from "../../utils/cn";
 
 export const SceneBar = memo(({ isGM = false, roomId = null }) => {
     const scenes = useSceneStore((state) => state.scenes);
     const currentScene = useSceneStore((state) => state.currentScene);
     const switchScene = useSceneStore((state) => state.switchScene);
-    const loadScenes = useSceneStore((state) => state.loadScenes);
     const renameScene = useSceneStore((state) => state.renameScene);
 
     const [isCreating, setIsCreating] = useState(false);
@@ -31,21 +29,32 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
     const handleCreateScene = async (e) => {
         e.preventDefault();
-        if (!newSceneName.trim()) return;
+        if (!newSceneName.trim() || isSubmitting) return;
 
+        const sceneName = newSceneName.trim();
         setIsSubmitting(true);
         try {
             const created = await sceneApi.createScene({
                 roomId,
-                name: newSceneName.trim(),
+                name: sceneName,
                 isActive: true,
             });
+
             setNewSceneName("");
             setIsCreating(false);
-            await loadScenes(roomId);
 
             if (created && created.id) {
-                wsService.send(WS_EVENTS.SCENE_ACTIVATED || "SCENE_CHANGE", { sceneId: created.id });
+                // اضافه کردن سریع صحنه به استیت محلی بدون کوئری‌های سنگین
+                useSceneStore.setState((state) => ({
+                    scenes: [...state.scenes, created],
+                }));
+
+                // سوییچ آنی به صحنه جدید
+                await switchScene(created.id, false);
+
+                // برادکست سریع به بازیکنان
+                wsService.send("SCENE_CREATED", { scene: created });
+                wsService.send("SCENE_ACTIVATED", { sceneId: created.id });
             }
         } catch (err) {
             if (import.meta.env.DEV) {
@@ -62,14 +71,18 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
         try {
             await sceneApi.deleteScene(sceneId);
-            await loadScenes(roomId);
 
-            const updatedState = useSceneStore.getState();
-            const newActiveId = updatedState.currentScene?.id || null;
+            const remaining = scenes.filter((s) => s.id !== sceneId);
+            const nextActive = remaining.length > 0 ? remaining[0].id : null;
+
+            useSceneStore.setState({ scenes: remaining });
+            if (nextActive) {
+                await switchScene(nextActive, false);
+            }
 
             wsService.send("SCENE_DELETE", {
                 sceneId: sceneId,
-                activeSceneId: newActiveId,
+                activeSceneId: nextActive,
             });
         } catch (err) {
             if (import.meta.env.DEV) {

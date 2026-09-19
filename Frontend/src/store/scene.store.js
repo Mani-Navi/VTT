@@ -315,14 +315,18 @@ export const useSceneStore = create((set, get) => ({
             assetUrl: mapUrl,
         };
 
+        // ۱. تغییر آنی نقشه روی صفحه در ۱ میلی‌ثانیه
         set({
             currentScene: updatedScene,
             scenes: state.scenes.map((s) => (s.id === current.id ? { ...s, mapUrl, assetUrl: mapUrl } : s)),
         });
 
+        // ۲. ارسال در لحظه به تمام بازیکنان
+        wsService.send("SCENE_UPDATED", { sceneId: current.id, mapUrl, assetId });
+
+        // ۳. ذخیره در دیتابیس در پس‌زمینه
         try {
             await sceneApi.updateSceneMap(current.id, { mapUrl, assetId });
-            wsService.send("SCENE_UPDATE", { sceneId: current.id, mapUrl, assetId });
         } catch (err) {
             if (import.meta.env.DEV) console.error("خطا در ذخیره نقشه در سرور:", err);
         }
@@ -581,13 +585,24 @@ export const useSceneStore = create((set, get) => ({
     },
 
     switchScene: async (sceneId, shouldBroadcast = true) => {
-        set({ isLoading: true });
-        try {
-            if (shouldBroadcast) {
-                await sceneApi.activateScene(sceneId);
-                wsService.send("SCENE_CHANGE", { sceneId });
-            }
+        const state = get();
 
+        // تغییر آنی وضعیت تب انتخاب شده در کمتر از ۱ میلی‌ثانیه
+        set({
+            scenes: state.scenes.map((s) => ({
+                ...s,
+                isActive: s.id === sceneId,
+            })),
+        });
+
+        // شلیک درجا به وب‌سوکت برای سوییچ بقیه بازیکنان
+        if (shouldBroadcast) {
+            wsService.send("SCENE_ACTIVATED", { sceneId });
+            sceneApi.activateScene(sceneId).catch(() => {});
+        }
+
+        // لود استیت صحنه
+        try {
             const fullState = await sceneApi.getSceneState(sceneId);
             const sceneData = fullState.scene || {};
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
@@ -639,22 +654,12 @@ export const useSceneStore = create((set, get) => ({
                 },
             };
 
-            set((state) => ({
+            set({
                 currentScene: sceneWithState,
                 availableConditions: Array.isArray(persistentConditions) ? persistentConditions : [],
-                scenes: state.scenes.map((s) => ({
-                    ...s,
-                    isActive: s.id === sceneId,
-                })),
-                isLoading: false,
-            }));
+            });
         } catch (err) {
-            if (import.meta.env.DEV) {
-                console.error("خطا در تغییر صحنه:", err);
-            }
-            set({ isLoading: false });
+            if (import.meta.env.DEV) console.error("خطا در تغییر صحنه:", err);
         }
     },
-
-    setScene: (scene) => set({ currentScene: scene }),
 }));

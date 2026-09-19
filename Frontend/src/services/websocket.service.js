@@ -323,6 +323,29 @@ class WebSocketService {
       case "FOG_LIVE_END":
         this.trigger("FOG_LIVE_END", eventData);
         break;
+      case "SCENE_CHANGE":
+      case "SCENE_ACTIVATED":
+        this.trigger("SCENE_CHANGE", eventData);
+        this.trigger("SCENE_ACTIVATED", eventData);
+        this.trigger(WS_EVENTS.SCENE_ACTIVATED, eventData);
+        break;
+      case "SCENE_UPDATE":
+      case "SCENE_UPDATED":
+        this.trigger("SCENE_UPDATE", eventData);
+        this.trigger("SCENE_UPDATED", eventData);
+        this.trigger(WS_EVENTS.SCENE_UPDATED, eventData);
+        break;
+      case "SCENE_CREATE":
+      case "SCENE_CREATED":
+        this.trigger("SCENE_CREATE", eventData);
+        this.trigger("SCENE_CREATED", eventData);
+        break;
+      case "SCENE_DELETE":
+        this.trigger("SCENE_DELETE", eventData);
+        break;
+      case "SCENE_RENAME":
+        this.trigger("SCENE_RENAME", eventData);
+        break;
       default:
         if (action) {
           this.trigger(action, eventData);
