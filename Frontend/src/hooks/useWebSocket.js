@@ -157,6 +157,18 @@ export function useWebSocket(roomId, onMessage = null) {
       if (data.measurementType) {
         useCanvasStore.getState().setRulerType(data.measurementType);
       }
+      if (data.inputMode) {
+        useCanvasStore.getState().setInputMode(data.inputMode);
+      }
+      if (data.zoomSensitivity !== undefined) {
+        useCanvasStore.getState().setZoomSensitivity(data.zoomSensitivity);
+      }
+      if (data.shapeSnapSensitivity !== undefined) {
+        useCanvasStore.getState().setShapeSnapSensitivity(data.shapeSnapSensitivity);
+      }
+      if (data.gmFogBlend !== undefined) {
+        useCanvasStore.getState().setGmFogBlend(data.gmFogBlend);
+      }
 
       const store = useSceneStore.getState();
       const current = store.currentScene;
@@ -177,6 +189,8 @@ export function useWebSocket(roomId, onMessage = null) {
     };
 
     const unsubSettings = wsService.on(WS_EVENTS.SETTINGS_UPDATED, handleSettingsPayload);
+    const unsubSettingsUpdate = wsService.on("SETTINGS_UPDATE", handleSettingsPayload);
+    const unsubSettingsUpdated = wsService.on("SETTINGS_UPDATED", handleSettingsPayload);
 
     // ۵.۳. همگام‌سازی دوربین
     const unsubViewportSync = wsService.on(WS_EVENTS.VIEWPORT_SYNC, (payload) => {
@@ -298,6 +312,8 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubFogClear();
       unsubFogGlobalReveal();
       unsubSettings();
+      unsubSettingsUpdate();
+      unsubSettingsUpdated();
       unsubViewportSync();
       unsubDice();
       unsubScene();

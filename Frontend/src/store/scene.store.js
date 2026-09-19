@@ -133,16 +133,28 @@ export const useSceneStore = create((set, get) => ({
         if (!roomId) return;
         set({ isLoading: true });
         try {
-            settingsApi
-                .getSettings(roomId)
-                .then((roomSettings) => {
-                    if (roomSettings?.measurementType) {
-                        useCanvasStore.getState().setRulerType(roomSettings.measurementType);
-                    }
-                })
-                .catch(() => {});
+            let [scenes, roomSettings] = await Promise.all([
+                sceneApi.getScenes(roomId),
+                settingsApi.getSettings(roomId).catch(() => null),
+            ]);
 
-            let scenes = await sceneApi.getScenes(roomId);
+            if (roomSettings) {
+                if (roomSettings.measurementType) {
+                    useCanvasStore.getState().setRulerType(roomSettings.measurementType);
+                }
+                if (roomSettings.inputMode) {
+                    useCanvasStore.getState().setInputMode(roomSettings.inputMode);
+                }
+                if (roomSettings.zoomSensitivity !== undefined) {
+                    useCanvasStore.getState().setZoomSensitivity(roomSettings.zoomSensitivity);
+                }
+                if (roomSettings.shapeSnapSensitivity !== undefined) {
+                    useCanvasStore.getState().setShapeSnapSensitivity(roomSettings.shapeSnapSensitivity);
+                }
+                if (roomSettings.gmFogBlend !== undefined) {
+                    useCanvasStore.getState().setGmFogBlend(roomSettings.gmFogBlend);
+                }
+            }
 
             if (!scenes || scenes.length === 0) {
                 const defaultScene = await sceneApi.createScene({
@@ -192,6 +204,17 @@ export const useSceneStore = create((set, get) => ({
 
             useCanvasStore.getState().setFogGlobalReveal(isRevealedSaved);
 
+            const finalGrid = {
+                enabled: true,
+                type: roomSettings?.gridType || sceneData.gridType || "square",
+                lineType: roomSettings?.lineType || "solid",
+                size: Number(roomSettings?.gridSize || sceneData.gridSize || 60),
+                color: roomSettings?.gridColor || sceneData.gridColor || "#000000",
+                opacity: roomSettings?.gridOpacity !== undefined ? Number(roomSettings.gridOpacity) : (sceneData.gridOpacity || 0.35),
+                lineWidth: roomSettings?.lineWidth !== undefined ? Number(roomSettings.lineWidth) : 1.5,
+                snapToGrid: roomSettings?.isGridSnapping !== undefined ? Boolean(roomSettings.isGridSnapping) : true,
+            };
+
             const sceneWithState = {
                 ...sceneData,
                 id: String(sceneData.id || active.id),
@@ -205,16 +228,7 @@ export const useSceneStore = create((set, get) => ({
                 fogEnabled: normalizedFog.length > 0 || Boolean(sceneData.fogFilled),
                 fogFilled: Boolean(sceneData.fogFilled),
                 isFogRevealed: isRevealedSaved,
-                grid: {
-                    enabled: true,
-                    type: sceneData.gridType || "square",
-                    size: Number(sceneData.gridSize || 60),
-                    color: sceneData.gridColor || "#000000",
-                    opacity: sceneData.gridOpacity !== undefined ? Number(sceneData.gridOpacity) : 0.35,
-                    lineWidth: 1.5,
-                    lineType: "solid",
-                    snapToGrid: true,
-                },
+                grid: finalGrid,
             };
 
             const persistentConditions = sceneData.availableConditions || fullState.availableConditions || [];

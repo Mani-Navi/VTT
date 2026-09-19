@@ -82,8 +82,11 @@ class WebSocketService {
 
           const subSettings = this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
             try {
-              const settings = JSON.parse(message.body);
-              this.trigger("SETTINGS_UPDATE", settings);
+              const payload = JSON.parse(message.body);
+              const settingsData = payload?.data !== undefined ? payload.data : payload;
+              this.trigger("SETTINGS_UPDATE", settingsData);
+              this.trigger("SETTINGS_UPDATED", settingsData);
+              this.trigger(WS_EVENTS.SETTINGS_UPDATED, settingsData);
             } catch (e) {
               if (import.meta.env.DEV) console.error("Settings parse error:", e);
             }
@@ -212,8 +215,9 @@ class WebSocketService {
         break;
       case WS_EVENTS.SETTINGS_UPDATED:
       case "SETTINGS_UPDATE":
+      case "SETTINGS_UPDATED":
         destination = `/app/room/${this.currentRoomId}/settings`;
-        action = "UPDATE";
+        action = "SETTINGS_UPDATED";
         break;
       case WS_EVENTS.VIEWPORT_SYNC:
       case "VIEWPORT_SYNC":
@@ -324,10 +328,20 @@ class WebSocketService {
         this.trigger("FOG_UPDATED", eventData);
         this.trigger(WS_EVENTS.FOG_UPDATED, eventData);
         break;
+      case "SETTINGS_UPDATE":
+      case "SETTINGS_UPDATED":
+        this.trigger("SETTINGS_UPDATE", eventData);
+        this.trigger("SETTINGS_UPDATED", eventData);
+        this.trigger(WS_EVENTS.SETTINGS_UPDATED, eventData);
+        break;
       case "UPDATE":
         if (eventData?.isCover !== undefined || eventData?.points !== undefined) {
           this.trigger("FOG_UPDATE", eventData);
           this.trigger("FOG_UPDATED", eventData);
+        } else if (eventData?.gridSize !== undefined || eventData?.gridType !== undefined || eventData?.measurementType !== undefined) {
+          this.trigger("SETTINGS_UPDATE", eventData);
+          this.trigger("SETTINGS_UPDATED", eventData);
+          this.trigger(WS_EVENTS.SETTINGS_UPDATED, eventData);
         }
         break;
       case "FOG_CLEAR":

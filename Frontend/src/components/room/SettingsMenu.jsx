@@ -156,23 +156,24 @@ export const SettingsMenu = memo(({ isGM = false }) => {
     if (!roomId) return;
     setIsSaving(true);
     try {
-      await settingsApi.updateSettings(roomId, settings);
+      const saved = await settingsApi.updateSettings(roomId, settings);
+      const activeData = saved || settings;
 
       if (currentScene) {
         const finalGrid = {
           enabled: true,
-          type: settings.gridType,
-          lineType: settings.lineType,
-          size: Number(settings.gridSize),
-          color: settings.gridColor,
-          opacity: Number(settings.gridOpacity),
-          lineWidth: Number(settings.lineWidth),
-          snapToGrid: settings.isGridSnapping !== false,
+          type: activeData.gridType,
+          lineType: activeData.lineType,
+          size: Number(activeData.gridSize),
+          color: activeData.gridColor,
+          opacity: Number(activeData.gridOpacity),
+          lineWidth: Number(activeData.lineWidth),
+          snapToGrid: activeData.isGridSnapping !== false,
         };
         useSceneStore.setState({ currentScene: { ...currentScene, grid: finalGrid } });
-        wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", settings);
-        wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: finalGrid });
       }
+
+      wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", activeData);
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
@@ -217,11 +218,10 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           snapToGrid: finalDefaults.isGridSnapping !== false,
         };
         useSceneStore.setState({ currentScene: { ...currentScene, grid: resetGrid } });
-        wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", finalDefaults);
-        wsService.send("SCENE_GRID_UPDATE", { sceneId: currentScene.id, grid: resetGrid });
       }
 
-      await settingsApi.updateSettings(roomId, finalDefaults);
+      wsService.send(WS_EVENTS.SETTINGS_UPDATED || "SETTINGS_UPDATE", finalDefaults);
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
