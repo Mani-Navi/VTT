@@ -16,6 +16,7 @@ import { useWebSocket } from "../../hooks/useWebSocket.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { roomApi } from "../../api/room.api";
+import { toast } from "../../store/toast.store";
 import { GameCanvas } from "../../components/canvas/GameCanvas.jsx";
 import { Toolbar } from "../../components/room/Toolbar.jsx";
 import { SceneBar } from "../../components/room/SceneBar.jsx";
@@ -116,27 +117,47 @@ export const RoomPage = () => {
             const action = event.action || (event.data ? event.action : null);
             const data = event.data !== undefined ? event.data : event;
 
+            // خروج آنی هنگام بسته شدن اتاق
             if (action === "ROOM_CLOSED") {
-                alert(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.");
+                wsService.disconnect();
+                toast.warning(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.", "پایان نشست اتاق");
                 navigate("/dashboard");
                 return;
             }
 
+            // خروج آنی هنگام حذف شدن اتاق
+            if (action === "ROOM_DELETED") {
+                wsService.disconnect();
+                toast.error(data || "اتاق توسط سازنده برای همیشه حذف شد.", "اتاق حذف شد");
+                navigate("/dashboard");
+                return;
+            }
+
+            // خروج آنی هنگام کیک شدن کاربر
             if (action === "MEMBER_KICKED") {
+                const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
+                const targetUid = String(data?.userId || "").toLowerCase().trim();
                 const currentUname = String(user?.username || "").toLowerCase().trim();
-                const incomingUname = String(data?.username || "").toLowerCase().trim();
-                if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
-                    alert("شما توسط دانجن‌مستر از اتاق اخراج شدید.");
+                const targetUname = String(data?.username || "").toLowerCase().trim();
+
+                if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                    wsService.disconnect();
+                    toast.error("شما توسط دانجن‌مستر از اتاق اخراج شدید.", "اخراج از اتاق");
                     navigate("/dashboard");
                     return;
                 }
             }
 
+            // خروج آنی هنگام مسدود شدن (Ban) کاربر
             if (action === "MEMBER_BANNED") {
+                const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
+                const targetUid = String(data?.userId || "").toLowerCase().trim();
                 const currentUname = String(user?.username || "").toLowerCase().trim();
-                const incomingUname = String(data?.username || "").toLowerCase().trim();
-                if (data?.userId === user?.id || (currentUname && currentUname === incomingUname)) {
-                    alert("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.");
+                const targetUname = String(data?.username || "").toLowerCase().trim();
+
+                if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                    wsService.disconnect();
+                    toast.error("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.", "مسدودسازی حساب");
                     navigate("/dashboard");
                     return;
                 }
@@ -169,7 +190,7 @@ export const RoomPage = () => {
                         onlineMembers.some(
                             (m) =>
                                 String(m.id || m.memberId).toLowerCase() === incomingMemberId &&
-                                (String(m.userId) === currentUid || String(m.username).toLowerCase() === currentUname)
+                                (String(m.userId).toLowerCase() === currentUid || String(m.username).toLowerCase() === currentUname)
                         ));
 
                 if (isTargetMe) {
@@ -189,6 +210,7 @@ export const RoomPage = () => {
                     }));
 
                     setCurrentRoom((prev) => (prev ? { ...prev, permissions: updatedPerms } : prev));
+                    toast.info("سطح دسترسی‌های شما در این اتاق به‌روزرسانی شد.", "تغییر دسترسی");
                 }
             }
         },
@@ -212,8 +234,8 @@ export const RoomPage = () => {
                 if (import.meta.env.DEV) {
                     console.error("خطا در دریافت اطلاعات اتاق:", err);
                 }
-                const message = err.response?.data?.message || "امکان ورود به این اتاق وجود ندارد";
-                alert(message);
+                const message = err.response?.data?.message || err.response?.data?.error || "امکان ورود به این اتاق وجود ندارد";
+                toast.error(message, "عدم دسترسی به اتاق");
                 navigate("/dashboard");
             });
     }, [urlParamId, loadScenes, setCurrentRoom, navigate]);
@@ -224,11 +246,13 @@ export const RoomPage = () => {
         }
         try {
             await roomApi.closeRoom(effectiveRoomId);
+            toast.info("اتاق با موفقیت بسته شد.", "وضعیت اتاق");
             navigate("/dashboard");
         } catch (err) {
             if (import.meta.env.DEV) {
                 console.error("خطا در بستن اتاق:", err);
             }
+            toast.error("خطا در بستن اتاق. مجدداً تلاش کنید.");
         }
     };
 

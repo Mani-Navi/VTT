@@ -25,6 +25,23 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
+    // ۱.۱. رویدادهای چرخه حیات اتاق و اعضا
+    const unsubRoomClosed = wsService.on("ROOM_CLOSED", (data) => {
+      if (onMessageRef.current) onMessageRef.current({ action: "ROOM_CLOSED", data });
+    });
+
+    const unsubRoomDeleted = wsService.on("ROOM_DELETED", (data) => {
+      if (onMessageRef.current) onMessageRef.current({ action: "ROOM_DELETED", data });
+    });
+
+    const unsubMemberKicked = wsService.on("MEMBER_KICKED", (data) => {
+      if (onMessageRef.current) onMessageRef.current({ action: "MEMBER_KICKED", data });
+    });
+
+    const unsubMemberBanned = wsService.on("MEMBER_BANNED", (data) => {
+      if (onMessageRef.current) onMessageRef.current({ action: "MEMBER_BANNED", data });
+    });
+
     // ۲. جابجایی و ویرایش مشخصات توکن
     const unsubToken = wsService.on(WS_EVENTS.TOKEN_MOVED, (data) => {
       if (data) {
@@ -297,6 +314,10 @@ export function useWebSocket(roomId, onMessage = null) {
 
     return () => {
       unsubUsers();
+      unsubRoomClosed();
+      unsubRoomDeleted();
+      unsubMemberKicked();
+      unsubMemberBanned();
       unsubToken();
       unsubConditions();
       unsubDraw();
