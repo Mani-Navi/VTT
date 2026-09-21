@@ -616,7 +616,11 @@ public class RoomService {
                 SocketEvent.<Map<String, Object>>builder()
                         .roomId(roomId)
                         .action("MEMBER_KICKED")
-                        .data(Map.of("memberId", memberId, "userId", targetUserId, "username", targetUsername))
+                        .data(Map.of(
+                                "memberId", memberId.toString(),
+                                "userId", targetUserId.toString(),
+                                "username", targetUsername
+                        ))
                         .build()
         );
     }
@@ -648,7 +652,11 @@ public class RoomService {
                 SocketEvent.<Map<String, Object>>builder()
                         .roomId(roomId)
                         .action("MEMBER_BANNED")
-                        .data(Map.of("memberId", memberId, "userId", targetUserId, "username", targetUsername))
+                        .data(Map.of(
+                                "memberId", memberId.toString(),
+                                "userId", targetUserId.toString(),
+                                "username", targetUsername
+                        ))
                         .build()
         );
     }
@@ -738,6 +746,15 @@ public class RoomService {
         if (!room.getOwner().getEmail().equalsIgnoreCase(userEmail)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق اجازه حذف آن را دارد");
         }
+
+        // ۱. ارسال رویداد بلادرنگ حذف اتاق به تمام بازیکنان متصل
+        messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId,
+                SocketEvent.<String>builder()
+                        .roomId(roomId)
+                        .action("ROOM_DELETED")
+                        .data("این اتاق توسط سازنده آن برای همیشه حذف گردید.")
+                        .build()
+        );
 
         sessionManager.clearRoom(roomId);
 
