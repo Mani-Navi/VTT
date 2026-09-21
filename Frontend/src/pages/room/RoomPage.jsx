@@ -17,6 +17,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { roomApi } from "../../api/room.api";
 import { toast } from "../../store/toast.store";
+import { confirmModal } from "../../store/confirm.store";
 import { GameCanvas } from "../../components/canvas/GameCanvas.jsx";
 import { Toolbar } from "../../components/room/Toolbar.jsx";
 import { SceneBar } from "../../components/room/SceneBar.jsx";
@@ -241,9 +242,16 @@ export const RoomPage = () => {
     }, [urlParamId, loadScenes, setCurrentRoom, navigate]);
 
     const handleCloseRoom = async () => {
-        if (!confirm("آیا از بستن اتاق اطمینان دارید؟ تمام بازیکنان خارج شده و اتاق غیرفعال می‌شود.")) {
-            return;
-        }
+        const isConfirmed = await confirmModal({
+            title: "بستن و پایان نشست اتاق",
+            message: "آیا از بستن اتاق اطمینان دارید؟ با این کار تمام بازیکنان به داشبورد هدایت شده و اتاق غیرفعال می‌شود.",
+            confirmText: "بستن اتاق",
+            cancelText: "انصراف",
+            variant: "danger",
+        });
+
+        if (!isConfirmed) return;
+
         try {
             await roomApi.closeRoom(effectiveRoomId);
             toast.info("اتاق با موفقیت بسته شد.", "وضعیت اتاق");

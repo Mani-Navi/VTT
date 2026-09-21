@@ -5,6 +5,7 @@ import { router } from "./router";
 import { useAuthStore } from "./store/auth.store";
 import { ENV } from "./config/validateEnv";
 import { ToastContainer } from "./components/ui/ToastContainer.jsx";
+import { ConfirmModal } from "./components/ui/ConfirmModal.jsx";
 
 /**
  * رمزگشایی ایمن Base64 توکن JWT برای پشتیبانی کامل از کاراکترهای فارسی و UTF-8
@@ -61,6 +62,7 @@ export default function App() {
   return (
       <GoogleOAuthProvider clientId={ENV.GOOGLE_CLIENT_ID || "MOCK_GOOGLE_CLIENT_ID"}>
         <ToastContainer />
+        <ConfirmModal />
         <RouterProvider router={router} />
       </GoogleOAuthProvider>
   );
