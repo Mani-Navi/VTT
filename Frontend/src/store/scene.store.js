@@ -26,6 +26,12 @@ const matchFogId = (a, b) => {
 const normalizeFogRegion = (fog) => {
     if (!fog) return null;
 
+    // جلوگیری قطعی از ذخیره شدن ایونت‌های کنترلی به عنوان شکل در آرایه مه
+    const rawType = String(fog.type || fog.mode || "").toUpperCase();
+    if (rawType === "CLEAR_ALL" || rawType === "FILL_ALL") {
+        return null;
+    }
+
     let shapeObj = fog;
     if (fog.points && typeof fog.points === "object" && !Array.isArray(fog.points)) {
         shapeObj = {
@@ -58,6 +64,16 @@ export const useSceneStore = create((set, get) => ({
     availableConditions: [],
     roomSettings: null,
     currentRoomId: null,
+
+    // ست کردن مستقیم آبجکت صحنه جاری (جهت پشتیبانی از کامپوننت‌های نوار ابزار)
+    setScene: (sceneOrUpdater) => {
+        set((state) => ({
+            currentScene:
+                typeof sceneOrUpdater === "function"
+                    ? sceneOrUpdater(state.currentScene)
+                    : sceneOrUpdater,
+        }));
+    },
 
     setRoomSettings: (settings) => {
         set({ roomSettings: settings });
@@ -624,6 +640,23 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
+    // پر کردن کل نقشه با مه جنگ به صورت یکپارچه
+    fillFog: () => {
+        set((state) => {
+            if (!state.currentScene) return state;
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    fogShapes: [],
+                    fogEnabled: true,
+                    fogFilled: true,
+                },
+                remoteLiveFog: null,
+            };
+        });
+    },
+
+    // پاک‌سازی کامل تمام مه جنگ بدون باقی گذاشتن اشکال نامعتبر
     clearFog: () => {
         set((state) => {
             if (!state.currentScene) return state;
@@ -673,7 +706,6 @@ export const useSceneStore = create((set, get) => ({
         }
 
         try {
-            // در کلاینت بازیکن اگر تنظیمات در کش نبود، فوراً واکشی شود
             let roomSettings = state.roomSettings;
             if (!roomSettings && activeRoomId) {
                 try {
@@ -686,7 +718,6 @@ export const useSceneStore = create((set, get) => ({
             const sceneData = fullState.scene || {};
             const finalMapUrl = sceneData.mapUrl || sceneData.assetUrl || "";
 
-            // اعمال فوری و قطعی تنظیمات اتاق روی بوم بازیکن
             if (roomSettings) {
                 if (roomSettings.measurementType) {
                     useCanvasStore.getState().setRulerType(roomSettings.measurementType);

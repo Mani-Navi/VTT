@@ -74,6 +74,7 @@ export const FogSubToolbar = memo(() => {
     const setScene = useSceneStore((state) => state.setScene);
     const updateFogShape = useSceneStore((state) => state.updateFogShape);
     const clearFog = useSceneStore((state) => state.clearFog);
+    const fillFog = useSceneStore((state) => state.fillFog);
 
     const [isFitMenuOpen, setIsFitMenuOpen] = useState(false);
     const [selectedFitOptionKey, setSelectedFitOptionKey] = useState("fit");
@@ -101,21 +102,19 @@ export const FogSubToolbar = memo(() => {
         if (isFogFilled) {
             handleClearAll();
         } else {
-            const updated = {
-                ...currentScene,
-                fogEnabled: true,
-                fogFilled: true,
-                fogShapes: [],
-            };
-            setScene(updated);
-            wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+            fillFog();
+
+            const payload = {
                 sceneId: currentScene.id,
                 type: "FILL_ALL",
                 fogFilled: true,
                 isCover: true,
                 mode: "fill_all",
                 points: { mode: "fill_all", isCover: true },
-            });
+            };
+
+            wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", payload);
+            wsService.send("FOG_FILL", payload);
         }
     };
 
@@ -124,11 +123,16 @@ export const FogSubToolbar = memo(() => {
         if (!currentScene) return;
         clearFog();
 
-        wsService.send("FOG_CLEAR", {
+        const payload = {
             sceneId: currentScene.id,
             type: "CLEAR_ALL",
+            fogFilled: false,
+            mode: "clear_all",
             points: { type: "CLEAR_ALL" },
-        });
+        };
+
+        wsService.send("FOG_CLEAR", payload);
+        wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", payload);
     };
 
     // ۵. منوی پیشرفته Fit Fog (شامل Fit, Trim, Join, Overlay)
@@ -144,7 +148,6 @@ export const FogSubToolbar = memo(() => {
         const selectedShape = fogShapes.find((f) => String(f.id) === String(selectedFogId));
 
         if (optionKey === "fit") {
-            // انطباق کامل به ابعاد نقشه
             if (selectedShape) {
                 const fittedShape = {
                     ...selectedShape,
@@ -165,7 +168,6 @@ export const FogSubToolbar = memo(() => {
                 handleToggleFillFog();
             }
         } else if (optionKey === "trim") {
-            // برش زوائد خارج از نقشه (محدود کردن به محدوده نقشه)
             if (selectedShape) {
                 const trimmedX = Math.max(0, selectedShape.x || 0);
                 const trimmedY = Math.max(0, selectedShape.y || 0);
@@ -187,12 +189,10 @@ export const FogSubToolbar = memo(() => {
                     points: trimmedShape,
                 });
             } else {
-                // اگر چیزی سلکت نبود، ابزار برش مستطیلی فعال شود
                 setFogAction(FOG_ACTIONS.SLICE);
                 setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
             }
         } else if (optionKey === "join") {
-            // ادغام نواحی مجزای مه در یک ناحیه پوششی یکپارچه
             if (fogShapes.length > 1) {
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
@@ -236,7 +236,6 @@ export const FogSubToolbar = memo(() => {
                 }, 100);
             }
         } else if (optionKey === "overlay") {
-            // ساخت لایه رویی شفاف نیمه‌تاریک (Mist / Atmosphere)
             const overlayShape = {
                 id: `fog-overlay-${Date.now()}`,
                 type: "rect",

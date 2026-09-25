@@ -89,15 +89,19 @@ export const FogLayer = memo(
         const isFilledByDefault = currentScene.fogFilled === true;
         const activeLiveFog = liveFog || remoteLiveFog;
 
+        // اگر نه مه پیش‌فرضی هست و نه شکلی روی کانواس، لایه کلاً خارج شود
         if (!isFilledByDefault && fogShapes.length === 0 && !activeLiveFog) {
             return null;
         }
 
         const fogOpacity = isGM ? Math.max(0.05, Math.min(1.0, gmFogBlend)) : 1.0;
         const fogColor = currentScene.fogColor || "#090a0f";
+        const mapW = currentScene.mapWidth || width;
+        const mapH = currentScene.mapHeight || height;
 
         const renderSingleShape = (context, fog) => {
-            const shapeType = fog.type || (fog.radius ? "circle" : "rect");
+            if (!fog) return;
+            const shapeType = String(fog.type || (fog.radius ? "circle" : "rect")).toLowerCase();
             const offsetX = fog.x || 0;
             const offsetY = fog.y || 0;
 
@@ -189,10 +193,12 @@ export const FogLayer = memo(
                     y: Math.round(node.y()),
                 };
 
-                if (fog.type === "rect") {
+                const shapeType = String(fog.type || "").toLowerCase();
+
+                if (shapeType === "rect") {
                     finalFog.width = Math.round(Math.max(20, (fog.width || 100) * scaleX));
                     finalFog.height = Math.round(Math.max(20, (fog.height || 100) * scaleY));
-                } else if (fog.type === "circle" || fog.type === "triangle" || fog.type === "hexagon") {
+                } else if (shapeType === "circle" || shapeType === "triangle" || shapeType === "hexagon") {
                     finalFog.radius = Math.round(
                         Math.max(10, (fog.radius || 60) * Math.max(Math.abs(scaleX), Math.abs(scaleY)))
                     );
@@ -225,11 +231,12 @@ export const FogLayer = memo(
                             context.globalCompositeOperation = "source-over";
                             context.fillStyle = fogColor;
                             context.beginPath();
-                            context.rect(0, 0, width, height);
+                            context.rect(0, 0, mapW, mapH);
                             context.fill();
                         }
 
                         fogShapes.forEach((fog) => {
+                            if (!fog) return;
                             const isCut =
                                 fog.isCover === false ||
                                 String(fog.type).toUpperCase() === "REVEAL" ||
@@ -246,7 +253,7 @@ export const FogLayer = memo(
                                 context.fillStyle = "rgba(0,0,0,1)";
                             } else if (isOverlay) {
                                 context.globalCompositeOperation = "source-over";
-                                context.fillStyle = "rgba(15, 23, 42, 0.45)"; // Overlay نیمه‌شفاف
+                                context.fillStyle = "rgba(15, 23, 42, 0.45)";
                             } else {
                                 context.globalCompositeOperation = "source-over";
                                 context.fillStyle = fogColor;
@@ -282,7 +289,8 @@ export const FogLayer = memo(
                 {isSelectMode && (
                     <Group id="fog-interactive-nodes">
                         {fogShapes.map((fog) => {
-                            const shapeType = fog.type || (fog.radius ? "circle" : "rect");
+                            if (!fog) return null;
+                            const shapeType = String(fog.type || (fog.radius ? "circle" : "rect")).toLowerCase();
                             const fogIdStr = String(fog.id);
                             const isSelected = selectedFogId === fogIdStr;
 

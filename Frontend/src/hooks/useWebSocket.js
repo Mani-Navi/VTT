@@ -50,7 +50,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۲.۱. همگام‌سازی آنی فهرست وضعیت‌ها (Condition Pool) برای بازیکنان
+    // ۲.۱. همگام‌سازی آنی وضعیت‌ها
     const unsubConditions = wsService.on("CONDITION_POOL_UPDATE", (data) => {
       if (data) {
         const conditionsList =
@@ -91,6 +91,14 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveDrawing(null);
     });
 
+    // ۳.۱. پاک‌سازی قطعی تمام نقاشی‌ها (جدا از مه جنگ)
+    const unsubDrawClear = wsService.on(WS_EVENTS.DRAWINGS_CLEARED, () => {
+      useSceneStore.getState().clearDrawings();
+    });
+    const unsubDrawingsClearedAlt = wsService.on("DRAWINGS_CLEAR", () => {
+      useSceneStore.getState().clearDrawings();
+    });
+
     // ۳.۳. نشانگر لیزری
     const unsubLaserMove = wsService.on("LASER_MOVE", (data) => {
       if (data && data.x !== undefined && data.y !== undefined) {
@@ -122,27 +130,53 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
     });
 
-    // ۵. به‌روزرسانی مه جنگ
-    const unsubFog = wsService.on(WS_EVENTS.FOG_UPDATED, (data) => {
+    // ۵. به‌روزرسانی جامع مه جنگ
+    const handleFogPayload = (data) => {
       if (!data) return;
       const store = useSceneStore.getState();
-      const current = store.currentScene;
+      const type = String(data.type || data.mode || "").toUpperCase();
 
+      // ۱. اگر پیام مربوط به پاک کردن کل مه بود
       if (
+          type === "CLEAR_ALL" ||
+          type === "CLEAR" ||
+          data.mode === "clear_all" ||
+          data.fogCleared === true
+      ) {
+        store.clearFog();
+        if (onMessageRef.current) onMessageRef.current(data);
+        return;
+      }
+
+      // ۲. اگر پیام مربوط به پر کردن کل مه بود
+      if (
+          type === "FILL_ALL" ||
           data.mode === "fill_all" ||
-          data.type === "fill_all" ||
-          data.type === "FILL_ALL" ||
           data.fogFilled === true
       ) {
-        if (current) {
-          useSceneStore.setState({
-            currentScene: { ...current, fogFilled: true, fogEnabled: true, fogShapes: [] },
-          });
-        }
-      } else {
-        store.addFogShape(data);
+        store.fillFog();
+        if (onMessageRef.current) onMessageRef.current(data);
+        return;
       }
+
+      // ۳. افزودن یا به‌روزرسانی شکل مه
+      store.addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(data);
+    };
+
+    const unsubFog = wsService.on(WS_EVENTS.FOG_UPDATED, handleFogPayload);
+    const unsubFogUpdate = wsService.on("FOG_UPDATE", handleFogPayload);
+    const unsubFogClear = wsService.on("FOG_CLEAR", () => {
+      useSceneStore.getState().clearFog();
+    });
+    const unsubFogCleared = wsService.on("FOG_CLEARED", () => {
+      useSceneStore.getState().clearFog();
+    });
+    const unsubFogFill = wsService.on("FOG_FILL", () => {
+      useSceneStore.getState().fillFog();
+    });
+    const unsubFogFilled = wsService.on("FOG_FILLED", () => {
+      useSceneStore.getState().fillFog();
     });
 
     const unsubFogLive = wsService.on("FOG_LIVE", (data) => {
@@ -153,10 +187,6 @@ export function useWebSocket(roomId, onMessage = null) {
 
     const unsubFogLiveEnd = wsService.on("FOG_LIVE_END", () => {
       useSceneStore.getState().setRemoteLiveFog(null);
-    });
-
-    const unsubFogClear = wsService.on(WS_EVENTS.DRAWINGS_CLEARED, () => {
-      useSceneStore.getState().clearFog();
     });
 
     const unsubFogGlobalReveal = wsService.on("FOG_GLOBAL_REVEAL", (data) => {
@@ -245,7 +275,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. ساخت آنی صحنه جدید روی SceneBar بازیکن
+    // ۸. ساخت صحنه جدید
     const unsubSceneCreate = wsService.on("SCENE_CREATED", async (data) => {
       const newScene = data?.scene || (data?.id ? data : null);
       const store = useSceneStore.getState();
@@ -277,7 +307,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۱۰. به‌روزرسانی مپ صحنه (در لحظه و زنده)
+    // ۱۰. به‌روزرسانی مپ صحنه
     const unsubSceneUpdate = wsService.on("SCENE_UPDATED", (data) => {
       if (data && data.sceneId) {
         const targetId = String(data.sceneId).toLowerCase();
@@ -324,15 +354,21 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubDrawDelete();
       unsubDrawLive();
       unsubDrawLiveEnd();
+      unsubDrawClear();
+      unsubDrawingsClearedAlt();
       unsubLaserMove();
       unsubLaserClear();
       unsubRulerUpdate();
       unsubRulerClear();
       unsubPerm();
       unsubFog();
+      unsubFogUpdate();
+      unsubFogClear();
+      unsubFogCleared();
+      unsubFogFill();
+      unsubFogFilled();
       unsubFogLive();
       unsubFogLiveEnd();
-      unsubFogClear();
       unsubFogGlobalReveal();
       unsubSettings();
       unsubSettingsUpdate();
