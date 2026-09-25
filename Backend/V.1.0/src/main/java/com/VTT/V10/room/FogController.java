@@ -28,4 +28,17 @@ public class FogController {
         }
         return ResponseEntity.ok(fogService.getFogByScene(sceneId));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFog(
+            @PathVariable String id,
+            @RequestParam(required = false) UUID sceneId,
+            Authentication authentication
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
+        }
+        fogService.deleteFogRegion(sceneId, id);
+        return ResponseEntity.noContent().build();
+    }
 }

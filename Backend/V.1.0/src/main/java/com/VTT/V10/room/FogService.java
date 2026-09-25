@@ -58,6 +58,40 @@ public class FogService {
         }
     }
 
+    // متد اختصاصی حذف قطعی یک تکه مه از پایگاه‌داده
+    @Transactional
+    public void deleteFogRegion(UUID sceneId, String targetId) {
+        if (targetId == null || targetId.isBlank()) return;
+
+        List<FogRegion> existing = sceneId != null
+                ? fogRepository.findBySceneId(sceneId)
+                : fogRepository.findAll();
+
+        for (FogRegion r : existing) {
+            boolean match = false;
+            if (r.getId() != null && r.getId().toString().equalsIgnoreCase(targetId)) {
+                match = true;
+            } else if (r.getPoints() != null && r.getPoints().has("id")) {
+                if (r.getPoints().get("id").asText().equalsIgnoreCase(targetId)) {
+                    match = true;
+                }
+            }
+
+            if (match) {
+                fogRepository.delete(r);
+                fogRepository.flush();
+                return;
+            }
+        }
+
+        // در صورت عدم تطابق با Points، اگر شناسه UUID بود مستقیماً پاک شود
+        try {
+            UUID uuid = UUID.fromString(targetId);
+            fogRepository.deleteById(uuid);
+            fogRepository.flush();
+        } catch (IllegalArgumentException ignored) {}
+    }
+
     @Transactional
     public void handleFogUpdate(FogEvent event) {
         if (event == null || event.getType() == null) return;
@@ -81,19 +115,26 @@ public class FogService {
             return;
         }
 
-        if (event.getPoints() == null) {
-            return;
-        }
-
         JsonNode pointsNode = null;
         if (event.getPoints() instanceof JsonNode jn) {
             pointsNode = jn;
-        } else {
+        } else if (event.getPoints() != null) {
             try {
                 pointsNode = objectMapper.valueToTree(event.getPoints());
             } catch (Exception ex) {
                 log.warn("Could not convert fog points to JsonNode: {}", ex.getMessage());
             }
+        }
+
+        String incomingId = null;
+        if (pointsNode != null && pointsNode.has("id")) {
+            incomingId = pointsNode.get("id").asText();
+        }
+
+        // پردازش رویداد حذف شکل مه
+        if ("DELETE".equalsIgnoreCase(eventType) || "REMOVE".equalsIgnoreCase(eventType) || "FOG_DELETE".equalsIgnoreCase(eventType)) {
+            deleteFogRegion(event.getSceneId(), incomingId);
+            return;
         }
 
         if (pointsNode == null) {
@@ -105,11 +146,6 @@ public class FogService {
             fogType = FogRegion.FogType.valueOf(eventType.toUpperCase());
         } catch (IllegalArgumentException e) {
             fogType = FogRegion.FogType.HIDE;
-        }
-
-        String incomingId = null;
-        if (pointsNode.has("id")) {
-            incomingId = pointsNode.get("id").asText();
         }
 
         List<FogRegion> existingRegions = fogRepository.findBySceneId(event.getSceneId());
