@@ -43,6 +43,21 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
   const isOptimistic = !!room.isOptimistic;
   const isGM = room.role === "GM";
 
+  // استخراج داینامیک عنوان میزبان یا بازیکن با اولویت داده سرور > لوکال‌استوریج > مقدار پیش‌فرض "میزبان"
+  const resolvedHostTitle =
+      room.hostRoleTitle ||
+      room.host_role_title ||
+      (typeof window !== "undefined" && room.id ? localStorage.getItem(`room_${room.id}_host_title`) : null) ||
+      "میزبان";
+
+  const resolvedPlayerTitle =
+      room.playerRoleTitle ||
+      room.player_role_title ||
+      (typeof window !== "undefined" && room.id ? localStorage.getItem(`room_${room.id}_player_title`) : null) ||
+      "بازیکن";
+
+  const displayRoleTitle = isGM ? resolvedHostTitle : resolvedPlayerTitle;
+
   const handleCopyLink = () => {
     const inviteUrl = `${window.location.origin}/dashboard?join=${room.code}`;
     navigator.clipboard.writeText(inviteUrl);
@@ -117,7 +132,7 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
               ) : (
                   <Swords className="w-3.5 h-3.5 text-blue-400" />
               )}
-              {isGM ? "دانجن‌مستر" : "بازیکن"}
+              <span>{displayRoleTitle}</span>
             </Badge>
           </div>
 
