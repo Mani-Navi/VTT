@@ -16,6 +16,7 @@ import { drawingApi } from "../../api/drawing.api";
 import { tokenApi } from "../../api/token.api";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
 import { MIN_ZOOM, MAX_ZOOM } from "../../constants/canvas.js";
+import { fogApi } from "../../api/fog.api";
 import {
   ImagePlus,
   Lock,
@@ -210,7 +211,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       [removeDrawing, currentScene?.id]
   );
 
-  // منطق حذف آیتم فعال انتخاب‌شده با دکمه سطل زباله شناور یا کلید Delete/Backspace کیبورد
   const handleDeleteSelected = useCallback(async () => {
     if (selectedDrawingId) {
       handleEraseDrawing(selectedDrawingId);
@@ -243,14 +243,34 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
     if (selectedFogId) {
       const fogIdStr = String(selectedFogId);
+      const sceneId = currentScene?.id;
+
+      // ۱. حذف آنی از استور محلی
       if (removeFogShape) {
         removeFogShape(fogIdStr);
       }
-      wsService.send("FOG_DELETE", {
+
+      const payload = {
         id: fogIdStr,
         fogId: fogIdStr,
-        sceneId: currentScene?.id,
-      });
+        sceneId: sceneId,
+        type: "DELETE",
+        points: { id: fogIdStr, type: "DELETE" },
+      };
+
+      // ۲. برادکست وب‌سوکت برای حذف آنی روی صفحه تمام پلیرها
+      wsService.send("FOG_DELETE", payload);
+      wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", payload);
+
+      // ۳. درخواست REST به سرور جهت پاک‌سازی دائمی از دیتابیس (جلوگیری از بازگشت پس از ریلود)
+      try {
+        await fogApi.deleteFog(fogIdStr, sceneId);
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.error("خطا در حذف دیتابیس مه:", err);
+        }
+      }
+
       clearSelection();
       return;
     }

@@ -25,7 +25,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۱.۱. رویدادهای چرخه حیات اتاق و اعضا
     const unsubRoomClosed = wsService.on("ROOM_CLOSED", (data) => {
       if (onMessageRef.current) onMessageRef.current({ action: "ROOM_CLOSED", data });
     });
@@ -42,7 +41,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "MEMBER_BANNED", data });
     });
 
-    // ۲. جابجایی و ویرایش مشخصات توکن
+    // ۲. جابجایی و ویرایش توکن
     const unsubToken = wsService.on(WS_EVENTS.TOKEN_MOVED, (data) => {
       if (data) {
         useSceneStore.getState().syncTokenFromSocket(data);
@@ -50,7 +49,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۲.۱. همگام‌سازی آنی وضعیت‌ها
     const unsubConditions = wsService.on("CONDITION_POOL_UPDATE", (data) => {
       if (data) {
         const conditionsList =
@@ -91,7 +89,6 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().setRemoteLiveDrawing(null);
     });
 
-    // ۳.۱. پاک‌سازی قطعی تمام نقاشی‌ها (جدا از مه جنگ)
     const unsubDrawClear = wsService.on(WS_EVENTS.DRAWINGS_CLEARED, () => {
       useSceneStore.getState().clearDrawings();
     });
@@ -125,18 +122,16 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۴. تغییر دسترسی‌ها
     const unsubPerm = wsService.on("PERMISSION_UPDATED", (data) => {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
     });
 
-    // ۵. به‌روزرسانی جامع مه جنگ
+    // ۵. به‌روزرسانی و حذف جامع مه جنگ
     const handleFogPayload = (data) => {
       if (!data) return;
       const store = useSceneStore.getState();
       const type = String(data.type || data.mode || "").toUpperCase();
 
-      // ۱. اگر پیام مربوط به پاک کردن کل مه بود
       if (
           type === "CLEAR_ALL" ||
           type === "CLEAR" ||
@@ -148,7 +143,6 @@ export function useWebSocket(roomId, onMessage = null) {
         return;
       }
 
-      // ۲. اگر پیام مربوط به پر کردن کل مه بود
       if (
           type === "FILL_ALL" ||
           data.mode === "fill_all" ||
@@ -159,13 +153,40 @@ export function useWebSocket(roomId, onMessage = null) {
         return;
       }
 
-      // ۳. افزودن یا به‌روزرسانی شکل مه
+      // حذف تکه مه از طریق پی‌لود FOG_UPDATED
+      if (type === "DELETE" || type === "REMOVE" || type === "FOG_DELETE") {
+        const targetId = data.id || data.fogId || data.points?.id;
+        if (targetId) {
+          store.removeFogShape(targetId);
+        }
+        if (onMessageRef.current) onMessageRef.current(data);
+        return;
+      }
+
       store.addFogShape(data);
       if (onMessageRef.current) onMessageRef.current(data);
     };
 
     const unsubFog = wsService.on(WS_EVENTS.FOG_UPDATED, handleFogPayload);
     const unsubFogUpdate = wsService.on("FOG_UPDATE", handleFogPayload);
+
+    // لیسنرهای اختصاصی حذف شکل مه برای پلیرها
+    const unsubFogDelete = wsService.on("FOG_DELETE", (data) => {
+      const targetId = data?.id || data?.fogId || data?.points?.id || (typeof data === "string" ? data : null);
+      if (targetId) {
+        useSceneStore.getState().removeFogShape(targetId);
+      }
+      if (onMessageRef.current) onMessageRef.current(data);
+    });
+
+    const unsubFogDeleted = wsService.on("FOG_DELETED", (data) => {
+      const targetId = data?.id || data?.fogId || data?.points?.id || (typeof data === "string" ? data : null);
+      if (targetId) {
+        useSceneStore.getState().removeFogShape(targetId);
+      }
+      if (onMessageRef.current) onMessageRef.current(data);
+    });
+
     const unsubFogClear = wsService.on("FOG_CLEAR", () => {
       useSceneStore.getState().clearFog();
     });
@@ -190,8 +211,13 @@ export function useWebSocket(roomId, onMessage = null) {
     });
 
     const unsubFogGlobalReveal = wsService.on("FOG_GLOBAL_REVEAL", (data) => {
-      if (data && data.isRevealed !== undefined) {
-        useCanvasStore.getState().setFogGlobalReveal(Boolean(data.isRevealed));
+      const isRevealed =
+          data?.isRevealed !== undefined
+              ? Boolean(data.isRevealed)
+              : (data?.data?.isRevealed !== undefined ? Boolean(data.data.isRevealed) : null);
+
+      if (isRevealed !== null) {
+        useCanvasStore.getState().setFogGlobalReveal(isRevealed);
       }
     });
 
@@ -241,7 +267,7 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubSettingsUpdate = wsService.on("SETTINGS_UPDATE", handleSettingsPayload);
     const unsubSettingsUpdated = wsService.on("SETTINGS_UPDATED", handleSettingsPayload);
 
-    // ۵.۳. همگام‌سازی دوربین
+    // ۵.۳. دوربین
     const unsubViewportSync = wsService.on(WS_EVENTS.VIEWPORT_SYNC, (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -259,7 +285,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۷. تغییر/سوییچ صحنه
+    // ۷. تغییر صحنه
     const unsubScene = wsService.on("SCENE_ACTIVATED", async (data) => {
       const targetSceneId = data?.sceneId || data?.id || (typeof data === "string" ? data : null);
       if (targetSceneId) {
@@ -275,7 +301,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. ساخت صحنه جدید
+    // ۸. ساخت صحنه
     const unsubSceneCreate = wsService.on("SCENE_CREATED", async (data) => {
       const newScene = data?.scene || (data?.id ? data : null);
       const store = useSceneStore.getState();
@@ -363,6 +389,8 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubPerm();
       unsubFog();
       unsubFogUpdate();
+      unsubFogDelete();
+      unsubFogDeleted();
       unsubFogClear();
       unsubFogCleared();
       unsubFogFill();

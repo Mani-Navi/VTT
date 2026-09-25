@@ -24,4 +24,17 @@ export const fogApi = {
     const res = await api.post(`/fog/scene/${sceneId}/fit`, { width, height });
     return res.data;
   },
+
+  deleteFog: async (fogId, sceneId) => {
+    try {
+      return await api.delete(`/api/fog/${fogId}`, {
+        params: { sceneId: sceneId || undefined },
+      });
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error("خطا در درخواست حذف مه از سرور:", err);
+      }
+      throw err;
+    }
+  },
 };
