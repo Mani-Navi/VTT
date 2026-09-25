@@ -7,7 +7,6 @@ import {
   MapPin,
   Lock,
   Sparkles,
-  Box,
   Link as LinkIcon,
   Trash2,
 } from "lucide-react";
@@ -23,7 +22,6 @@ import { cn } from "../../utils/cn";
 const SIZE_LIMITS = Object.freeze({
   maps: { bytes: 15 * 1024 * 1024, label: "۱۵ مگابایت", type: "MAP" },
   tokens: { bytes: 3 * 1024 * 1024, label: "۳ مگابایت", type: "TOKEN" },
-  props: { bytes: 4 * 1024 * 1024, label: "۴ مگابایت", type: "PROP" },
 });
 
 const isValidUUID = (uuid) => {
@@ -119,23 +117,21 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
 
     const fullUrl = getAssetUrl(rawTokenUrl);
     const validAssetId = isValidUUID(extraData.id) ? extraData.id : null;
-    const isPropItem = activeTab === "props" || Boolean(extraData.isProp);
-
-    const ownerId = !isPropItem && currentUser?.id ? String(currentUser.id) : null;
+    const ownerId = currentUser?.id ? String(currentUser.id) : null;
 
     const newToken = {
-      name: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
-      label: tokenName || (isPropItem ? "شیء جدید" : "توکن جدید"),
+      name: tokenName || "توکن جدید",
+      label: tokenName || "توکن جدید",
       avatarUrl: fullUrl,
       assetUrl: fullUrl,
       assetId: validAssetId,
       x: (currentScene?.mapWidth || 2000) / 2,
       y: (currentScene?.mapHeight || 1500) / 2,
-      size: extraData.size || (isPropItem ? 0.5 : 1),
+      size: extraData.size || 1,
       hp: extraData.hp || extraData.maxHp || 20,
       maxHp: extraData.maxHp || 20,
       ac: extraData.ac || 12,
-      isProp: isPropItem,
+      isProp: false,
       goldValue: extraData.goldValue || 0,
       xpValue: extraData.xpValue || 0,
       controlledBy: ownerId,
@@ -187,7 +183,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
       const currentLimit = SIZE_LIMITS[activeTab];
       const name =
           assetNameInput.trim() ||
-          (activeTab === "maps" ? "نقشه اینترنتی" : activeTab === "props" ? "شئ اینترنتی" : "توکن اینترنتی");
+          (activeTab === "maps" ? "نقشه اینترنتی" : "توکن اینترنتی");
       const created = await assetApi.createAssetFromUrl(assetUrlInput.trim(), name, currentLimit.type);
 
       setAssetUrlInput("");
@@ -224,19 +220,12 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                   (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                   (m.nameFa || "").includes(searchQuery)
           )
-          : activeTab === "props"
-              ? (TOKEN_PRESETS || []).filter(
-                  (p) =>
-                      p.category === "props" &&
-                      ((p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (p.nameFa || "").includes(searchQuery))
-              )
-              : (TOKEN_PRESETS || []).filter(
-                  (t) =>
-                      t.category !== "props" &&
-                      ((t.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (t.nameFa || "").includes(searchQuery))
-              );
+          : (TOKEN_PRESETS || []).filter(
+              (t) =>
+                  t.category !== "props" &&
+                  ((t.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (t.nameFa || "").includes(searchQuery))
+          );
 
   const filteredUserAssets = userAssets.filter((a) =>
       (a.name || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -255,7 +244,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
             </div>
             <div>
               <h4 className="text-sm font-bold">کتابخانه منابع (Asset Library)</h4>
-              <p className="text-[11px] text-zinc-400">مدیریت نقشه‌ها، توکن‌ها و اشیاء</p>
+              <p className="text-[11px] text-zinc-400">مدیریت نقشه‌ها و توکن‌ها</p>
             </div>
           </div>
           <button
@@ -267,11 +256,10 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
+        <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
           {[
             { id: "maps", label: "نقشه‌ها", icon: MapPin },
             { id: "tokens", label: "توکن‌ها", icon: Sparkles },
-            { id: "props", label: "اشیاء", icon: Box },
           ].map((tab) => {
             const TabIcon = tab.icon;
             return (
@@ -336,7 +324,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
               disabled={activeTab === "maps" && !canUploadMap}
           >
             <Upload className="w-3.5 h-3.5 ml-1" />
-            آپلود {activeTab === "maps" ? "نقشه" : activeTab === "tokens" ? "توکن" : "شئ"}
+            آپلود {activeTab === "maps" ? "نقشه" : "توکن"}
           </Button>
         </div>
 
@@ -440,36 +428,6 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                         />
                         <span className="text-[11px] font-bold text-zinc-300 truncate max-w-full">
                     {token.nameFa || token.name}
-                  </span>
-                      </div>
-                  ))}
-                </div>
-              </div>
-          )}
-
-          {activeTab === "props" && (
-              <div>
-                <span className="text-[11px] font-bold text-zinc-400 mb-2 block">اشیاء و تجهیزات پیش‌فرض:</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {filteredPresets.map((prop) => (
-                      <div
-                          key={prop.id}
-                          onClick={() => handleAddToken(prop.avatarUrl || prop.url, prop.nameFa || prop.name, prop)}
-                          className={cn(
-                              "group p-2 rounded-2xl border border-zinc-800 bg-zinc-950 transition-all flex flex-col items-center gap-1.5",
-                              !hasActiveMap
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "hover:border-amber-500 cursor-pointer hover:scale-105"
-                          )}
-                      >
-                        <img
-                            src={getAssetUrl(prop.avatarUrl || prop.url)}
-                            alt={prop.name}
-                            className="w-12 h-12 rounded-xl object-contain border border-amber-500/30"
-                            loading="lazy"
-                        />
-                        <span className="text-[11px] font-bold text-zinc-300 truncate max-w-full">
-                    {prop.nameFa || prop.name}
                   </span>
                       </div>
                   ))}
