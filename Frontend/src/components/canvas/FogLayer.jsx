@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, memo } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import { Group, Shape, Line, Circle as KonvaCircle, Rect as KonvaRect, Transformer } from "react-konva";
 import { useSceneStore } from "../../store/scene.store";
 import { useCanvasStore } from "../../store/canvas.store";
@@ -69,12 +69,22 @@ export const FogLayer = memo(
 
         const isSelectMode = (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && isGM;
 
-        // مدیریت ایمن Transformer برای جلوگیری از کرش هنگام فعال شدن آشکارساز
+        // جداسازی قطعی و همگام ترنسفورمر قبل از هرگونه آن‌مانت لایه (عامل نجات GM از کرش)
+        useLayoutEffect(() => {
+            return () => {
+                if (transformerRef.current) {
+                    try {
+                        transformerRef.current.nodes([]);
+                    } catch (e) {}
+                }
+            };
+        });
+
+        // همگام‌سازی نود فعال با Transformer
         useEffect(() => {
             const tr = transformerRef.current;
             if (!tr) return;
 
-            // اگر آشکارساز فعال است یا در حالت انتخاب نیستیم، نودها سریعاً جدا شوند
             if (isFogRevealedGlobally || !isSelectMode) {
                 try {
                     tr.nodes([]);
@@ -101,17 +111,10 @@ export const FogLayer = memo(
                     tr.getLayer()?.batchDraw();
                 } catch (e) {}
             }
-
-            return () => {
-                try {
-                    if (tr && tr.getStage()) {
-                        tr.nodes([]);
-                    }
-                } catch (e) {}
-            };
         }, [selectedFogId, isSelectMode, isFogRevealedGlobally]);
 
-        if (!currentScene) {
+        // اگر صحنه نباشد یا آشکارساز سراسری فعال باشد، لایه کلاً خارج می‌شود (سبک، سریع و امن برای پلیر)
+        if (!currentScene || isFogRevealedGlobally) {
             return null;
         }
 
@@ -119,9 +122,9 @@ export const FogLayer = memo(
         const isFilledByDefault = currentScene.fogFilled === true;
         const activeLiveFog = liveFog || remoteLiveFog;
 
-        const hasContent = isFilledByDefault || fogShapes.length > 0 || Boolean(activeLiveFog);
-        // به جای بازگرداندن null، وضعیت نمایان بودن لایه با visible در کانواس کنترل می‌شود
-        const isLayerVisible = !isFogRevealedGlobally && hasContent;
+        if (!isFilledByDefault && fogShapes.length === 0 && !activeLiveFog) {
+            return null;
+        }
 
         const fogOpacity = isGM ? Math.max(0.05, Math.min(1.0, gmFogBlend)) : 1.0;
         const fogColor = currentScene.fogColor || "#090a0f";
@@ -249,12 +252,11 @@ export const FogLayer = memo(
         );
 
         return (
-            <Group id="fog-main-layer" visible={isLayerVisible} listening={isLayerVisible}>
+            <Group id="fog-main-layer">
                 <Shape
                     listening={false}
                     opacity={fogOpacity}
                     sceneFunc={(context) => {
-                        if (!isLayerVisible) return;
                         context.save();
 
                         if (isFilledByDefault) {
@@ -316,7 +318,7 @@ export const FogLayer = memo(
                     }}
                 />
 
-                {isSelectMode && isLayerVisible && (
+                {isSelectMode && (
                     <Group id="fog-interactive-nodes">
                         {fogShapes.map((fog) => {
                             if (!fog) return null;
@@ -413,7 +415,7 @@ export const FogLayer = memo(
                     </Group>
                 )}
 
-                {polygonVertices && polygonVertices.length >= 2 && isLayerVisible && (
+                {polygonVertices && polygonVertices.length >= 2 && (
                     <Group id="fog-polygon-guidelines" listening={false}>
                         <Line
                             points={polygonVertices}

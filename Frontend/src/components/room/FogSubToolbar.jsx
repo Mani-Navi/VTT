@@ -87,9 +87,7 @@ export const FogSubToolbar = memo(() => {
 
     const handleToggleGlobalReveal = () => {
         const nextState = !isFogRevealedGlobally;
-        if (selectedFogId) {
-            useCanvasStore.getState().setSelectedFogId(null);
-        }
+        useCanvasStore.getState().setSelectedFogId(null);
         setFogGlobalReveal(nextState);
 
         wsService.send("FOG_GLOBAL_REVEAL", {
