@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage, Layer } from "react-konva";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
@@ -13,6 +13,7 @@ import { RulerLayer } from "./RulerLayer.jsx";
 import { PingLayer } from "./PingLayer.jsx";
 import { wsService } from "../../services/websocket.service";
 import { drawingApi } from "../../api/drawing.api";
+import { tokenApi } from "../../api/token.api";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
 import { MIN_ZOOM, MAX_ZOOM } from "../../constants/canvas.js";
 import {
@@ -26,6 +27,7 @@ import {
   UserCheck,
   Dices,
   Scroll,
+  Trash2,
 } from "lucide-react";
 
 const generateUUID = () => {
@@ -62,6 +64,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const zoomSensitivity = useCanvasStore((state) => state.zoomSensitivity || 1.0);
   const shapeSnapSensitivity = useCanvasStore((state) => state.shapeSnapSensitivity || 0.5);
 
+  const selectedDrawingId = useCanvasStore((state) => state.selectedDrawingId);
+  const selectedTokenIds = useCanvasStore((state) => state.selectedTokenIds);
+  const selectedFogId = useCanvasStore((state) => state.selectedFogId);
+
   const drawStrokeColor = useCanvasStore((state) => state.drawStrokeColor);
   const drawStrokeWidth = useCanvasStore((state) => state.drawStrokeWidth);
   const drawFillColor = useCanvasStore((state) => state.drawFillColor);
@@ -93,6 +99,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const currentScene = useSceneStore((state) => state.currentScene);
   const addDrawing = useSceneStore((state) => state.addDrawing);
   const removeDrawing = useSceneStore((state) => state.removeDrawing);
+  const removeToken = useSceneStore((state) => state.removeToken);
+  const removeFogShape = useSceneStore((state) => state.removeFogShape);
   const addFogShape = useSceneStore((state) => state.addFogShape);
   const addPing = useSceneStore((state) => state.addPing);
   const user = useAuthStore((state) => state.user);
@@ -202,6 +210,124 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       [removeDrawing, currentScene?.id]
   );
 
+  // منطق حذف آیتم فعال انتخاب‌شده با دکمه سطل زباله شناور یا کلید Delete/Backspace کیبورد
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedDrawingId) {
+      handleEraseDrawing(selectedDrawingId);
+      clearSelection();
+      return;
+    }
+
+    if (selectedTokenIds && selectedTokenIds.length > 0) {
+      for (const tId of selectedTokenIds) {
+        const strId = String(tId);
+        removeToken(strId);
+        wsService.send(WS_EVENTS.TOKEN_MOVED, {
+          tokenId: strId,
+          id: strId,
+          isDeleted: true,
+        });
+        wsService.send(WS_EVENTS.TOKEN_DELETED || "TOKEN_DELETED", {
+          tokenId: strId,
+          id: strId,
+        });
+        try {
+          if (tokenApi && tokenApi.deleteToken) {
+            tokenApi.deleteToken(strId).catch(() => {});
+          }
+        } catch (err) {}
+      }
+      clearSelection();
+      return;
+    }
+
+    if (selectedFogId) {
+      const fogIdStr = String(selectedFogId);
+      if (removeFogShape) {
+        removeFogShape(fogIdStr);
+      }
+      wsService.send("FOG_DELETE", {
+        id: fogIdStr,
+        fogId: fogIdStr,
+        sceneId: currentScene?.id,
+      });
+      clearSelection();
+      return;
+    }
+  }, [
+    selectedDrawingId,
+    selectedTokenIds,
+    selectedFogId,
+    handleEraseDrawing,
+    removeToken,
+    removeFogShape,
+    clearSelection,
+    currentScene?.id,
+  ]);
+
+  // محاسبه موقعیت مکانی آیتم انتخاب‌شده برای نمایش پنل حذف درست در بالای آن
+  const selectionInfo = useMemo(() => {
+    if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.FOG) return null;
+
+    if (selectedDrawingId) {
+      const dummy = String(selectedDrawingId).toLowerCase();
+      const d = (currentScene?.drawings || []).find((item) => {
+        const curId = String(item.clientDrawingId || item.id || item.drawingId || "").toLowerCase();
+        return curId === dummy;
+      });
+      if (d) {
+        let posX = d.x || 0;
+        let posY = d.y || 0;
+        if (d.points && d.points.length >= 2) {
+          let minX = Infinity, minY = Infinity;
+          for (let i = 0; i < d.points.length; i += 2) {
+            if (d.points[i] < minX) minX = d.points[i];
+            if (d.points[i + 1] < minY) minY = d.points[i + 1];
+          }
+          posX = (d.x || 0) + (isFinite(minX) ? minX : 0);
+          posY = (d.y || 0) + (isFinite(minY) ? minY : 0);
+        }
+        let label = "ترسیم";
+        if (d.type === "text") label = d.text ? `متن: ${d.text.slice(0, 10)}...` : "متن";
+        else if (d.type === "rectangle") label = "مستطیل";
+        else if (d.type === "circle") label = "دایره";
+        else if (d.type === "line") label = "خط";
+
+        return { x: posX, y: posY, label };
+      }
+    }
+
+    if (selectedTokenIds && selectedTokenIds.length > 0) {
+      const targetId = String(selectedTokenIds[0]).toLowerCase();
+      const t = (currentScene?.tokens || []).find((item) => String(item.id).toLowerCase() === targetId);
+      if (t) {
+        return {
+          x: t.x || 0,
+          y: (t.y || 0) - ((t.size || 1) * 30),
+          label: t.name || t.label || "توکن",
+        };
+      }
+    }
+
+    if (selectedFogId) {
+      const targetId = String(selectedFogId).toLowerCase();
+      const f = (currentScene?.fogShapes || []).find((item) => String(item.id).toLowerCase() === targetId);
+      if (f) {
+        return { x: f.x || 0, y: f.y || 0, label: "مه جنگ" };
+      }
+    }
+
+    return null;
+  }, [
+    activeTool,
+    selectedDrawingId,
+    selectedTokenIds,
+    selectedFogId,
+    currentScene?.drawings,
+    currentScene?.tokens,
+    currentScene?.fogShapes,
+  ]);
+
   const finishInlineText = useCallback(() => {
     if (!inlineTextEditor) return;
     const textVal = inlineTextEditor.text ? inlineTextEditor.text.trim() : "";
@@ -299,8 +425,14 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     setPendingEmoji,
   ]);
 
+  // رویدادهای کیبورد (Escape برای لغو و Delete/Backspace برای حذف آیتم انتخابی)
   useEffect(() => {
-    const handleEscapeKey = (e) => {
+    const handleKeyDown = (e) => {
+      const tagName = e.target.tagName.toLowerCase();
+      if (tagName === "input" || tagName === "textarea" || e.target.isContentEditable) {
+        return;
+      }
+
       if (e.key === "Escape") {
         setPolygonVertices([]);
         setFogPolygonVertices([]);
@@ -317,11 +449,32 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
           setInlineTextEditor(null);
         }
         isInteracting.current = false;
+        clearSelection();
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) {
+          if (selectedDrawingId || (selectedTokenIds && selectedTokenIds.length > 0) || selectedFogId) {
+            e.preventDefault();
+            handleDeleteSelected();
+          }
+        }
       }
     };
-    window.addEventListener("keydown", handleEscapeKey);
-    return () => window.removeEventListener("keydown", handleEscapeKey);
-  }, [activeTool, endMeasurement, myIdentifier, inlineTextEditor]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    activeTool,
+    endMeasurement,
+    myIdentifier,
+    inlineTextEditor,
+    clearSelection,
+    selectedDrawingId,
+    selectedTokenIds,
+    selectedFogId,
+    handleDeleteSelected,
+  ]);
 
   const handleWheel = useCallback(
       (e) => {
@@ -1118,6 +1271,39 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             }}
         />
 
+        {/* پنل اکشن شناور برای حذف آیتم انتخاب‌شده در ابزار Select */}
+        {selectionInfo && (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && (
+            <div
+                className="absolute z-40 pointer-events-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-950/95 border border-zinc-700/80 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                style={{
+                  left: `${Math.max(80, Math.min(dimensions.width - 120, stageX + selectionInfo.x * zoom))}px`,
+                  top: `${Math.max(70, Math.min(dimensions.height - 80, stageY + selectionInfo.y * zoom - 18))}px`,
+                  transform: "translate(-50%, -100%)",
+                }}
+                dir="rtl"
+                onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="text-[11px] font-bold text-zinc-200 max-w-[140px] truncate select-none">
+                  {selectionInfo.label}
+                </span>
+              </div>
+
+              <div className="w-px h-3.5 bg-zinc-800 mx-0.5" />
+
+              <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-sm"
+                  title="حذف آیتم انتخابی (یا کلید Delete / Backspace)"
+              >
+                <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
+                <span>حذف</span>
+              </button>
+            </div>
+        )}
+
         {inlineTextEditor && (
             <div
                 className="absolute z-50 pointer-events-auto"
@@ -1298,7 +1484,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
               }
             }}
         >
-          {/* لایه ۱: نقشه و گرید - غیرفعال بودن قطعی لیسنر طبق سند */}
+          {/* لایه ۱: نقشه و گرید */}
           <Layer id="layer-background" listening={false}>
             <MapLayer
                 mapUrl={activeMapUrl}
@@ -1351,7 +1537,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                   <PingLayer />
                 </Layer>
 
-                {/* لایه ۳: توکن‌ها - گوش‌دادن به رویدادها صرفاً در حالت انتخاب توکن */}
+                {/* لایه ۳: توکن‌ها */}
                 <Layer id="layer-tokens" listening={isSelectMode}>
                   <TokenLayer gridSize={currentScene?.grid?.size || 60} isGM={isGM} />
                 </Layer>

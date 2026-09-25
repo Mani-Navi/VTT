@@ -26,7 +26,6 @@ const matchFogId = (a, b) => {
 const normalizeFogRegion = (fog) => {
     if (!fog) return null;
 
-    // جلوگیری قطعی از ذخیره شدن ایونت‌های کنترلی به عنوان شکل در آرایه مه
     const rawType = String(fog.type || fog.mode || "").toUpperCase();
     if (rawType === "CLEAR_ALL" || rawType === "FILL_ALL") {
         return null;
@@ -65,7 +64,6 @@ export const useSceneStore = create((set, get) => ({
     roomSettings: null,
     currentRoomId: null,
 
-    // ست کردن مستقیم آبجکت صحنه جاری (جهت پشتیبانی از کامپوننت‌های نوار ابزار)
     setScene: (sceneOrUpdater) => {
         set((state) => ({
             currentScene:
@@ -341,7 +339,7 @@ export const useSceneStore = create((set, get) => ({
                             showHp: cleanSocketData.showHp !== undefined ? Boolean(cleanSocketData.showHp) : oldToken.showHp,
                             showConditions: cleanSocketData.showConditions !== undefined ? Boolean(cleanSocketData.showConditions) : oldToken.showConditions,
                             showAc: cleanSocketData.showAc !== undefined ? Boolean(cleanSocketData.showAc) : oldToken.showAc,
-                            allowPlayerHp: cleanSocketData.allowPlayerHp !== undefined ? Boolean(cleanSocketData.allowPlayerHp) : oldToken.allowPlayerHp,
+                            allowPlayerHp: cleanSocketData.allowPlayerHp !== undefined ? Boolean(cleanSocketData.allowPlayerHp) : oldToken.showHp,
                             allowPlayerConditions: cleanSocketData.allowPlayerConditions !== undefined ? Boolean(cleanSocketData.allowPlayerConditions) : oldToken.allowPlayerConditions,
                             allowPlayerAc: cleanSocketData.allowPlayerAc !== undefined ? Boolean(cleanSocketData.allowPlayerAc) : oldToken.allowPlayerAc,
                             allowPlayerSize: cleanSocketData.allowPlayerSize !== undefined ? Boolean(cleanSocketData.allowPlayerSize) : oldToken.allowPlayerSize,
@@ -640,7 +638,24 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
-    // پر کردن کل نقشه با مه جنگ به صورت یکپارچه
+    // حذف یک تکه مجزا از مه جنگ انتخاب‌شده
+    removeFogShape: (fogId) => {
+        set((state) => {
+            if (!state.currentScene || !state.currentScene.fogShapes) return state;
+            const targetId = String(fogId).trim().toLowerCase();
+            const filteredFog = state.currentScene.fogShapes.filter(
+                (f) => String(f.id).trim().toLowerCase() !== targetId
+            );
+            return {
+                currentScene: {
+                    ...state.currentScene,
+                    fogShapes: filteredFog,
+                    fogEnabled: filteredFog.length > 0 || Boolean(state.currentScene.fogFilled),
+                },
+            };
+        });
+    },
+
     fillFog: () => {
         set((state) => {
             if (!state.currentScene) return state;
@@ -656,7 +671,6 @@ export const useSceneStore = create((set, get) => ({
         });
     },
 
-    // پاک‌سازی کامل تمام مه جنگ بدون باقی گذاشتن اشکال نامعتبر
     clearFog: () => {
         set((state) => {
             if (!state.currentScene) return state;
