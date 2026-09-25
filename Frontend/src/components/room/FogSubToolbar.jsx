@@ -27,7 +27,7 @@ import { WS_EVENTS } from "../../constants/wsEvents.js";
 const FIT_OPTIONS = Object.freeze([
     {
         key: "fit",
-        label: "Fit (انطباق با نقشه)",
+        label: "Fit (انطباق به اندازه نقشه)",
         shortLabel: "Fit",
         icon: Maximize2,
         colorClass: "text-amber-400",
@@ -35,7 +35,7 @@ const FIT_OPTIONS = Object.freeze([
     },
     {
         key: "trim",
-        label: "Trim (برش اضافات)",
+        label: "Trim (برش بخش‌های اضافه)",
         shortLabel: "Trim",
         icon: Crop,
         colorClass: "text-cyan-400",
@@ -43,7 +43,7 @@ const FIT_OPTIONS = Object.freeze([
     },
     {
         key: "join",
-        label: "Join (ادغام نواحی)",
+        label: "Join (ادغام تمام نواحی)",
         shortLabel: "Join",
         icon: Minimize2,
         colorClass: "text-emerald-400",
@@ -51,7 +51,7 @@ const FIT_OPTIONS = Object.freeze([
     },
     {
         key: "overlay",
-        label: "Overlay (لایه رویی)",
+        label: "Overlay (لایه رویی بدون تخریب)",
         shortLabel: "Overlay",
         icon: Layers,
         colorClass: "text-purple-400",
@@ -73,6 +73,7 @@ export const FogSubToolbar = memo(() => {
     const currentScene = useSceneStore((state) => state.currentScene);
     const setScene = useSceneStore((state) => state.setScene);
     const updateFogShape = useSceneStore((state) => state.updateFogShape);
+    const clearFog = useSceneStore((state) => state.clearFog);
 
     const [isFitMenuOpen, setIsFitMenuOpen] = useState(false);
     const [selectedFitOptionKey, setSelectedFitOptionKey] = useState("fit");
@@ -93,22 +94,12 @@ export const FogSubToolbar = memo(() => {
         });
     };
 
+    // ۳. پر کردن کل نقشه با مه (Fill Fog)
     const handleToggleFillFog = () => {
         if (!currentScene) return;
 
         if (isFogFilled) {
-            const updated = {
-                ...currentScene,
-                fogEnabled: false,
-                fogFilled: false,
-                fogShapes: [],
-            };
-            setScene(updated);
-            wsService.send("FOG_CLEAR", {
-                sceneId: currentScene.id,
-                type: "CLEAR_ALL",
-                points: {},
-            });
+            handleClearAll();
         } else {
             const updated = {
                 ...currentScene,
@@ -123,37 +114,37 @@ export const FogSubToolbar = memo(() => {
                 fogFilled: true,
                 isCover: true,
                 mode: "fill_all",
-                points: { mode: "fill_all" },
+                points: { mode: "fill_all", isCover: true },
             });
         }
     };
 
+    // ۴. پاک کردن کامل تمام مه (Clear Fog)
     const handleClearAll = () => {
         if (!currentScene) return;
-        const updated = {
-            ...currentScene,
-            fogEnabled: false,
-            fogFilled: false,
-            fogShapes: [],
-        };
-        setScene(updated);
+        clearFog();
+
         wsService.send("FOG_CLEAR", {
             sceneId: currentScene.id,
             type: "CLEAR_ALL",
-            points: {},
+            points: { type: "CLEAR_ALL" },
         });
     };
 
+    // ۵. منوی پیشرفته Fit Fog (شامل Fit, Trim, Join, Overlay)
     const handleFitOptionSelect = (optionKey) => {
         setSelectedFitOptionKey(optionKey);
         setIsFitMenuOpen(false);
 
-        const mapWidth = currentScene?.mapWidth || 2000;
-        const mapHeight = currentScene?.mapHeight || 1500;
-        const fogShapes = currentScene?.fogShapes || [];
+        if (!currentScene) return;
+
+        const mapWidth = currentScene.mapWidth || 2000;
+        const mapHeight = currentScene.mapHeight || 1500;
+        const fogShapes = currentScene.fogShapes || [];
         const selectedShape = fogShapes.find((f) => String(f.id) === String(selectedFogId));
 
         if (optionKey === "fit") {
+            // انطباق کامل به ابعاد نقشه
             if (selectedShape) {
                 const fittedShape = {
                     ...selectedShape,
@@ -174,6 +165,7 @@ export const FogSubToolbar = memo(() => {
                 handleToggleFillFog();
             }
         } else if (optionKey === "trim") {
+            // برش زوائد خارج از نقشه (محدود کردن به محدوده نقشه)
             if (selectedShape) {
                 const trimmedX = Math.max(0, selectedShape.x || 0);
                 const trimmedY = Math.max(0, selectedShape.y || 0);
@@ -195,14 +187,79 @@ export const FogSubToolbar = memo(() => {
                     points: trimmedShape,
                 });
             } else {
+                // اگر چیزی سلکت نبود، ابزار برش مستطیلی فعال شود
                 setFogAction(FOG_ACTIONS.SLICE);
                 setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
             }
         } else if (optionKey === "join") {
-            setFogAction(FOG_ACTIONS.HIDE);
-            setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE);
+            // ادغام نواحی مجزای مه در یک ناحیه پوششی یکپارچه
+            if (fogShapes.length > 1) {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                fogShapes.forEach((s) => {
+                    const x = s.x || 0;
+                    const y = s.y || 0;
+                    const w = s.width || (s.radius ? s.radius * 2 : 100);
+                    const h = s.height || (s.radius ? s.radius * 2 : 100);
+
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x + w);
+                    maxY = Math.max(maxY, y + h);
+                });
+
+                const joinedShape = {
+                    id: `fog-joined-${Date.now()}`,
+                    type: "rect",
+                    mode: "hide",
+                    x: Math.max(0, minX),
+                    y: Math.max(0, minY),
+                    width: Math.min(mapWidth, maxX - minX),
+                    height: Math.min(mapHeight, maxY - minY),
+                    isCover: true,
+                };
+
+                const updated = {
+                    ...currentScene,
+                    fogShapes: [joinedShape],
+                };
+                setScene(updated);
+
+                wsService.send("FOG_CLEAR", { sceneId: currentScene.id, type: "CLEAR_ALL", points: {} });
+                setTimeout(() => {
+                    wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+                        ...joinedShape,
+                        sceneId: currentScene.id,
+                        type: "HIDE",
+                        points: joinedShape,
+                    });
+                }, 100);
+            }
         } else if (optionKey === "overlay") {
-            setFogAction(FOG_ACTIONS.HIDE);
+            // ساخت لایه رویی شفاف نیمه‌تاریک (Mist / Atmosphere)
+            const overlayShape = {
+                id: `fog-overlay-${Date.now()}`,
+                type: "rect",
+                mode: "overlay",
+                x: 0,
+                y: 0,
+                width: mapWidth,
+                height: mapHeight,
+                isCover: true,
+            };
+
+            const updated = {
+                ...currentScene,
+                fogShapes: [...(currentScene.fogShapes || []), overlayShape],
+            };
+            setScene(updated);
+
+            wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+                ...overlayShape,
+                sceneId: currentScene.id,
+                type: "HIDE",
+                points: overlayShape,
+            });
         }
     };
 
@@ -385,7 +442,7 @@ export const FogSubToolbar = memo(() => {
                 </button>
 
                 {isFitMenuOpen && (
-                    <div className="absolute bottom-full mb-2.5 right-0 w-56 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl p-1.5 shadow-2xl backdrop-blur-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute bottom-full mb-2.5 right-0 w-64 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl p-1.5 shadow-2xl backdrop-blur-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
                         {FIT_OPTIONS.map((opt) => {
                             const OptionIcon = opt.icon;
                             const isSelected = selectedFitOptionKey === opt.key;

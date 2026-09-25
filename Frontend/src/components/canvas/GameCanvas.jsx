@@ -535,6 +535,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 id: uniqueFogId,
                 type: "polygon",
                 mode: modeName,
+                x: 0,
+                y: 0,
                 points: fogPolygonVertices,
                 isCover: isCoverAction,
                 sceneId: currentScene?.id,

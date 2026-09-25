@@ -20,11 +20,11 @@ const TRANSFORMER_ANCHORS = Object.freeze([
     "bottom-center",
 ]);
 
-const drawPolygonPath = (context, points) => {
+const drawPolygonPath = (context, points, offsetX = 0, offsetY = 0) => {
     if (!points || points.length < 4) return;
-    context.moveTo(points[0], points[1]);
+    context.moveTo(points[0] + offsetX, points[1] + offsetY);
     for (let i = 2; i < points.length; i += 2) {
-        context.lineTo(points[i], points[i + 1]);
+        context.lineTo(points[i] + offsetX, points[i + 1] + offsetY);
     }
     context.closePath();
 };
@@ -67,7 +67,7 @@ export const FogLayer = memo(
         const lastBroadcastTime = useRef(0);
         const draggingFogId = useRef(null);
 
-        const isSelectMode = activeTool === TOOLS.SELECT && isGM;
+        const isSelectMode = (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && isGM;
 
         useEffect(() => {
             if (!transformerRef.current) return;
@@ -98,22 +98,25 @@ export const FogLayer = memo(
 
         const renderSingleShape = (context, fog) => {
             const shapeType = fog.type || (fog.radius ? "circle" : "rect");
+            const offsetX = fog.x || 0;
+            const offsetY = fog.y || 0;
+
             if (shapeType === "circle") {
                 const rad = Math.max(5, fog.radius || 60);
-                context.arc(fog.x || 0, fog.y || 0, rad, 0, Math.PI * 2, false);
+                context.arc(offsetX, offsetY, rad, 0, Math.PI * 2, false);
             } else if (shapeType === "rect") {
                 const w = fog.width || 100;
                 const h = fog.height || 100;
-                context.rect(fog.x || 0, fog.y || 0, w, h);
+                context.rect(offsetX, offsetY, w, h);
             } else if (shapeType === "triangle") {
-                drawRegularPolygon(context, fog.x || 0, fog.y || 0, fog.radius || 60, 3);
+                drawRegularPolygon(context, offsetX, offsetY, fog.radius || 60, 3);
             } else if (shapeType === "hexagon") {
-                drawRegularPolygon(context, fog.x || 0, fog.y || 0, fog.radius || 60, 6);
+                drawRegularPolygon(context, offsetX, offsetY, fog.radius || 60, 6);
             } else if (
                 (shapeType === "polygon" || shapeType === "freehand" || shapeType === "slice") &&
                 fog.points
             ) {
-                drawPolygonPath(context, fog.points);
+                drawPolygonPath(context, fog.points, offsetX, offsetY);
             }
         };
 
@@ -215,7 +218,7 @@ export const FogLayer = memo(
                 <Shape
                     listening={false}
                     opacity={fogOpacity}
-                    sceneFunc={(context, shape) => {
+                    sceneFunc={(context) => {
                         context.save();
 
                         if (isFilledByDefault) {
@@ -233,12 +236,17 @@ export const FogLayer = memo(
                                 fog.mode === "reveal" ||
                                 fog.mode === "slice";
 
+                            const isOverlay = fog.mode === "overlay";
+
                             context.beginPath();
                             renderSingleShape(context, fog);
 
                             if (isCut) {
                                 context.globalCompositeOperation = "destination-out";
                                 context.fillStyle = "rgba(0,0,0,1)";
+                            } else if (isOverlay) {
+                                context.globalCompositeOperation = "source-over";
+                                context.fillStyle = "rgba(15, 23, 42, 0.45)"; // Overlay نیمه‌شفاف
                             } else {
                                 context.globalCompositeOperation = "source-over";
                                 context.fillStyle = fogColor;
@@ -276,6 +284,7 @@ export const FogLayer = memo(
                         {fogShapes.map((fog) => {
                             const shapeType = fog.type || (fog.radius ? "circle" : "rect");
                             const fogIdStr = String(fog.id);
+                            const isSelected = selectedFogId === fogIdStr;
 
                             const commonProps = {
                                 key: `fog-node-${fogIdStr}`,
@@ -286,10 +295,16 @@ export const FogLayer = memo(
                                 x: fog.x || 0,
                                 y: fog.y || 0,
                                 draggable: isSelectMode,
-                                fill: "rgba(0,0,0,0.001)",
-                                stroke: "transparent",
-                                hitStrokeWidth: 20,
+                                fill: isSelected ? "rgba(245, 158, 11, 0.12)" : "rgba(255, 255, 255, 0.02)",
+                                stroke: isSelected ? "#f59e0b" : "rgba(245, 158, 11, 0.4)",
+                                strokeWidth: isSelected ? 2 : 1,
+                                dash: isSelected ? [4, 4] : undefined,
+                                hitStrokeWidth: 25,
                                 onClick: (e) => {
+                                    e.cancelBubble = true;
+                                    setSelectedFogId(fogIdStr);
+                                },
+                                onTap: (e) => {
                                     e.cancelBubble = true;
                                     setSelectedFogId(fogIdStr);
                                 },
@@ -326,7 +341,14 @@ export const FogLayer = memo(
                                     />
                                 );
                             } else if (fog.points && fog.points.length >= 4) {
-                                return <Line {...commonProps} points={fog.points} closed={true} />;
+                                return (
+                                    <Line
+                                        {...commonProps}
+                                        points={fog.points}
+                                        closed={true}
+                                        fillEnabled={true}
+                                    />
+                                );
                             }
 
                             return null;
