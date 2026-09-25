@@ -69,19 +69,49 @@ export const FogLayer = memo(
 
         const isSelectMode = (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && isGM;
 
+        // مدیریت ایمن Transformer برای جلوگیری از کرش هنگام فعال شدن آشکارساز
         useEffect(() => {
-            if (!transformerRef.current) return;
+            const tr = transformerRef.current;
+            if (!tr) return;
+
+            // اگر آشکارساز فعال است یا در حالت انتخاب نیستیم، نودها سریعاً جدا شوند
+            if (isFogRevealedGlobally || !isSelectMode) {
+                try {
+                    tr.nodes([]);
+                    tr.getLayer()?.batchDraw();
+                } catch (e) {}
+                return;
+            }
+
             if (selectedFogId && shapeRefs.current.has(selectedFogId)) {
                 const node = shapeRefs.current.get(selectedFogId);
-                transformerRef.current.nodes([node]);
-                transformerRef.current.getLayer()?.batchDraw();
+                if (node && node.getStage()) {
+                    try {
+                        tr.nodes([node]);
+                        tr.getLayer()?.batchDraw();
+                    } catch (e) {}
+                } else {
+                    try {
+                        tr.nodes([]);
+                    } catch (e) {}
+                }
             } else {
-                transformerRef.current.nodes([]);
-                transformerRef.current.getLayer()?.batchDraw();
+                try {
+                    tr.nodes([]);
+                    tr.getLayer()?.batchDraw();
+                } catch (e) {}
             }
-        }, [selectedFogId, isSelectMode]);
 
-        if (!currentScene || isFogRevealedGlobally) {
+            return () => {
+                try {
+                    if (tr && tr.getStage()) {
+                        tr.nodes([]);
+                    }
+                } catch (e) {}
+            };
+        }, [selectedFogId, isSelectMode, isFogRevealedGlobally]);
+
+        if (!currentScene) {
             return null;
         }
 
@@ -89,10 +119,9 @@ export const FogLayer = memo(
         const isFilledByDefault = currentScene.fogFilled === true;
         const activeLiveFog = liveFog || remoteLiveFog;
 
-        // اگر نه مه پیش‌فرضی هست و نه شکلی روی کانواس، لایه کلاً خارج شود
-        if (!isFilledByDefault && fogShapes.length === 0 && !activeLiveFog) {
-            return null;
-        }
+        const hasContent = isFilledByDefault || fogShapes.length > 0 || Boolean(activeLiveFog);
+        // به جای بازگرداندن null، وضعیت نمایان بودن لایه با visible در کانواس کنترل می‌شود
+        const isLayerVisible = !isFogRevealedGlobally && hasContent;
 
         const fogOpacity = isGM ? Math.max(0.05, Math.min(1.0, gmFogBlend)) : 1.0;
         const fogColor = currentScene.fogColor || "#090a0f";
@@ -220,11 +249,12 @@ export const FogLayer = memo(
         );
 
         return (
-            <Group id="fog-main-layer">
+            <Group id="fog-main-layer" visible={isLayerVisible} listening={isLayerVisible}>
                 <Shape
                     listening={false}
                     opacity={fogOpacity}
                     sceneFunc={(context) => {
+                        if (!isLayerVisible) return;
                         context.save();
 
                         if (isFilledByDefault) {
@@ -286,7 +316,7 @@ export const FogLayer = memo(
                     }}
                 />
 
-                {isSelectMode && (
+                {isSelectMode && isLayerVisible && (
                     <Group id="fog-interactive-nodes">
                         {fogShapes.map((fog) => {
                             if (!fog) return null;
@@ -383,7 +413,7 @@ export const FogLayer = memo(
                     </Group>
                 )}
 
-                {polygonVertices && polygonVertices.length >= 2 && (
+                {polygonVertices && polygonVertices.length >= 2 && isLayerVisible && (
                     <Group id="fog-polygon-guidelines" listening={false}>
                         <Line
                             points={polygonVertices}
