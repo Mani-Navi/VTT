@@ -50,6 +50,7 @@ const getRegularPolygonPoints = (radius, sides) => {
 
 export const FogLayer = memo(
     ({ width = 2400, height = 1800, liveFog = null, polygonVertices = [] }) => {
+        // ۱. تمام استورها و مقادیر اولیه (همگی در بالاترین سطح)
         const currentScene = useSceneStore((state) => state.currentScene);
         const remoteLiveFog = useSceneStore((state) => state.remoteLiveFog);
         const updateFogShape = useSceneStore((state) => state.updateFogShape);
@@ -68,8 +69,108 @@ export const FogLayer = memo(
         const draggingFogId = useRef(null);
 
         const isSelectMode = (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && isGM;
+        const currentSceneId = currentScene?.id;
 
-        // جداسازی قطعی و همگام ترنسفورمر قبل از هرگونه آن‌مانت لایه (عامل نجات GM از کرش)
+        // ۲. تعریف تمام هوک‌های useCallback در بالاترین سطح (قبل از هر return)
+        const handleShapeDragStart = useCallback((fog) => {
+            draggingFogId.current = String(fog.id);
+        }, []);
+
+        const handleShapeDragMove = useCallback(
+            (e, fog) => {
+                if (!currentSceneId) return;
+                const node = e.target;
+                const newX = Math.round(node.x());
+                const newY = Math.round(node.y());
+
+                const now = Date.now();
+                if (now - lastBroadcastTime.current > 50) {
+                    lastBroadcastTime.current = now;
+                    wsService.send("FOG_LIVE", {
+                        ...fog,
+                        x: newX,
+                        y: newY,
+                        sceneId: currentSceneId,
+                    });
+                }
+            },
+            [currentSceneId]
+        );
+
+        const handleShapeDragEnd = useCallback(
+            (e, fog) => {
+                if (!currentSceneId) return;
+                draggingFogId.current = null;
+                const node = e.target;
+                const newX = Math.round(node.x());
+                const newY = Math.round(node.y());
+
+                const finalFog = {
+                    ...fog,
+                    id: String(fog.id),
+                    x: newX,
+                    y: newY,
+                };
+
+                updateFogShape(fog.id, { x: newX, y: newY });
+
+                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+                    ...finalFog,
+                    id: String(fog.id),
+                    sceneId: currentSceneId,
+                    type: finalFog.isCover ? "HIDE" : "REVEAL",
+                    points: finalFog,
+                });
+
+                wsService.send("FOG_LIVE_END", { sceneId: currentSceneId });
+            },
+            [updateFogShape, currentSceneId]
+        );
+
+        const handleShapeTransformEnd = useCallback(
+            (e, fog) => {
+                if (!currentSceneId) return;
+                const node = e.target;
+                const scaleX = node.scaleX();
+                const scaleY = node.scaleY();
+
+                node.scaleX(1);
+                node.scaleY(1);
+
+                let finalFog = {
+                    ...fog,
+                    id: String(fog.id),
+                    x: Math.round(node.x()),
+                    y: Math.round(node.y()),
+                };
+
+                const shapeType = String(fog.type || "").toLowerCase();
+
+                if (shapeType === "rect") {
+                    finalFog.width = Math.round(Math.max(20, (fog.width || 100) * scaleX));
+                    finalFog.height = Math.round(Math.max(20, (fog.height || 100) * scaleY));
+                } else if (shapeType === "circle" || shapeType === "triangle" || shapeType === "hexagon") {
+                    finalFog.radius = Math.round(
+                        Math.max(10, (fog.radius || 60) * Math.max(Math.abs(scaleX), Math.abs(scaleY)))
+                    );
+                }
+
+                updateFogShape(fog.id, finalFog);
+
+                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
+                    ...finalFog,
+                    id: String(fog.id),
+                    sceneId: currentSceneId,
+                    type: finalFog.isCover ? "HIDE" : "REVEAL",
+                    points: finalFog,
+                });
+
+                wsService.send("FOG_LIVE_END", { sceneId: currentSceneId });
+            },
+            [updateFogShape, currentSceneId]
+        );
+
+        // ۳. هوک‌های چرخه حیات (همواره در بالاترین سطح)
         useLayoutEffect(() => {
             return () => {
                 if (transformerRef.current) {
@@ -80,7 +181,6 @@ export const FogLayer = memo(
             };
         });
 
-        // همگام‌سازی نود فعال با Transformer
         useEffect(() => {
             const tr = transformerRef.current;
             if (!tr) return;
@@ -113,7 +213,7 @@ export const FogLayer = memo(
             }
         }, [selectedFogId, isSelectMode, isFogRevealedGlobally]);
 
-        // اگر صحنه نباشد یا آشکارساز سراسری فعال باشد، لایه کلاً خارج می‌شود (سبک، سریع و امن برای پلیر)
+        // ۴. اکنون که تمام هوک‌ها بدون قید و شرط ثبت شدند، شروط خروج امن هستند:
         if (!currentScene || isFogRevealedGlobally) {
             return null;
         }
@@ -155,101 +255,6 @@ export const FogLayer = memo(
                 drawPolygonPath(context, fog.points, offsetX, offsetY);
             }
         };
-
-        const handleShapeDragStart = useCallback((fog) => {
-            draggingFogId.current = String(fog.id);
-        }, []);
-
-        const handleShapeDragMove = useCallback(
-            (e, fog) => {
-                const node = e.target;
-                const newX = Math.round(node.x());
-                const newY = Math.round(node.y());
-
-                const now = Date.now();
-                if (now - lastBroadcastTime.current > 50) {
-                    lastBroadcastTime.current = now;
-                    wsService.send("FOG_LIVE", {
-                        ...fog,
-                        x: newX,
-                        y: newY,
-                        sceneId: currentScene.id,
-                    });
-                }
-            },
-            [currentScene?.id]
-        );
-
-        const handleShapeDragEnd = useCallback(
-            (e, fog) => {
-                draggingFogId.current = null;
-                const node = e.target;
-                const newX = Math.round(node.x());
-                const newY = Math.round(node.y());
-
-                const finalFog = {
-                    ...fog,
-                    id: String(fog.id),
-                    x: newX,
-                    y: newY,
-                };
-
-                updateFogShape(fog.id, { x: newX, y: newY });
-
-                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
-                    ...finalFog,
-                    id: String(fog.id),
-                    sceneId: currentScene.id,
-                    type: finalFog.isCover ? "HIDE" : "REVEAL",
-                    points: finalFog,
-                });
-
-                wsService.send("FOG_LIVE_END", { sceneId: currentScene.id });
-            },
-            [updateFogShape, currentScene?.id]
-        );
-
-        const handleShapeTransformEnd = useCallback(
-            (e, fog) => {
-                const node = e.target;
-                const scaleX = node.scaleX();
-                const scaleY = node.scaleY();
-
-                node.scaleX(1);
-                node.scaleY(1);
-
-                let finalFog = {
-                    ...fog,
-                    id: String(fog.id),
-                    x: Math.round(node.x()),
-                    y: Math.round(node.y()),
-                };
-
-                const shapeType = String(fog.type || "").toLowerCase();
-
-                if (shapeType === "rect") {
-                    finalFog.width = Math.round(Math.max(20, (fog.width || 100) * scaleX));
-                    finalFog.height = Math.round(Math.max(20, (fog.height || 100) * scaleY));
-                } else if (shapeType === "circle" || shapeType === "triangle" || shapeType === "hexagon") {
-                    finalFog.radius = Math.round(
-                        Math.max(10, (fog.radius || 60) * Math.max(Math.abs(scaleX), Math.abs(scaleY)))
-                    );
-                }
-
-                updateFogShape(fog.id, finalFog);
-
-                wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", {
-                    ...finalFog,
-                    id: String(fog.id),
-                    sceneId: currentScene.id,
-                    type: finalFog.isCover ? "HIDE" : "REVEAL",
-                    points: finalFog,
-                });
-
-                wsService.send("FOG_LIVE_END", { sceneId: currentScene.id });
-            },
-            [updateFogShape, currentScene?.id]
-        );
 
         return (
             <Group id="fog-main-layer">
