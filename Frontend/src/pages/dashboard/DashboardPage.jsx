@@ -140,7 +140,7 @@ export const DashboardPage = () => {
   );
 
   return (
-      <div className="h-screen w-full bg-[#090a0f] text-zinc-100 flex flex-col font-fa select-none overflow-y-auto" dir="rtl">
+      <div className="min-h-[100dvh] w-full bg-[#090a0f] text-zinc-100 flex flex-col font-fa select-none overflow-y-auto relative" dir="rtl">
         {toastError && (
             <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-rose-600/95 backdrop-blur-md text-white px-5 py-2.5 rounded-xl shadow-2xl text-xs font-semibold border border-rose-500/40 flex items-center gap-2 animate-bounce">
               <AlertCircle className="w-4 h-4" />
@@ -148,16 +148,19 @@ export const DashboardPage = () => {
             </div>
         )}
 
-        <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
+        {/* هدر واکنش‌گرا و سازگار با گوشی */}
+        <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
               <Dices className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="font-bold text-sm text-zinc-100 tracking-wide">میز بازی Titipool</h1>
+            <div className="min-w-0">
+              <h1 className="font-bold text-xs sm:text-sm text-zinc-100 tracking-wide truncate">
+                میز بازی Titipool
+              </h1>
               {user?.username && (
-                  <p className="text-[11px] text-zinc-400">
-                    خوش آمدید،{" "}
+                  <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">
+                    <span className="hidden sm:inline">خوش آمدید، </span>
                     <button
                         type="button"
                         onClick={() => navigate("/profile")}
@@ -170,17 +173,17 @@ export const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
             <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsJoinOpen(true)}
-                className="text-xs gap-1.5"
-                title="میانبر: کلید J"
+                className="text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 h-9"
+                title="ورود با کد دعوت (میانبر J)"
             >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              ورود با کد
+              <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">ورود با کد</span>
               <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-zinc-800 text-zinc-400 rounded border border-zinc-700">J</kbd>
             </Button>
 
@@ -189,21 +192,21 @@ export const DashboardPage = () => {
                 variant="amber"
                 size="sm"
                 onClick={() => setIsCreateOpen(true)}
-                className="text-xs font-bold gap-1.5 shadow-lg shadow-amber-500/10"
-                title="میانبر: کلید N"
+                className="text-xs font-bold gap-1 sm:gap-1.5 shadow-lg shadow-amber-500/10 px-2.5 sm:px-3 h-9"
+                title="ایجاد ماجرا (میانبر N)"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              ایجاد ماجرا
+              <Plus className="w-4 h-4 stroke-[2.5] shrink-0" />
+              <span className="hidden sm:inline">ایجاد ماجرا</span>
               <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-amber-600/30 text-amber-200 rounded border border-amber-400/40">N</kbd>
             </Button>
 
-            <div className="h-5 w-px bg-zinc-800 mx-1" />
+            <div className="h-5 w-px bg-zinc-800 mx-0.5 sm:mx-1" />
 
             <button
                 type="button"
                 onClick={() => navigate("/profile")}
-                className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 overflow-hidden flex items-center justify-center hover:border-amber-500/60 hover:scale-105 transition-all cursor-pointer p-0.5"
-                title="مشاهده و ویرایش پروفایل"
+                className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 overflow-hidden flex items-center justify-center hover:border-amber-500/60 active:scale-95 transition-all cursor-pointer p-0.5 shrink-0"
+                title="پروفایل کاربری"
             >
               <RpgAvatar avatarId={user?.avatarUrl || "cowboy"} className="w-full h-full" />
             </button>
@@ -211,7 +214,7 @@ export const DashboardPage = () => {
             <button
                 type="button"
                 onClick={logout}
-                className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-95 transition-colors cursor-pointer"
                 title="خروج از حساب"
             >
               <LogOut className="w-4 h-4" />
@@ -219,9 +222,10 @@ export const DashboardPage = () => {
           </div>
         </header>
 
-        <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8 space-y-8">
+        {/* محتوای داشبورد */}
+        <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 pb-20 sm:pb-8">
           {rooms.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
                 <div className="relative w-full sm:w-80">
                   <input
                       type="text"
@@ -233,24 +237,24 @@ export const DashboardPage = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-zinc-400">
-              <span>
-                مجموع اتاق‌ها: <strong className="text-zinc-200">{rooms.length}</strong>
-              </span>
-                  <span className="h-3 w-px bg-zinc-700" />
-                  <span>
-                ماجراهای من: <strong className="text-amber-400">{rooms.filter((r) => r.role === "GM").length}</strong>
-              </span>
-                  <span className="h-3 w-px bg-zinc-700" />
-                  <span>
-                ماجراجویی‌های من: <strong className="text-blue-400">{rooms.filter((r) => r.role !== "GM").length}</strong>
-              </span>
+                <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-zinc-400 bg-zinc-950/60 sm:bg-transparent p-2 sm:p-0 rounded-xl text-center sm:text-right border border-zinc-800/40 sm:border-none">
+                  <div>
+                    کل اتاق‌ها: <strong className="text-zinc-200">{rooms.length}</strong>
+                  </div>
+                  <div className="hidden sm:block h-3 w-px bg-zinc-700" />
+                  <div>
+                    ماجراهای من: <strong className="text-amber-400">{rooms.filter((r) => r.role === "GM").length}</strong>
+                  </div>
+                  <div className="hidden sm:block h-3 w-px bg-zinc-700" />
+                  <div>
+                    ماجراجویی‌ها: <strong className="text-blue-400">{rooms.filter((r) => r.role !== "GM").length}</strong>
+                  </div>
                 </div>
               </div>
           )}
 
           {error && (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400">
                 <span>{error}</span>
                 <button
                     type="button"
@@ -264,7 +268,7 @@ export const DashboardPage = () => {
           )}
 
           {isLoading && rooms.length === 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {[1, 2, 3].map((n) => (
                     <div
                         key={n}
@@ -281,17 +285,17 @@ export const DashboardPage = () => {
           ) : rooms.length === 0 && !isLoading ? (
               <EmptyRooms onCreateClick={() => setIsCreateOpen(true)} />
           ) : (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 {myCreatedAdventures.length > 0 && (
-                    <section className="space-y-4">
+                    <section className="space-y-3.5">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
                         <Crown className="w-4 h-4 text-amber-400" />
-                        <h2 className="text-sm font-bold text-zinc-100">ماجراهای من</h2>
-                        <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراهای من</h2>
+                        <span className="text-[11px] bg-amber-500/10 text-amber-400 px-2 py-0.2 rounded-full font-bold">
                     {myCreatedAdventures.length}
                   </span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                         {myCreatedAdventures.map((room) => (
                             <RoomCard
                                 key={room.id}
@@ -305,15 +309,15 @@ export const DashboardPage = () => {
                 )}
 
                 {myJoinedAdventures.length > 0 && (
-                    <section className="space-y-4">
+                    <section className="space-y-3.5">
                       <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
                         <Swords className="w-4 h-4 text-blue-400" />
-                        <h2 className="text-sm font-bold text-zinc-100">ماجراجویی‌های من</h2>
-                        <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-bold">
+                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراجویی‌های من</h2>
+                        <span className="text-[11px] bg-blue-500/10 text-blue-400 px-2 py-0.2 rounded-full font-bold">
                     {myJoinedAdventures.length}
                   </span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                         {myJoinedAdventures.map((room) => (
                             <RoomCard
                                 key={room.id}
@@ -327,7 +331,7 @@ export const DashboardPage = () => {
 
                 {filteredRooms.length === 0 && searchQuery.trim() && (
                     <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 space-y-2">
-                      <p className="text-sm">اتاقی با عبارت «{searchQuery}» پیدا نشد.</p>
+                      <p className="text-xs sm:text-sm">اتاقی با عبارت «{searchQuery}» پیدا نشد.</p>
                       <button
                           type="button"
                           onClick={() => setSearchQuery("")}
@@ -340,6 +344,16 @@ export const DashboardPage = () => {
               </div>
           )}
         </main>
+
+        {/* دکمه شناور ساخت اتاق مخصوص موبایل (Floating Action Button) */}
+        <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="sm:hidden fixed bottom-5 left-5 z-40 w-13 h-13 rounded-2xl bg-amber-500 text-zinc-950 shadow-2xl shadow-amber-500/40 flex items-center justify-center font-black active:scale-90 transition-all border border-amber-400 cursor-pointer"
+            aria-label="ایجاد اتاق جدید"
+        >
+          <Plus className="w-6 h-6 stroke-[3]" />
+        </button>
 
         <CreateRoomModal
             isOpen={isCreateOpen}

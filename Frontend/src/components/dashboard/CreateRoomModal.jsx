@@ -131,41 +131,41 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           titleFa="ساخت اتاق بازی Titipool"
           maxWidth="lg"
       >
-        <div className="space-y-4" dir="rtl">
-          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800/80">
+        <div className="space-y-4 text-right" dir="rtl">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 bg-zinc-950 p-1 sm:p-1.5 rounded-xl border border-zinc-800/80">
             <button
                 type="button"
                 onClick={() => handleSwitchTab("blank")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tab === "blank"
                         ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
                         : "text-zinc-400 hover:text-zinc-200"
                 }`}
             >
-              <Box className="w-4 h-4" />
-              میز خام و بدون قالب
+              <Box className="w-4 h-4 shrink-0" />
+              <span className="truncate">میز خام و بدون قالب</span>
             </button>
             <button
                 type="button"
                 onClick={() => handleSwitchTab("template")}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     tab === "template"
                         ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
                         : "text-zinc-400 hover:text-zinc-200"
                 }`}
             >
-              <Scroll className="w-4 h-4" />
-              انتخاب از قالب‌های ماجراجویی
+              <Scroll className="w-4 h-4 shrink-0" />
+              <span className="truncate">قالب ماجراجویی</span>
             </button>
           </div>
 
           {tab === "template" && (
               <div className="space-y-2.5 p-3 bg-zinc-950/70 rounded-xl border border-zinc-800/90">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-400">یک سناریو را برای شروع انتخاب کنید:</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-amber-400">یک سناریو را انتخاب کنید:</span>
                   {selectedTemplate && (
-                      <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> قالب «{selectedTemplate.title}» انتخاب شد
+                      <span className="text-[10px] sm:text-[11px] text-emerald-400 font-medium flex items-center gap-1 truncate max-w-[160px]">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {selectedTemplate.title}
                 </span>
                   )}
                 </div>
@@ -179,20 +179,20 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                       هیچ قالب پیش‌فرضی یافت نشد.
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                       {templates.map((tpl) => {
                         const isSelected = selectedTemplate?.id === tpl.id;
                         return (
                             <div
                                 key={tpl.id}
                                 onClick={() => handleSelectTemplate(tpl)}
-                                className={`p-2.5 rounded-xl border cursor-pointer transition-all flex gap-3 items-center ${
+                                className={`p-2 rounded-xl border cursor-pointer transition-all flex gap-2.5 items-center ${
                                     isSelected
-                                        ? "bg-amber-500/15 border-amber-500 text-zinc-100 ring-1 ring-amber-500/50 shadow-md shadow-amber-500/10"
+                                        ? "bg-amber-500/15 border-amber-500 text-zinc-100 ring-1 ring-amber-500/50 shadow-md"
                                         : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 text-zinc-300"
                                 }`}
                             >
-                              <div className="w-14 h-14 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center relative">
+                              <div className="w-12 h-12 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center relative">
                                 {tpl.baseMapUrl ? (
                                     <img
                                         src={tpl.baseMapUrl}
@@ -200,7 +200,7 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <ImageIcon className="w-6 h-6 text-zinc-700" />
+                                    <ImageIcon className="w-5 h-5 text-zinc-700" />
                                 )}
                                 {isSelected && (
                                     <div className="absolute inset-0 bg-amber-500/20 backdrop-blur-2xs flex items-center justify-center">
@@ -211,8 +211,8 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
 
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-bold text-xs text-amber-300/90 truncate">{tpl.title}</h4>
-                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
-                                  {tpl.description || "شامل مپ، توکن‌ها و ژورنال‌های آماده"}
+                                <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">
+                                  {tpl.description || "شامل مپ و توکن‌های آماده"}
                                 </p>
                               </div>
                             </div>
@@ -224,8 +224,8 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           )}
 
           {!shouldShowForm && (
-              <div className="p-6 rounded-xl bg-zinc-950/40 border border-dashed border-zinc-800 text-center text-zinc-500 flex flex-col items-center justify-center gap-2">
-                <MousePointerClick className="w-6 h-6 text-amber-500/60 animate-bounce" />
+              <div className="p-5 rounded-xl bg-zinc-950/40 border border-dashed border-zinc-800 text-center text-zinc-500 flex flex-col items-center justify-center gap-2">
+                <MousePointerClick className="w-5 h-5 text-amber-500/60 animate-bounce" />
                 <p className="text-xs font-medium text-zinc-400">
                   جهت تنظیم مشخصات و ساخت میز، لطفاً یکی از قالب‌های بالا را انتخاب کنید.
                 </p>
@@ -241,7 +241,7 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           {shouldShowForm && (
               <form
                   onSubmit={handleSubmit(onSubmit)}
-                  className="space-y-3.5 transition-all duration-300 animate-fadeIn"
+                  className="space-y-3 transition-all duration-300 animate-fadeIn"
               >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -255,6 +255,7 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                       error={errors.name?.message}
                       disabled={isSubmitting}
                       maxLength={40}
+                      className="h-11 sm:h-10 text-sm"
                       {...register("name")}
                   />
                 </div>
@@ -269,7 +270,7 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                   <div className="relative">
                 <textarea
                     rows={2}
-                    placeholder="توضیحات کوتاه درباره سناریو، سطح کاراکترها یا اهداف..."
+                    placeholder="توضیحات کوتاه درباره سناریو، اهداف یا قوانین..."
                     maxLength={200}
                     className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2 pl-9 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors resize-none"
                     disabled={isSubmitting}
@@ -293,14 +294,14 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                         type={showPassword ? "text" : "password"}
                         placeholder="در صورت تمایل یک رمز تعیین کنید"
                         maxLength={30}
-                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 pl-10 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors"
+                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 pl-10 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors h-11 sm:h-10"
                         disabled={isSubmitting}
                         {...register("password")}
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-amber-400 p-1 cursor-pointer transition-colors"
                         title={showPassword ? "مخفی‌سازی رمز" : "نمایش رمز"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -312,14 +313,14 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
                 </div>
 
                 <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-zinc-800">
-                  <Button type="button" variant="ghost" onClick={handleClose}>
+                  <Button type="button" variant="ghost" onClick={handleClose} className="h-10 text-xs">
                     انصراف
                   </Button>
                   <Button
                       type="submit"
                       variant="amber"
                       isLoading={isSubmitting}
-                      className="font-bold shadow-lg shadow-amber-500/10"
+                      className="font-bold shadow-lg shadow-amber-500/10 h-10 text-xs"
                   >
                     <Sparkles className="w-4 h-4 ml-1.5" />
                     ایجاد و راه‌اندازی میز
