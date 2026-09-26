@@ -18,14 +18,16 @@ export const LoginPage = () => {
 
   return (
       <div
-          className="h-screen w-full bg-[#090a0f] text-zinc-100 overflow-y-auto overflow-x-hidden font-fa select-none"
+          className="min-h-[100dvh] w-full bg-[#090a0f] text-zinc-100 flex flex-col justify-center items-center font-fa select-none relative overflow-x-hidden"
           dir="rtl"
       >
-        <div className="fixed -top-32 left-1/2 -translate-x-1/2 w-[36rem] h-[36rem] bg-amber-500/10 rounded-full blur-[130px] pointer-events-none" />
-        <div className="fixed -bottom-32 right-1/4 w-[30rem] h-[30rem] bg-amber-600/5 rounded-full blur-[140px] pointer-events-none" />
+        {/* هاله‌های نور محیطی */}
+        <div className="fixed -top-24 left-1/2 -translate-x-1/2 w-80 sm:w-[36rem] h-80 sm:h-[36rem] bg-amber-500/10 rounded-full blur-[100px] sm:blur-[130px] pointer-events-none" />
+        <div className="fixed -bottom-24 right-1/4 w-72 sm:w-[30rem] h-72 sm:h-[30rem] bg-amber-600/5 rounded-full blur-[110px] sm:blur-[140px] pointer-events-none" />
 
-        <div className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 py-12 sm:py-16">
-          <div className="w-full max-w-4xl bg-zinc-950/95 border border-zinc-800/90 rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-2xl grid grid-cols-1 lg:grid-cols-12 z-10 my-auto overflow-hidden">
+        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 py-6 sm:py-12 z-10">
+          <div className="w-full max-w-4xl bg-zinc-950/95 border border-zinc-800/90 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-2xl grid grid-cols-1 lg:grid-cols-12 overflow-hidden my-auto">
+            {/* ستون تزئینی دسکتاپ */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900 via-zinc-950 to-[#090a0f] border-l border-zinc-800/80 p-8 flex-col justify-between overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -70,16 +72,17 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
+            {/* محتوای اصلی فرم - کامپکت و لمسی برای موبایل */}
+            <div className="lg:col-span-7 p-5 sm:p-8 md:p-10 flex flex-col justify-between">
               <div>
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 mb-2.5 shadow-lg shadow-amber-500/10">
-                    <Dices className="w-6 h-6" />
+                <div className="text-center mb-5 sm:mb-6">
+                  <div className="inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 mb-2 shadow-lg shadow-amber-500/10">
+                    <Dices className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black text-zinc-100">
+                  <h1 className="text-lg sm:text-2xl font-black text-zinc-100 tracking-tight">
                     ورود به حساب کاربری
                   </h1>
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <p className="text-[11px] sm:text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
                     برای ورود به میزهای بازی خود مشخصاتتان را وارد کنید
                   </p>
                 </div>
@@ -87,18 +90,18 @@ export const LoginPage = () => {
                 <LoginForm onSuccess={() => navigate("/dashboard", { replace: true })} />
               </div>
 
-              <div className="mt-8 text-center text-xs text-zinc-400 pt-4 border-t border-zinc-800/80">
+              <div className="mt-6 sm:mt-8 text-center text-xs text-zinc-400 pt-3.5 border-t border-zinc-800/80">
                 هنوز حساب کاربری ندارید؟{" "}
                 <Link
                     to="/register"
-                    className="text-amber-400 hover:text-amber-300 font-bold hover:underline mr-1 transition-colors"
+                    className="text-amber-400 hover:text-amber-300 font-bold hover:underline mr-1 transition-colors inline-block py-1"
                 >
                   هم‌اکنون ثبت‌نام کنید
                 </Link>
               </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
   );
 };

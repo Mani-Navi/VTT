@@ -56,9 +56,8 @@ export const LoginForm = ({ onSuccess }) => {
                 auto_select: false,
             });
 
-            // محاسبه عرض متناسب با کانتینر
-            const containerWidth = googleButtonRef.current.offsetWidth || 340;
-            const validWidth = Math.min(Math.max(containerWidth, 240), 400);
+            const containerWidth = googleButtonRef.current.offsetWidth || 320;
+            const validWidth = Math.min(Math.max(containerWidth, 230), 400);
 
             googleButtonRef.current.innerHTML = "";
             window.google.accounts.id.renderButton(googleButtonRef.current, {
@@ -103,27 +102,28 @@ export const LoginForm = ({ onSuccess }) => {
     };
 
     return (
-        <div className="space-y-4 text-right" dir="rtl">
-            {/* دکمه رسمی و هماهنگ گوگل */}
-            <div className="flex justify-center w-full min-h-[44px]">
-                <div ref={googleButtonRef} className="w-full flex justify-center" />
+        <div className="space-y-3.5 text-right w-full" dir="rtl">
+            {/* دکمه رسمی و هماهنگ گوگل - بهینه‌شده برای عرض‌های کوچک */}
+            <div className="flex justify-center w-full min-h-[44px] overflow-hidden">
+                <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
 
-            <div className="relative flex items-center justify-center my-3">
+            <div className="relative flex items-center justify-center my-2.5">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
-                    یا ورود با ایمیل
-                </span>
+          یا ورود با ایمیل
+        </span>
                 <div className="border-t border-zinc-800 w-full" />
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
                 <Input
                     label="ایمیل حساب کاربری"
                     type="email"
                     placeholder="name@example.com"
                     error={errors.email?.message}
                     disabled={isSubmitting}
+                    className="h-11 sm:h-10 text-sm"
                     {...register("email")}
                 />
 
@@ -134,20 +134,22 @@ export const LoginForm = ({ onSuccess }) => {
                         placeholder="••••••••"
                         error={errors.password?.message}
                         disabled={isSubmitting}
+                        className="h-11 sm:h-10 text-sm pl-11"
                         {...register("password")}
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
                         tabIndex={-1}
+                        aria-label="تغییر وضعیت نمایش رمز"
                     >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                 </div>
 
                 {serverError && (
-                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
                         {serverError}
                     </div>
                 )}
@@ -155,7 +157,7 @@ export const LoginForm = ({ onSuccess }) => {
                 <Button
                     type="submit"
                     variant="amber"
-                    className="w-full mt-2 font-bold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 transition-all py-2.5"
+                    className="w-full mt-2 font-bold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 active:scale-[0.98] transition-all h-11 sm:h-11 text-xs sm:text-sm"
                     isLoading={isSubmitting}
                 >
                     <LogIn className="w-4 h-4 ml-2" />

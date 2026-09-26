@@ -85,8 +85,8 @@ export const RegisterForm = ({ onSuccess }) => {
                 auto_select: false,
             });
 
-            const containerWidth = googleButtonRef.current.offsetWidth || 340;
-            const validWidth = Math.min(Math.max(containerWidth, 240), 400);
+            const containerWidth = googleButtonRef.current.offsetWidth || 320;
+            const validWidth = Math.min(Math.max(containerWidth, 230), 400);
 
             googleButtonRef.current.innerHTML = "";
             window.google.accounts.id.renderButton(googleButtonRef.current, {
@@ -131,23 +131,23 @@ export const RegisterForm = ({ onSuccess }) => {
     };
 
     return (
-        <div className="space-y-3.5 text-right" dir="rtl">
-            {/* دکمه رسمی ثبت‌نام با گوگل */}
-            <div className="flex justify-center w-full min-h-[44px]">
-                <div ref={googleButtonRef} className="w-full flex justify-center" />
+        <div className="space-y-3 text-right w-full" dir="rtl">
+            {/* دکمه گوگل */}
+            <div className="flex justify-center w-full min-h-[44px] overflow-hidden">
+                <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
 
             <div className="relative flex items-center justify-center my-2">
                 <div className="border-t border-zinc-800 w-full" />
                 <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
-                    یا تکمیل فرم زیر
-                </span>
+          یا تکمیل فرم زیر
+        </span>
                 <div className="border-t border-zinc-800 w-full" />
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
                 {serverError && (
-                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
                         {serverError}
                     </div>
                 )}
@@ -157,6 +157,7 @@ export const RegisterForm = ({ onSuccess }) => {
                     placeholder="مثلا: dungeon_master"
                     error={errors.username?.message}
                     disabled={isSubmitting}
+                    className="h-11 sm:h-10 text-sm"
                     {...register("username")}
                 />
 
@@ -166,6 +167,7 @@ export const RegisterForm = ({ onSuccess }) => {
                     placeholder="name@example.com"
                     error={errors.email?.message}
                     disabled={isSubmitting}
+                    className="h-11 sm:h-10 text-sm"
                     {...register("email")}
                 />
 
@@ -177,13 +179,15 @@ export const RegisterForm = ({ onSuccess }) => {
                             placeholder="••••••••"
                             error={errors.password?.message}
                             disabled={isSubmitting}
+                            className="h-11 sm:h-10 text-sm pl-11"
                             {...register("password")}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                            className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
                             tabIndex={-1}
+                            aria-label="تغییر وضعیت نمایش رمز"
                         >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -204,8 +208,8 @@ export const RegisterForm = ({ onSuccess }) => {
                                                     : "text-emerald-400"
                                     }`}
                                 >
-                                    {strengthInfo.label}
-                                </span>
+                  {strengthInfo.label}
+                </span>
                             </div>
 
                             <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
@@ -215,7 +219,7 @@ export const RegisterForm = ({ onSuccess }) => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-1 pt-1 text-[10px]">
+                            <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
                                 {criteria.map((item, idx) => (
                                     <div
                                         key={idx}
@@ -228,7 +232,7 @@ export const RegisterForm = ({ onSuccess }) => {
                                         ) : (
                                             <X className="w-3 h-3 shrink-0 text-zinc-600" />
                                         )}
-                                        <span>{item.label}</span>
+                                        <span className="truncate">{item.label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -243,13 +247,15 @@ export const RegisterForm = ({ onSuccess }) => {
                         placeholder="••••••••"
                         error={errors.confirmPassword?.message}
                         disabled={isSubmitting}
+                        className="h-11 sm:h-10 text-sm pl-11"
                         {...register("confirmPassword")}
                     />
                     <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute left-3 top-[43px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
                         tabIndex={-1}
+                        aria-label="تغییر وضعیت نمایش تکرار رمز"
                     >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -258,7 +264,7 @@ export const RegisterForm = ({ onSuccess }) => {
                 <Button
                     type="submit"
                     variant="amber"
-                    className="w-full mt-2 font-bold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 transition-all py-2.5"
+                    className="w-full mt-2 font-bold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 active:scale-[0.98] transition-all h-11 sm:h-11 text-xs sm:text-sm"
                     isLoading={isSubmitting}
                 >
                     <UserPlus className="w-4 h-4 ml-2" />
