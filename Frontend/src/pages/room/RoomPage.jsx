@@ -23,6 +23,7 @@ import { Toolbar } from "../../components/room/Toolbar.jsx";
 import { SceneBar } from "../../components/room/SceneBar.jsx";
 import { DiceRoller } from "../../components/room/DiceRoller.jsx";
 import { Dice3DStage } from "../../components/dice3d/Dice3DStage.jsx";
+import { DiceOverlay } from "../../features/dice/components/DiceOverlay.jsx";
 import { PlayerMenu } from "../../components/room/PlayerMenu.jsx";
 import { SettingsMenu } from "../../components/room/SettingsMenu.jsx";
 import { AssetMenu } from "../../components/room/AssetMenu.jsx";
@@ -342,6 +343,10 @@ export const RoomPage = () => {
 
             <DiceRoller />
             <Dice3DStage />
+
+            {/* لایه شبیه‌ساز فیزیک واقعی تاس (Rapier WASM) */}
+            <DiceOverlay />
+
             <SettingsMenu isGM={isGM} />
             <AssetMenu isGM={isGM} permissions={userPermissions} />
             <TokenEditorModal roomData={roomData} />
@@ -376,6 +381,10 @@ export const RoomPage = () => {
                             <div className="flex justify-between">
                                 <span>خط‌کش:</span>
                                 <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">R</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>تاس سه‌بعدی:</span>
+                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">B</kbd>
                             </div>
                             <div className="flex justify-between">
                                 <span>مه جنگ (GM):</span>

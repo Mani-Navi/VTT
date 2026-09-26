@@ -12,10 +12,12 @@ import {
   ZoomOut,
   Type,
   User,
+  Dices,
 } from "lucide-react";
 import { useCanvasStore } from "../../store/canvas.store";
 import { useSceneStore } from "../../store/scene.store";
 import { useAuthStore } from "../../store/auth.store";
+import { useDiceStore } from "../../features/dice/state/dice.store";
 import { Tooltip } from "../ui/Tooltip";
 import { DrawSubToolbar } from "./DrawSubToolbar.jsx";
 import { TextSubToolbar } from "./TextSubToolbar.jsx";
@@ -81,6 +83,11 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
 
       if (e.key === "Escape") {
         setActiveTool(TOOLS.SELECT);
+        return;
+      }
+
+      if (key === "B") {
+        useDiceStore.getState().setOpen(!useDiceStore.getState().isOpen);
         return;
       }
 
@@ -285,6 +292,18 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                 );
               })}
             </div>
+
+            {/* دکمه پرتاب تاس فیزیکی ۳D */}
+            <div className="h-5 sm:h-6 w-px bg-zinc-800 mx-0.5 sm:mx-1 shrink-0" />
+            <Tooltip content="3D Dice" subContent="پرتاب تاس سه‌بعدی فیزیکی" shortcut="B">
+              <button
+                  type="button"
+                  onClick={() => useDiceStore.getState().setOpen(true)}
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20 transition-all duration-150 cursor-pointer shrink-0"
+              >
+                <Dices className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </Tooltip>
 
             {!isGM && hasActiveMap && (
                 <>
