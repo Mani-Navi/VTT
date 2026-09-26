@@ -230,7 +230,8 @@ export const ProfilePage = () => {
 
     return (
         <div
-            className="min-h-[100dvh] w-full bg-[#090a0f] text-zinc-100 font-fa select-none overflow-y-auto flex flex-col"
+            className="fixed inset-0 w-full h-[100dvh] bg-[#090a0f] text-zinc-100 font-fa select-none overflow-y-auto overflow-x-hidden flex flex-col"
+            style={{ WebkitOverflowScrolling: "touch" }}
             dir="rtl"
         >
             <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
@@ -258,7 +259,7 @@ export const ProfilePage = () => {
             </header>
 
             <div className="flex-1 w-full">
-                <main className="max-w-4xl mx-auto px-3.5 sm:px-6 py-5 sm:py-8 space-y-4 sm:space-y-6 pb-12">
+                <main className="max-w-4xl mx-auto px-3.5 sm:px-6 py-5 sm:py-8 space-y-4 sm:space-y-6 pb-20">
                     {/* کارت مشخصات بالا */}
                     <div className="relative bg-zinc-950/90 border border-zinc-800/90 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden flex flex-col items-center text-center">
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -314,7 +315,7 @@ export const ProfilePage = () => {
                         </div>
                     )}
 
-                    {/* تب‌ها و محتوای فرم‌ها - افقی و بدون شکست در موبایل */}
+                    {/* تب‌ها و محتوا */}
                     <div className="bg-zinc-950/90 border border-zinc-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl space-y-5">
                         <div className="flex items-center gap-1.5 border-b border-zinc-800 pb-3 overflow-x-auto no-scrollbar scroll-smooth">
                             <button
