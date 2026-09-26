@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { LoginForm } from "../../components/auth/LoginForm";
 import { useAuthStore } from "../../store/auth.store";
 import { Dices, Sparkles, ShieldCheck } from "lucide-react";
+import RegisterPage from "@/pages/auth/RegisterPage.jsx";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -105,3 +106,5 @@ export const LoginPage = () => {
       </div>
   );
 };
+
+export default LoginPage;
