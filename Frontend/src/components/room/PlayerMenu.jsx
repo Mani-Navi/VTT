@@ -630,93 +630,166 @@ export const PlayerMenu = memo(
         const playerMembers = membersList.filter((m) => m.role !== "GM" && m.role !== "ADMIN");
 
         return (
-            <div className="fixed top-2.5 sm:top-4 right-2.5 sm:right-6 z-40 font-fa select-none pointer-events-auto" dir="rtl">
-                {/* کپسول جمع‌وجور هدر */}
-                <div
-                    className={cn(
-                        "bg-zinc-900/95 border border-zinc-800 shadow-2xl backdrop-blur-2xl transition-all duration-200",
-                        isOpen
-                            ? "hidden sm:block sm:w-96 sm:rounded-t-3xl sm:border-b-0"
-                            : "rounded-2xl sm:rounded-3xl w-auto sm:w-96"
-                    )}
-                >
-                    <div className="flex items-center justify-between p-2 sm:p-3 gap-2">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-black shrink-0 shadow-inner">
-                                <Dices className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </div>
-
-                            <div className="hidden sm:block">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-xs font-bold text-zinc-100 truncate max-w-[130px]">
-                                        {roomData?.name || "ماجراجویی D&D"}
-                                    </h1>
-                                    <Badge variant={isGM ? "gm" : "player"} size="sm" className="font-bold">
-                                        {isGM ? (
-                                            <Crown className="w-3 h-3 ml-0.5 text-amber-400" />
-                                        ) : (
-                                            <User className="w-3 h-3 ml-0.5" />
-                                        )}
-                                        <span>{mySelfTitle}</span>
-                                    </Badge>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
-                                    <span>کد:</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => copy(displayCode)}
-                                        className="flex items-center gap-1 font-mono text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer bg-zinc-950/60 px-1.5 py-0.5 rounded-lg border border-zinc-800"
-                                        title="کپی کد"
-                                    >
-                                        <span>{displayCode}</span>
-                                        {copied ? (
-                                            <Check className="w-3 h-3 text-emerald-400" />
-                                        ) : (
-                                            <Copy className="w-3 h-3" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsOpen(!isOpen)}
-                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
-                        >
-                            <Users className="w-3.5 h-3.5 text-amber-400" />
-                            <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
-                            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                    </div>
+            <>
+                {/* تریگر منوی بازیکنان در گوشه راست بالا */}
+                <div className="fixed top-3 right-3 sm:top-4 sm:right-6 z-30 font-fa select-none pointer-events-auto" dir="rtl">
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/95 hover:bg-zinc-850 border border-zinc-800/90 text-zinc-200 text-xs font-bold cursor-pointer transition-all shadow-xl backdrop-blur-xl active:scale-95"
+                    >
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
+                        <span className="hidden sm:inline text-zinc-400 text-[11px]">نفر</span>
+                        {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-zinc-400" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />}
+                    </button>
                 </div>
 
-                {/* لیست اعضا: در موبایل به صورت Bottom Sheet از پایین باز می‌شود */}
+                {/* منو در دسکتاپ: دراپ‌دان معمولی زیر دکمه */}
                 {isOpen && (
-                    <>
+                    <div
+                        className="hidden sm:block fixed top-16 right-6 z-50 w-96 max-w-[95vw] bg-zinc-900/98 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-3.5 pt-3 space-y-3 animate-in fade-in zoom-in-95 duration-150 font-fa"
+                        dir="rtl"
+                    >
+                        <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                            <div className="flex items-center gap-2">
+                                <Dices className="w-4 h-4 text-amber-400" />
+                                <span className="text-xs font-bold text-zinc-100 truncate max-w-[150px]">{roomData?.name || "ماجراجویی D&D"}</span>
+                                <Badge variant={isGM ? "gm" : "player"} size="sm">
+                                    {mySelfTitle}
+                                </Badge>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => copy(displayCode)}
+                                className="flex items-center gap-1 font-mono text-[11px] text-amber-400 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800"
+                                title="کپی کد"
+                            >
+                                <span>{displayCode}</span>
+                                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+                            {membersList.length === 0 ? (
+                                <div className="text-center py-6 text-zinc-500 text-xs">هیچ کاربری آنلاین نیست</div>
+                            ) : (
+                                <>
+                                    {hostMembers.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Crown className="w-3.5 h-3.5" />
+                          <span>— {hostTitle} ({hostMembers.length}) —</span>
+                        </span>
+                                            </div>
+                                            {hostMembers.map((member) => (
+                                                <MemberCard
+                                                    key={member.id || member.memberId || member.userId}
+                                                    member={member}
+                                                    currentUser={currentUser}
+                                                    isGM={isGM}
+                                                    isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
+                                                    speakingMap={speakingMap}
+                                                    isMicEnabled={isMicEnabled}
+                                                    hostTitle={hostTitle}
+                                                    playerTitle={playerTitle}
+                                                    customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
+                                                    onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
+                                                    onSetRoleTitle={handleSetRoleTitle}
+                                                    onCustomInputChange={handleCustomInputChange}
+                                                    onToggleMute={handleToggleMute}
+                                                    onRoleChange={handleRoleChange}
+                                                    onKick={handleKick}
+                                                    onBan={handleBan}
+                                                    onPermissionToggle={handlePermissionToggle}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {playerMembers.length > 0 && (
+                                        <div className="space-y-2 pt-1">
+                                            <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5" />
+                          <span>— {playerTitle} ({playerMembers.length}) —</span>
+                        </span>
+                                            </div>
+                                            {playerMembers.map((member) => (
+                                                <MemberCard
+                                                    key={member.id || member.memberId || member.userId}
+                                                    member={member}
+                                                    currentUser={currentUser}
+                                                    isGM={isGM}
+                                                    isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
+                                                    speakingMap={speakingMap}
+                                                    isMicEnabled={isMicEnabled}
+                                                    hostTitle={hostTitle}
+                                                    playerTitle={playerTitle}
+                                                    customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
+                                                    onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
+                                                    onSetRoleTitle={handleSetRoleTitle}
+                                                    onCustomInputChange={handleCustomInputChange}
+                                                    onToggleMute={handleToggleMute}
+                                                    onRoleChange={handleRoleChange}
+                                                    onKick={handleKick}
+                                                    onBan={handleBan}
+                                                    onPermissionToggle={handlePermissionToggle}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="pt-2 border-t border-zinc-800/80">
+                            <button
+                                type="button"
+                                disabled={!isVoiceConnected}
+                                onClick={toggleMicrophone}
+                                className={cn(
+                                    "w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
+                                    isMicEnabled
+                                        ? "bg-emerald-500 text-zinc-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                                        : isVoiceConnected
+                                            ? "bg-zinc-800 text-zinc-200 border border-zinc-700"
+                                            : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed"
+                                )}
+                            >
+                                {isMicEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                                <span>{isMicEnabled ? "میکروفون فعال (Space برای قطع)" : "میکروفون غیرفعال (Space برای وصل)"}</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* منو در موبایل: کشوی Bottom Sheet واقعی با z-[100] که تمام صفحه و تولبار را می‌پوشاند */}
+                {isOpen && (
+                    <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end pointer-events-auto font-fa" dir="rtl">
                         <div
-                            className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-40"
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
                             onClick={() => setIsOpen(false)}
                         />
 
-                        <div
-                            className={cn(
-                                "z-50 bg-zinc-900/98 border border-zinc-800 shadow-2xl backdrop-blur-2xl p-4 space-y-3 animate-in fade-in duration-150",
-                                "fixed inset-x-2 bottom-3 max-h-[82vh] rounded-3xl overflow-hidden flex flex-col",
-                                "sm:static sm:inset-auto sm:w-96 sm:border-t-0 sm:rounded-b-3xl sm:pt-1"
-                            )}
-                        >
-                            <div className="sm:hidden flex items-center justify-between pb-2 border-b border-zinc-800">
+                        <div className="relative z-10 w-full max-h-[85dvh] bg-zinc-950 border-t border-zinc-800 rounded-t-[2.5rem] p-4 pb-8 space-y-3.5 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-200">
+                            <div className="w-12 h-1.5 rounded-full bg-zinc-800 mx-auto -mt-1 mb-1" />
+
+                            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
                                 <div className="flex items-center gap-2">
-                                    <Dices className="w-4 h-4 text-amber-400" />
-                                    <span className="text-xs font-bold text-zinc-100">{roomData?.name || "اتاق بازی"}</span>
-                                    <span className="text-[10px] text-amber-400 font-mono">({displayCode})</span>
+                                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                                        <Dices className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-zinc-100">{roomData?.name || "اتاق بازی"}</h3>
+                                        <span className="text-[10px] text-amber-400 font-mono">کد: {displayCode}</span>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="w-7 h-7 rounded-lg bg-zinc-800 text-zinc-400 flex items-center justify-center"
+                                    className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -802,56 +875,45 @@ export const PlayerMenu = memo(
                                 )}
                             </div>
 
+                            {/* دکمه وویس در انتهای شیت: کاملاً آزاد و بدون تداخل با تولبار */}
                             <div className="pt-2 border-t border-zinc-800/80">
                                 {isSelfMutedByGM ? (
-                                    <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in select-none">
+                                    <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold">
                                         <VolumeX className="w-4 h-4 text-rose-400" />
-                                        <span>شما توسط دانجن‌مستر (GM) بی‌صدا شدید</span>
+                                        <span>شما توسط GM بی‌صدا شدید</span>
                                     </div>
                                 ) : (
-                                    <>
-                                        <button
-                                            type="button"
-                                            disabled={!isVoiceConnected}
-                                            onClick={toggleMicrophone}
-                                            className={cn(
-                                                "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
-                                                isMicEnabled
-                                                    ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
-                                                    : isVoiceConnected
-                                                        ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
-                                                        : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
-                                            )}
-                                        >
-                                            {isMicEnabled ? (
-                                                <>
-                                                    <Mic className="w-4 h-4 text-zinc-950" />
-                                                    <span>میکروفون متصل است (قطع)</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <MicOff className="w-4 h-4 text-zinc-400" />
-                                                    <span>
-                            {isVoiceConnected ? "میکروفون بسته است (وصل)" : "چت صوتی غیرفعال"}
-                          </span>
-                                                </>
-                                            )}
-                                        </button>
-                                        {isVoiceConnected && (
-                                            <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
-                                                <span>کلید تاگل سریع:</span>
-                                                <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
-                                                    Space
-                                                </kbd>
-                                            </div>
+                                    <button
+                                        type="button"
+                                        disabled={!isVoiceConnected}
+                                        onClick={toggleMicrophone}
+                                        className={cn(
+                                            "w-full h-12 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl select-none active:scale-[0.98]",
+                                            isMicEnabled
+                                                ? "bg-emerald-500 text-zinc-950 font-black shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                                                : isVoiceConnected
+                                                    ? "bg-zinc-800 text-zinc-100 border border-zinc-700"
+                                                    : "bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed"
                                         )}
-                                    </>
+                                    >
+                                        {isMicEnabled ? (
+                                            <>
+                                                <Mic className="w-4 h-4 text-zinc-950" />
+                                                <span>میکروفون وصل است (لمس برای قطع)</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <MicOff className="w-4 h-4 text-zinc-400" />
+                                                <span>{isVoiceConnected ? "میکروفون قطع است (لمس برای وصل)" : "چت صوتی غیرفعال"}</span>
+                                            </>
+                                        )}
+                                    </button>
                                 )}
                             </div>
                         </div>
-                    </>
+                    </div>
                 )}
-            </div>
+            </>
         );
     }
 );
