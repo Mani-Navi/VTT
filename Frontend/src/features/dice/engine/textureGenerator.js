@@ -78,23 +78,33 @@ export function createFaceTexture(dieType, displayText, options = {}) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    // --- چند ذره‌ی نور محو، برای حس رزینِ برق‌دار (اختیاری، سبک) ---
-    ctx.save();
-    ctx.globalAlpha = 0.06;
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 10; i++) {
-        const x = Math.random() * size;
-        const y = Math.random() * size;
-        const r = Math.random() * 2 + 0.5;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.restore();
+    // --- restrained resin highlight (deterministic, not noisy/random) ---
+    const gloss = ctx.createLinearGradient(0, 0, size, size);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.13)');
+    gloss.addColorStop(0.38, 'rgba(255,255,255,0.02)');
+    gloss.addColorStop(1, 'rgba(0,0,0,0.16)');
+    ctx.fillStyle = gloss;
+    ctx.fillRect(0, 0, size, size);
 
-    // --- حاشیه‌ی هم‌شکل با وجه ---
+    // --- inner face border + subtle inset shadow ---
     const sides = FACE_SHAPE_SIDES[dieType] || 4;
-    drawPolygonBorder(ctx, size, sides, isCrit ? '#fbbf24' : isCritFail ? '#f43f5e' : accentColor);
+    const edgeColor = isCrit ? '#fbbf24' : isCritFail ? '#f43f5e' : accentColor;
+    drawPolygonBorder(ctx, size, sides, edgeColor, dieType === 'd10' || dieType === 'd100' ? -45 : -90);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = size * 0.012;
+    ctx.beginPath();
+    const inset = size * 0.39;
+    const rot2 = (dieType === 'd10' || dieType === 'd100' ? -45 : -90) * Math.PI / 180;
+    for (let i = 0; i <= sides; i++) {
+        const a = rot2 + (i / sides) * Math.PI * 2;
+        const x = size / 2 + inset * Math.cos(a);
+        const y = size / 2 + inset * Math.sin(a);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
 
     // --- عدد، با سایه‌ی ملایم زیرش برای افکت برجسته ---
     const fontSize = displayText.length > 2 ? size * 0.32 : sides === 3 ? size * 0.3 : size * 0.4;
@@ -159,9 +169,10 @@ export function createDiceMaterials(dieConfig, options = {}) {
 
         return new THREE.MeshStandardMaterial({
             map: texture,
-            roughness: 0.32,
-            metalness: 0.15,
+            roughness: 0.26,
+            metalness: 0.06,
             flatShading: true,
+            toneMapped: true,
         });
     });
 }

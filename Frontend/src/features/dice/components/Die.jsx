@@ -3,15 +3,15 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
-import { DICE_CONFIGS, resolveDieValue, createD6VisualGeometry } from '../engine/diceDefinitions';
+import { DICE_CONFIGS, resolveDieValue } from '../engine/diceDefinitions';
 import { createDiceMaterials } from '../engine/textureGenerator';
 import { useDiceStore } from '../state/dice.store';
 
-const VELOCITY_THRESHOLD = 0.08;
-const ANGULAR_THRESHOLD = 0.12;
-const REQUIRED_STABLE_FRAMES = 25;
-const SPAWN_GRACE_MS = 900; // در این بازه بعد از اسپان، هیچ‌وقت نتیجه ثبت نمی‌شود
-const TIMEOUT_MS = 5500; // سقف اضطراری اگر فیزیک هیچ‌وقت کامل نایستد
+const VELOCITY_THRESHOLD = 0.055;
+const ANGULAR_THRESHOLD = 0.075;
+const REQUIRED_STABLE_FRAMES = 32;
+const SPAWN_GRACE_MS = 650;
+const TIMEOUT_MS = 7000;
 
 // نگاشتِ نوعِ کالایدرِ منطقی (diceDefinitions.js) به نامی که پراپ
 // `colliders` کتابخانه‌ی @react-three/rapier می‌شناسد
@@ -45,8 +45,10 @@ export function Die({
     const { visualGeometry, materials } = useMemo(() => {
         const logicalGeometry = config.createGeometry();
         const mats = createDiceMaterials(config);
-        const visual = type === 'd6' ? createD6VisualGeometry() : logicalGeometry;
-        return { visualGeometry: visual, materials: mats };
+        // Keep the logical geometry for D6 so material groups and face values
+        // remain perfectly aligned. The bevel is applied in the material/lighting
+        // treatment rather than swapping to a differently ordered geometry.
+        return { visualGeometry: logicalGeometry, materials: mats };
     }, [config, type]);
 
     const resolveAndMaybeCorrect = () => {
@@ -97,7 +99,12 @@ export function Die({
     // هر نوع تاس مقادیر فیزیکیِ مخصوص خودش را از diceDefinitions می‌گیرد
     // (مثلاً d4 اصطکاک بالاتر/کشسانیِ کمتر چون راحت روی لبه گیر می‌کند،
     // d20 نزدیک‌ترین به کره است پس بیشترین کشسانی و کمترین میرایی را دارد)
-    const { restitution, friction, angularDamping } = config.physics;
+    const {
+        restitution,
+        friction,
+        angularDamping,
+        linearDamping = 0.1,
+    } = config.physics;
 
     return (
         <RigidBody
@@ -110,7 +117,9 @@ export function Die({
             restitution={restitution}
             friction={friction}
             angularDamping={angularDamping}
-            linearDamping={0.05}
+            linearDamping={linearDamping}
+            ccd
+            canSleep
         >
             <mesh geometry={visualGeometry} material={materials} castShadow receiveShadow />
         </RigidBody>

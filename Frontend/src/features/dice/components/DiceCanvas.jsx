@@ -12,28 +12,32 @@ export function DiceCanvas() {
     return (
         <Canvas
             shadows
-            camera={{ position: [0, 9, 8], fov: 45 }}
+            camera={{ position: [0, 8.6, 8.8], fov: 43 }}
             style={{ width: '100%', height: '100%' }}
         >
             {/* نورپردازی استودیویی با سایه‌های نرم */}
-            <ambientLight intensity={0.7} />
+            <hemisphereLight args={['#fff8ed', '#1b1d25', 1.15]} />
+            <ambientLight intensity={0.22} />
             <directionalLight
-                position={[6, 12, 5]}
-                intensity={1.4}
+                position={[5, 10, 4]}
+                intensity={2.0}
                 castShadow
-                shadow-mapSize-width={1024}
-                shadow-mapSize-height={1024}
+                shadow-mapSize-width={2048}
+                shadow-mapSize-height={2048}
+                shadow-bias={-0.0003}
+                shadow-normalBias={0.025}
                 shadow-camera-far={25}
                 shadow-camera-left={-8}
                 shadow-camera-right={8}
                 shadow-camera-top={8}
                 shadow-camera-bottom={-8}
             />
-            <pointLight position={[-6, 8, -4]} intensity={0.5} />
+            <pointLight position={[-5, 6, -4]} intensity={0.75} />
+            <pointLight position={[4, 3, 6]} intensity={0.35} />
 
             <Suspense fallback={null}>
                 {/* موتور فیزیک با تایم‌استپ پایدار و گرانش استاندارد */}
-                <Physics gravity={[0, -28, 0]} timeStep={1 / 60}>
+                <Physics gravity={[0, -9.81, 0]} timeStep={1 / 60} interpolate={true}>
                     <Tray size={10} />
                     {activeDice.map((die) => (
                         <Die key={die.id} {...die} />

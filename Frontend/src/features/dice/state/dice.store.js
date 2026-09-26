@@ -22,29 +22,31 @@ export const useDiceStore = create((set, get) => ({
             type,
             settled: false,
             value: null,
-            // ۱. اسپان در ارتفاع مناسب و کمی متغیر
+            // A believable tabletop throw: start above the tray, throw inward and
+            // slightly downward, with controlled rather than absurd spin.
             initialPos: [
-                (Math.random() - 0.5) * 4,
-                6 + Math.random() * 2,
-                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 3.8,
+                3.6 + Math.random() * 1.4,
+                (Math.random() - 0.5) * 3.8,
             ],
-            // ۲. زاویه رندوم سه‌بعدی کامل تا هیچ‌وقت صاف نباشد
             initialRotation: [
                 Math.random() * Math.PI * 2,
                 Math.random() * Math.PI * 2,
                 Math.random() * Math.PI * 2,
             ],
-            // ۳. پرتاب پرقدرت به سمت مرکز و پایین
-            initialLinearVelocity: [
-                (Math.random() - 0.5) * 12,
-                -7 - Math.random() * 5,
-                (Math.random() - 0.5) * 12,
-            ],
-            // ۴. سرعت زاویه‌ای شدید (غلتش و چرخش وحشیانه در هوا)
+            initialLinearVelocity: (() => {
+                const x = -((Math.random() - 0.5) * 3.8);
+                const z = -((Math.random() - 0.5) * 3.8);
+                return [
+                    x + (Math.random() - 0.5) * 1.5,
+                    -1.5 - Math.random() * 2.0,
+                    z + (Math.random() - 0.5) * 1.5,
+                ];
+            })(),
             initialAngularVelocity: [
-                (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 25),
-                (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 25),
-                (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 25),
+                (Math.random() - 0.5) * 18,
+                (Math.random() - 0.5) * 18,
+                (Math.random() - 0.5) * 18,
             ],
         }));
 

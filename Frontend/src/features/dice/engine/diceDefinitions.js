@@ -58,11 +58,12 @@ function buildD4() {
         faces: normals.map((normal, i) => ({ normal, value: readValues[i] })),
         collider: 'convexHull',
         physics: {
-            // d4 روی لبه گیر می‌کند بیشتر از بقیه؛ اصطکاک کمی بالاتر و restitution
-            // پایین‌تر کمک می‌کند سریع‌تر و طبیعی‌تر روی یک وجه بی‌افتد
-            restitution: 0.25,
-            friction: 0.7,
-            angularDamping: 0.4,
+            // Polyhedral dice: modest bounce, enough friction to settle without
+            // feeling glued to the tray.
+            restitution: 0.22,
+            friction: 0.58,
+            angularDamping: 0.72,
+            linearDamping: 0.16,
         },
         createGeometry: () => geometry,
     };
@@ -82,12 +83,12 @@ export const D6_DEFINITION = buildAntipodalDie({
     pairSum: 7,
     startValue: 1,
     collider: 'cuboid',
-    physics: { restitution: 0.35, friction: 0.5, angularDamping: 0.3 },
+    physics: { restitution: 0.28, friction: 0.52, angularDamping: 0.58, linearDamping: 0.12 },
 });
 // mesh بصریِ جدا با لبه‌ی گرد؛ در کامپوننت <Die> این را به‌جای هندسه‌ی
 // createGeometry فقط برای رندر استفاده کن (گروه‌بندی/متریال همان ترتیب حفظ می‌شود
 // چون از همان BoxGeometry پایه با ابعاد یکسان می‌آید).
-export function createD6VisualGeometry(bevelSegments = 3, bevelRadius = 0.12) {
+export function createD6VisualGeometry(bevelSegments = 5, bevelRadius = 0.10) {
     return new RoundedBoxGeometry(D6_HALF_EXTENT * 2, D6_HALF_EXTENT * 2, D6_HALF_EXTENT * 2, bevelSegments, bevelRadius);
 }
 
@@ -99,7 +100,7 @@ export const D8_DEFINITION = buildAntipodalDie({
     pairSum: 9,
     startValue: 1,
     collider: 'convexHull',
-    physics: { restitution: 0.4, friction: 0.45, angularDamping: 0.25 },
+    physics: { restitution: 0.30, friction: 0.48, angularDamping: 0.52, linearDamping: 0.12 },
 });
 
 // ---------------- D12 ----------------
@@ -110,7 +111,7 @@ export const D12_DEFINITION = buildAntipodalDie({
     pairSum: 13,
     startValue: 1,
     collider: 'convexHull',
-    physics: { restitution: 0.45, friction: 0.4, angularDamping: 0.2 },
+    physics: { restitution: 0.32, friction: 0.45, angularDamping: 0.46, linearDamping: 0.10 },
 });
 
 // ---------------- D20 ----------------
@@ -123,7 +124,7 @@ export const D20_DEFINITION = buildAntipodalDie({
     collider: 'convexHull',
     // نزدیک‌ترین شکل به کره در بین همه‌ی تاس‌ها -> بیشترین restitution و
     // کمترین angularDamping، غلت طولانی‌تر و واقعی‌تری دارد
-    physics: { restitution: 0.5, friction: 0.35, angularDamping: 0.15 },
+    physics: { restitution: 0.34, friction: 0.42, angularDamping: 0.40, linearDamping: 0.09 },
 });
 
 // ---------------- D10 ----------------
@@ -143,7 +144,7 @@ function buildD10({ percentile = false } = {}) {
             value: percentile ? baseValues[i] * 10 : baseValues[i],
         })),
         collider: 'convexHull',
-        physics: { restitution: 0.4, friction: 0.45, angularDamping: 0.25 },
+        physics: { restitution: 0.30, friction: 0.48, angularDamping: 0.50, linearDamping: 0.11 },
         createGeometry: () => geometry,
     };
 }
