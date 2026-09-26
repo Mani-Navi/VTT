@@ -1,5 +1,5 @@
 // src/features/dice/components/Die.jsx
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -12,7 +12,14 @@ const VELOCITY_THRESHOLD = 0.08;
 const ANGULAR_THRESHOLD = 0.12;
 const REQUIRED_STABLE_FRAMES = 25;
 
-export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
+export function Die({
+                        id,
+                        type,
+                        initialPos,
+                        initialRotation,
+                        initialLinearVelocity,
+                        initialAngularVelocity,
+                    }) {
     const rigidBodyRef = useRef(null);
     const config = DICE_CONFIGS[type] || DICE_CONFIGS.d6;
     const setDieResult = useDiceStore((s) => s.setDieResult);
@@ -21,20 +28,18 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
     const isSettledRef = useRef(false);
     const spawnTimeRef = useRef(Date.now());
 
-    // تولید ژئومتری به همراه نگاشت گروهی UV برای چند متریال
     const { geometry, materials } = useMemo(() => {
         if (type === 'd20') {
             const geom = new THREE.IcosahedronGeometry(config.radius, 0).toNonIndexed();
             geom.clearGroups();
 
-            // تنظیم مختصات UV برای هر مثلث به فرمت نرمال
             const uvs = [];
             for (let i = 0; i < 20; i++) {
                 geom.addGroup(i * 3, 3, i);
                 uvs.push(
-                    0.5, 0.95, // راس بالا
-                    0.05, 0.05, // چپ پایین
-                    0.95, 0.05  // راست پایین
+                    0.5, 0.95,
+                    0.05, 0.05,
+                    0.95, 0.05
                 );
             }
             geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
@@ -44,28 +49,10 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
             return { geometry: geom, materials: mats };
         }
 
-        // پیش‌فرض: D6
         const geom = new THREE.BoxGeometry(1.5, 1.5, 1.5);
         const mats = createD6Materials();
         return { geometry: geom, materials: mats };
     }, [type, config]);
-
-    useEffect(() => {
-        if (rigidBodyRef.current) {
-            rigidBodyRef.current.setTranslation(
-                { x: initialPos[0], y: initialPos[1], z: initialPos[2] },
-                true
-            );
-            rigidBodyRef.current.applyImpulse(
-                { x: initialImpulse[0], y: initialImpulse[1], z: initialImpulse[2] },
-                true
-            );
-            rigidBodyRef.current.applyTorqueImpulse(
-                { x: initialTorque[0], y: initialTorque[1], z: initialTorque[2] },
-                true
-            );
-        }
-    }, []);
 
     const calculateTopValue = () => {
         if (!rigidBodyRef.current || isSettledRef.current) return;
@@ -85,10 +72,10 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
             }
         }
 
-        // رفع حالت لبه (Cocked Die) با ریزضربه اصلاحی
+        // رفع حالت لبه (Cocked Die) با ریزضربه فیزیکی
         if (maxDot < 0.62) {
-            rigidBodyRef.current.applyImpulse({ x: 0.1, y: 0.6, z: 0.1 }, true);
-            rigidBodyRef.current.applyTorqueImpulse({ x: 0.25, y: 0.25, z: 0.25 }, true);
+            rigidBodyRef.current.applyImpulse({ x: 0.15, y: 0.6, z: 0.15 }, true);
+            rigidBodyRef.current.applyTorqueImpulse({ x: 0.3, y: 0.3, z: 0.3 }, true);
             stableFrameCounter.current = 0;
             return;
         }
@@ -99,6 +86,9 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
 
     useFrame(() => {
         if (isSettledRef.current || !rigidBodyRef.current) return;
+
+        // جلوگیری از ثبت نتیجه در ۱ ثانیه اول پرتاب
+        if (Date.now() - spawnTimeRef.current < 900) return;
 
         const linvel = rigidBodyRef.current.linvel();
         const angvel = rigidBodyRef.current.angvel();
@@ -115,6 +105,7 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
             stableFrameCounter.current = 0;
         }
 
+        // تایم‌اوت اضطراری در ثانیه ۵.۵
         if (Date.now() - spawnTimeRef.current > 5500) {
             calculateTopValue();
         }
@@ -124,10 +115,14 @@ export function Die({ id, type, initialPos, initialImpulse, initialTorque }) {
         <RigidBody
             ref={rigidBodyRef}
             colliders="hull"
-            restitution={0.3}
-            friction={0.55}
-            linearDamping={0.35}
-            angularDamping={0.35}
+            position={initialPos}
+            rotation={initialRotation}
+            linearVelocity={initialLinearVelocity}
+            angularVelocity={initialAngularVelocity}
+            restitution={0.5}
+            friction={0.4}
+            linearDamping={0.08}
+            angularDamping={0.12}
         >
             <mesh
                 geometry={geometry}
