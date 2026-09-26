@@ -20,20 +20,21 @@ export const Tooltip = memo(
             >
                 {children}
                 {isVisible && (
+                    /* در موبایل (sm:hidden) پنهان می‌شود تا در اثر لمس روی دکمه‌ها نچسبد */
                     <div
                         className={cn(
-                            "absolute z-50 pointer-events-none px-2.5 py-1.5 bg-zinc-950/95 border border-zinc-800 text-zinc-100 text-xs rounded-lg shadow-xl backdrop-blur-md whitespace-nowrap flex items-center gap-2 animate-in fade-in zoom-in-95 duration-100",
+                            "hidden sm:flex absolute z-50 pointer-events-none px-2.5 py-1.5 bg-zinc-950/95 border border-zinc-800 text-zinc-100 text-xs rounded-xl shadow-xl backdrop-blur-md whitespace-nowrap items-center gap-2 animate-in fade-in zoom-in-95 duration-100",
                             positionClasses[position]
                         )}
                     >
-                        <div className="flex flex-col">
-                            <span className="font-medium">{content}</span>
+                        <div className="flex flex-col text-right">
+                            <span className="font-semibold">{content}</span>
                             {subContent && (
                                 <span className="text-[10px] text-zinc-400 font-fa">{subContent}</span>
                             )}
                         </div>
                         {shortcut && (
-                            <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 border border-zinc-700 text-amber-400 rounded">
+                            <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 border border-zinc-700 text-amber-400 rounded-md">
                                 {shortcut}
                             </kbd>
                         )}

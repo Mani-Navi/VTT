@@ -18,6 +18,7 @@ import {
     Users,
     Mic,
     MicOff,
+    X,
 } from "lucide-react";
 import { useAuthStore } from "../../store/auth.store";
 import { useClipboard } from "../../hooks/useClipboard";
@@ -47,9 +48,6 @@ const PLAYER_ROLE_PRESETS = Object.freeze([
     "جادوگر (Mage)",
 ]);
 
-/**
- * سطر مجزای عضو اتاق - مموایز شده طبق قانون ۵.۶
- */
 const MemberCard = memo(
     ({
          member,
@@ -94,12 +92,12 @@ const MemberCard = memo(
                             : "bg-zinc-900/60 hover:bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700"
                 )}
             >
-                <div className="flex items-center justify-between p-3">
-                    <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between p-2.5 sm:p-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
                         <div className="relative">
                             <div
                                 className={cn(
-                                    "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-inner transition-all duration-150",
+                                    "w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-inner transition-all duration-150",
                                     isSpeaking ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-zinc-950 scale-105" : "",
                                     isMemberGM
                                         ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
@@ -108,14 +106,14 @@ const MemberCard = memo(
                             >
                                 {member.username ? member.username.slice(0, 2).toUpperCase() : "U"}
                             </div>
-                            <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-zinc-950 absolute -bottom-0.5 -right-0.5 animate-pulse shadow-sm shadow-emerald-500/50" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-zinc-950 absolute -bottom-0.5 -right-0.5 animate-pulse shadow-sm shadow-emerald-500/50" />
                         </div>
 
                         <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5">
                 <span
                     className={cn(
-                        "text-xs font-bold truncate max-w-[120px] transition-colors",
+                        "text-xs font-bold truncate max-w-[100px] sm:max-w-[120px] transition-colors",
                         isSpeaking ? "text-amber-400 font-black" : "text-zinc-100"
                     )}
                 >
@@ -146,30 +144,30 @@ const MemberCard = memo(
 
                                 {isSpeaking && (
                                     <div className="flex items-center gap-[2px] pr-1">
-                                        <div className="w-[2px] h-2.5 bg-amber-400 rounded-full animate-pulse" />
-                                        <div className="w-[2px] h-3.5 bg-amber-400 rounded-full animate-bounce" />
                                         <div className="w-[2px] h-2 bg-amber-400 rounded-full animate-pulse" />
+                                        <div className="w-[2px] h-3 bg-amber-400 rounded-full animate-bounce" />
+                                        <div className="w-[2px] h-1.5 bg-amber-400 rounded-full animate-pulse" />
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         <div
                             className={cn(
-                                "px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 border",
+                                "px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-[11px] font-bold flex items-center gap-1 border",
                                 isMemberGM
-                                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-sm shadow-amber-500/10"
+                                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-sm"
                                     : "bg-zinc-800/80 text-zinc-300 border-zinc-700/60"
                             )}
                         >
                             {isMemberGM ? (
-                                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                                <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
                             ) : (
-                                <User className="w-3.5 h-3.5 text-zinc-400" />
+                                <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-400" />
                             )}
-                            <span>{displayTitle}</span>
+                            <span className="truncate max-w-[80px] sm:max-w-none">{displayTitle}</span>
                         </div>
 
                         {isGM && (
@@ -191,13 +189,13 @@ const MemberCard = memo(
                 </div>
 
                 {isGM && isExpanded && (
-                    <div className="p-3.5 bg-zinc-950 border-t border-zinc-800/90 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                        <div className="p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
+                    <div className="p-3 bg-zinc-950 border-t border-zinc-800/90 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="p-2.5 sm:p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
                             <div className="flex items-center justify-between text-xs font-bold text-amber-400">
                                 <div className="flex items-center gap-1.5">
                                     <Tag className="w-3.5 h-3.5" />
-                                    <span>
-                    تغییر تگ و عنوان همگانی {isMemberGM ? "میزبان‌ها" : "تمام بازیکنان"}:
+                                    <span className="text-[11px] sm:text-xs">
+                    تغییر تگ {isMemberGM ? "میزبان‌ها" : "تمام بازیکنان"}:
                   </span>
                                 </div>
                             </div>
@@ -209,9 +207,9 @@ const MemberCard = memo(
                                         type="button"
                                         onClick={() => onSetRoleTitle(targetType, preset)}
                                         className={cn(
-                                            "px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer border",
+                                            "px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-medium transition-all cursor-pointer border",
                                             displayTitle === preset
-                                                ? "bg-amber-500/20 text-amber-300 border-amber-500/60 font-bold shadow-sm shadow-amber-500/20"
+                                                ? "bg-amber-500/20 text-amber-300 border-amber-500/60 font-bold shadow-sm"
                                                 : "bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800/80"
                                         )}
                                     >
@@ -237,7 +235,7 @@ const MemberCard = memo(
                                             onSetRoleTitle(targetType, customInputVal);
                                         }
                                     }}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-amber-500/20"
+                                    className="px-2.5 sm:px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-amber-500/20 shrink-0"
                                 >
                                     اعمال به همه
                                 </button>
@@ -246,21 +244,21 @@ const MemberCard = memo(
 
                         {!isSelf && (
                             <>
-                                <div className="grid grid-cols-4 gap-2">
+                                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                                     <button
                                         type="button"
                                         onClick={() => onToggleMute(member)}
                                         className={cn(
-                                            "py-2 px-1 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all",
+                                            "py-2 px-1 rounded-xl border text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all",
                                             member.isMuted
-                                                ? "bg-rose-500/20 border-rose-500/60 text-rose-300 shadow-sm shadow-rose-500/20"
+                                                ? "bg-rose-500/20 border-rose-500/60 text-rose-300 shadow-sm"
                                                 : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-700"
                                         )}
                                     >
                                         {member.isMuted ? (
-                                            <VolumeX className="w-4 h-4 text-rose-400" />
+                                            <VolumeX className="w-3.5 h-3.5 text-rose-400" />
                                         ) : (
-                                            <Volume2 className="w-4 h-4 text-zinc-400" />
+                                            <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
                                         )}
                                         <span>{member.isMuted ? "وصل صدا" : "بی‌صدا"}</span>
                                     </button>
@@ -268,43 +266,43 @@ const MemberCard = memo(
                                     <button
                                         type="button"
                                         onClick={() => onRoleChange(memberActualId, member.role)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-amber-400 hover:bg-zinc-800 hover:border-zinc-700 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-amber-400 hover:bg-zinc-800 hover:border-zinc-700 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
                                     >
-                                        <Shield className="w-4 h-4 text-amber-400" />
-                                        <span>{isMemberGM ? "تبدیل به پلیر" : "تبدیل به میزبان"}</span>
+                                        <Shield className="w-3.5 h-3.5 text-amber-400" />
+                                        <span className="truncate">{isMemberGM ? "پلیر" : "میزبان"}</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => onKick(memberActualId, member.username)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
                                     >
-                                        <UserX className="w-4 h-4 text-rose-400" />
+                                        <UserX className="w-3.5 h-3.5 text-rose-400" />
                                         <span>اخراج</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => onBan(memberActualId, member.username)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/40 text-xs font-bold flex flex-col items-center gap-1.5 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/40 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
                                     >
-                                        <Ban className="w-4 h-4 text-rose-500" />
+                                        <Ban className="w-3.5 h-3.5 text-rose-500" />
                                         <span>مسدود</span>
                                     </button>
                                 </div>
 
-                                <div className="p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
+                                <div className="p-2.5 sm:p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
                                     <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
                                         <Sliders className="w-3.5 h-3.5" />
-                                        <span>دسترسی‌های ابزار بازیکن (Permissions):</span>
+                                        <span>دسترسی‌ها (Permissions):</span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1">
                                         {[
-                                            { key: "canDrawing", label: "ترسیم (Drawing)" },
-                                            { key: "canText", label: "نوشت‌افزار (Text)" },
-                                            { key: "canFog", label: "مه جنگ (Fog)" },
-                                            { key: "canAssets", label: "منابع (Assets)" },
+                                            { key: "canDrawing", label: "ترسیم (Draw)" },
+                                            { key: "canText", label: "نوشتار (Text)" },
+                                            { key: "canFog", label: "مه (Fog)" },
+                                            { key: "canAssets", label: "منابع (Asset)" },
                                             { key: "canScene", label: "نقشه (Map)" },
                                             { key: "canRuler", label: "خط‌کش (Ruler)" },
                                         ].map((p) => {
@@ -314,23 +312,23 @@ const MemberCard = memo(
                                                     key={p.key}
                                                     onClick={() => onPermissionToggle(memberActualId, p.key, isAllowed)}
                                                     className={cn(
-                                                        "p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none",
+                                                        "p-1.5 sm:p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none",
                                                         isAllowed
-                                                            ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium shadow-sm shadow-amber-500/10"
+                                                            ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium"
                                                             : "bg-zinc-950 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
                                                     )}
                                                 >
-                                                    <span className="text-[11px] truncate">{p.label}</span>
+                                                    <span className="text-[10px] sm:text-[11px] truncate">{p.label}</span>
                                                     <div
                                                         className={cn(
-                                                            "w-7 h-4 rounded-full transition-colors relative flex items-center p-0.5",
+                                                            "w-6 h-3.5 rounded-full transition-colors relative flex items-center p-0.5",
                                                             isAllowed ? "bg-amber-500" : "bg-zinc-800"
                                                         )}
                                                     >
                                                         <div
                                                             className={cn(
-                                                                "w-3 h-3 rounded-full bg-white transition-transform",
-                                                                isAllowed ? "translate-x-0" : "-translate-x-3"
+                                                                "w-2.5 h-2.5 rounded-full bg-white transition-transform",
+                                                                isAllowed ? "translate-x-0" : "-translate-x-2.5"
                                                             )}
                                                         />
                                                     </div>
@@ -382,7 +380,6 @@ export const PlayerMenu = memo(
             return Boolean(myRecord?.isMuted);
         }, [membersList, currentUser, isGM]);
 
-        // رفع باگ کرش پروداکشن: دریافت دقیق error با نام voiceError
         const {
             isMicEnabled,
             isConnected: isVoiceConnected,
@@ -633,20 +630,23 @@ export const PlayerMenu = memo(
         const playerMembers = membersList.filter((m) => m.role !== "GM" && m.role !== "ADMIN");
 
         return (
-            <div className="fixed top-4 right-6 z-40 font-fa select-none pointer-events-auto" dir="rtl">
+            <div className="fixed top-2.5 sm:top-4 right-2.5 sm:right-6 z-40 font-fa select-none pointer-events-auto" dir="rtl">
+                {/* کپسول جمع‌وجور هدر */}
                 <div
                     className={cn(
-                        "w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 shadow-2xl backdrop-blur-2xl transition-all duration-200",
-                        isOpen ? "rounded-t-3xl border-b-0" : "rounded-3xl"
+                        "bg-zinc-900/95 border border-zinc-800 shadow-2xl backdrop-blur-2xl transition-all duration-200",
+                        isOpen
+                            ? "hidden sm:block sm:w-96 sm:rounded-t-3xl sm:border-b-0"
+                            : "rounded-2xl sm:rounded-3xl w-auto sm:w-96"
                     )}
                 >
-                    <div className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-black shrink-0 shadow-inner">
-                                <Dices className="w-5 h-5" />
+                    <div className="flex items-center justify-between p-2 sm:p-3 gap-2">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-black shrink-0 shadow-inner">
+                                <Dices className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
 
-                            <div>
+                            <div className="hidden sm:block">
                                 <div className="flex items-center gap-2">
                                     <h1 className="text-xs font-bold text-zinc-100 truncate max-w-[130px]">
                                         {roomData?.name || "ماجراجویی D&D"}
@@ -662,12 +662,12 @@ export const PlayerMenu = memo(
                                 </div>
 
                                 <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
-                                    <span>کد دعوت:</span>
+                                    <span>کد:</span>
                                     <button
                                         type="button"
                                         onClick={() => copy(displayCode)}
                                         className="flex items-center gap-1 font-mono text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer bg-zinc-950/60 px-1.5 py-0.5 rounded-lg border border-zinc-800"
-                                        title="کلیک برای کپی کد"
+                                        title="کپی کد"
                                     >
                                         <span>{displayCode}</span>
                                         {copied ? (
@@ -683,7 +683,7 @@ export const PlayerMenu = memo(
                         <button
                             type="button"
                             onClick={() => setIsOpen(!isOpen)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
+                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-zinc-100 text-xs font-bold cursor-pointer transition-all shadow-sm"
                         >
                             <Users className="w-3.5 h-3.5 text-amber-400" />
                             <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
@@ -692,137 +692,164 @@ export const PlayerMenu = memo(
                     </div>
                 </div>
 
+                {/* لیست اعضا: در موبایل به صورت Bottom Sheet از پایین باز می‌شود */}
                 {isOpen && (
-                    <div className="w-96 max-w-[95vw] bg-zinc-900/95 border border-zinc-800 border-t-0 rounded-b-3xl shadow-2xl backdrop-blur-2xl p-3.5 pt-1 space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                        {voiceError && (
-                            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
-                                <span className="text-[11px] text-rose-400">{voiceError}</span>
-                            </div>
-                        )}
+                    <>
+                        <div
+                            className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-40"
+                            onClick={() => setIsOpen(false)}
+                        />
 
-                        <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
-                            {membersList.length === 0 ? (
-                                <div className="text-center py-6 text-zinc-500 text-xs">هیچ کاربری آنلاین نیست</div>
-                            ) : (
-                                <>
-                                    {hostMembers.length > 0 && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Crown className="w-3.5 h-3.5" />
-                          <span>— {hostTitle} ({hostMembers.length}) —</span>
-                        </span>
-                                            </div>
-                                            {hostMembers.map((member) => (
-                                                <MemberCard
-                                                    key={member.id || member.memberId || member.userId}
-                                                    member={member}
-                                                    currentUser={currentUser}
-                                                    isGM={isGM}
-                                                    isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
-                                                    speakingMap={speakingMap}
-                                                    isMicEnabled={isMicEnabled}
-                                                    hostTitle={hostTitle}
-                                                    playerTitle={playerTitle}
-                                                    customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
-                                                    onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
-                                                    onSetRoleTitle={handleSetRoleTitle}
-                                                    onCustomInputChange={handleCustomInputChange}
-                                                    onToggleMute={handleToggleMute}
-                                                    onRoleChange={handleRoleChange}
-                                                    onKick={handleKick}
-                                                    onBan={handleBan}
-                                                    onPermissionToggle={handlePermissionToggle}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {playerMembers.length > 0 && (
-                                        <div className="space-y-2 pt-1">
-                                            <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5" />
-                          <span>— {playerTitle} ({playerMembers.length}) —</span>
-                        </span>
-                                            </div>
-                                            {playerMembers.map((member) => (
-                                                <MemberCard
-                                                    key={member.id || member.memberId || member.userId}
-                                                    member={member}
-                                                    currentUser={currentUser}
-                                                    isGM={isGM}
-                                                    isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
-                                                    speakingMap={speakingMap}
-                                                    isMicEnabled={isMicEnabled}
-                                                    hostTitle={hostTitle}
-                                                    playerTitle={playerTitle}
-                                                    customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
-                                                    onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
-                                                    onSetRoleTitle={handleSetRoleTitle}
-                                                    onCustomInputChange={handleCustomInputChange}
-                                                    onToggleMute={handleToggleMute}
-                                                    onRoleChange={handleRoleChange}
-                                                    onKick={handleKick}
-                                                    onBan={handleBan}
-                                                    onPermissionToggle={handlePermissionToggle}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
+                        <div
+                            className={cn(
+                                "z-50 bg-zinc-900/98 border border-zinc-800 shadow-2xl backdrop-blur-2xl p-4 space-y-3 animate-in fade-in duration-150",
+                                "fixed inset-x-2 bottom-3 max-h-[82vh] rounded-3xl overflow-hidden flex flex-col",
+                                "sm:static sm:inset-auto sm:w-96 sm:border-t-0 sm:rounded-b-3xl sm:pt-1"
                             )}
-                        </div>
-
-                        <div className="pt-2 border-t border-zinc-800/80">
-                            {isSelfMutedByGM ? (
-                                <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in select-none">
-                                    <VolumeX className="w-4 h-4 text-rose-400" />
-                                    <span>شما توسط دانجن‌مستر (GM) بی‌صدا شدید</span>
+                        >
+                            <div className="sm:hidden flex items-center justify-between pb-2 border-b border-zinc-800">
+                                <div className="flex items-center gap-2">
+                                    <Dices className="w-4 h-4 text-amber-400" />
+                                    <span className="text-xs font-bold text-zinc-100">{roomData?.name || "اتاق بازی"}</span>
+                                    <span className="text-[10px] text-amber-400 font-mono">({displayCode})</span>
                                 </div>
-                            ) : (
-                                <>
-                                    <button
-                                        type="button"
-                                        disabled={!isVoiceConnected}
-                                        onClick={toggleMicrophone}
-                                        className={cn(
-                                            "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
-                                            isMicEnabled
-                                                ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
-                                                : isVoiceConnected
-                                                    ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
-                                                    : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
-                                        )}
-                                    >
-                                        {isMicEnabled ? (
-                                            <>
-                                                <Mic className="w-4 h-4 text-zinc-950" />
-                                                <span>میکروفون متصل است (کلیک یا Space برای قطع)</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <MicOff className="w-4 h-4 text-zinc-400" />
-                                                <span>
-                          {isVoiceConnected
-                              ? "میکروفون بسته است (کلیک یا Space برای وصل)"
-                              : "چت صوتی غیرفعال"}
-                        </span>
-                                            </>
-                                        )}
-                                    </button>
-                                    {isVoiceConnected && (
-                                        <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
-                                            <span>کلید تاگل سریع:</span>
-                                            <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
-                                                Space
-                                            </kbd>
-                                        </div>
-                                    )}
-                                </>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-7 h-7 rounded-lg bg-zinc-800 text-zinc-400 flex items-center justify-center"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {voiceError && (
+                                <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+                                    <span className="text-[11px] text-rose-400">{voiceError}</span>
+                                </div>
                             )}
+
+                            <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                {membersList.length === 0 ? (
+                                    <div className="text-center py-6 text-zinc-500 text-xs">هیچ کاربری آنلاین نیست</div>
+                                ) : (
+                                    <>
+                                        {hostMembers.length > 0 && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between px-1">
+                          <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5" />
+                            <span>— {hostTitle} ({hostMembers.length}) —</span>
+                          </span>
+                                                </div>
+                                                {hostMembers.map((member) => (
+                                                    <MemberCard
+                                                        key={member.id || member.memberId || member.userId}
+                                                        member={member}
+                                                        currentUser={currentUser}
+                                                        isGM={isGM}
+                                                        isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
+                                                        speakingMap={speakingMap}
+                                                        isMicEnabled={isMicEnabled}
+                                                        hostTitle={hostTitle}
+                                                        playerTitle={playerTitle}
+                                                        customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
+                                                        onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
+                                                        onSetRoleTitle={handleSetRoleTitle}
+                                                        onCustomInputChange={handleCustomInputChange}
+                                                        onToggleMute={handleToggleMute}
+                                                        onRoleChange={handleRoleChange}
+                                                        onKick={handleKick}
+                                                        onBan={handleBan}
+                                                        onPermissionToggle={handlePermissionToggle}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {playerMembers.length > 0 && (
+                                            <div className="space-y-2 pt-1">
+                                                <div className="flex items-center justify-between px-1">
+                          <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5" />
+                            <span>— {playerTitle} ({playerMembers.length}) —</span>
+                          </span>
+                                                </div>
+                                                {playerMembers.map((member) => (
+                                                    <MemberCard
+                                                        key={member.id || member.memberId || member.userId}
+                                                        member={member}
+                                                        currentUser={currentUser}
+                                                        isGM={isGM}
+                                                        isExpanded={expandedMemberId === (member.id || member.memberId || member.userId)}
+                                                        speakingMap={speakingMap}
+                                                        isMicEnabled={isMicEnabled}
+                                                        hostTitle={hostTitle}
+                                                        playerTitle={playerTitle}
+                                                        customInputVal={customInputMap[member.id || member.memberId || member.userId] || ""}
+                                                        onToggleExpand={(id) => setExpandedMemberId(expandedMemberId === id ? null : id)}
+                                                        onSetRoleTitle={handleSetRoleTitle}
+                                                        onCustomInputChange={handleCustomInputChange}
+                                                        onToggleMute={handleToggleMute}
+                                                        onRoleChange={handleRoleChange}
+                                                        onKick={handleKick}
+                                                        onBan={handleBan}
+                                                        onPermissionToggle={handlePermissionToggle}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="pt-2 border-t border-zinc-800/80">
+                                {isSelfMutedByGM ? (
+                                    <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in select-none">
+                                        <VolumeX className="w-4 h-4 text-rose-400" />
+                                        <span>شما توسط دانجن‌مستر (GM) بی‌صدا شدید</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            disabled={!isVoiceConnected}
+                                            onClick={toggleMicrophone}
+                                            className={cn(
+                                                "w-full py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
+                                                isMicEnabled
+                                                    ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-300 font-black"
+                                                    : isVoiceConnected
+                                                        ? "bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
+                                                        : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed opacity-60"
+                                            )}
+                                        >
+                                            {isMicEnabled ? (
+                                                <>
+                                                    <Mic className="w-4 h-4 text-zinc-950" />
+                                                    <span>میکروفون متصل است (قطع)</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <MicOff className="w-4 h-4 text-zinc-400" />
+                                                    <span>
+                            {isVoiceConnected ? "میکروفون بسته است (وصل)" : "چت صوتی غیرفعال"}
+                          </span>
+                                                </>
+                                            )}
+                                        </button>
+                                        {isVoiceConnected && (
+                                            <div className="flex items-center justify-center gap-1 mt-1.5 text-[10px] text-zinc-500">
+                                                <span>کلید تاگل سریع:</span>
+                                                <kbd className="px-1.5 py-0.5 text-[9px] bg-zinc-950 border border-zinc-800 rounded-md text-amber-400 font-mono">
+                                                    Space
+                                                </kbd>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
         );

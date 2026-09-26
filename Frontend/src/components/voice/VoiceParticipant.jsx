@@ -7,16 +7,16 @@ const VoiceParticipant = memo(({ participant, isSpeaking }) => {
     return (
         <div
             dir="rtl"
-            className={`flex items-center justify-between px-2.5 py-1.5 mx-1 rounded-lg transition-all duration-150 select-none ${
+            className={`flex items-center justify-between px-2 sm:px-2.5 py-1.5 mx-1 rounded-xl transition-all duration-150 select-none ${
                 isSpeaking
                     ? "bg-amber-500/10 border border-amber-500/30"
                     : "hover:bg-zinc-800/50 border border-transparent"
             }`}
         >
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <div className="relative flex-shrink-0">
                     <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-700 transition-all duration-150 ${
+                        className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-700 transition-all duration-150 ${
                             isSpeaking ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#07080c]" : ""
                         }`}
                     >
@@ -31,7 +31,7 @@ const VoiceParticipant = memo(({ participant, isSpeaking }) => {
                 </div>
 
                 <span
-                    className={`text-xs font-medium truncate max-w-[95px] ${
+                    className={`text-xs font-medium truncate max-w-[85px] sm:max-w-[105px] ${
                         isSpeaking ? "text-amber-400 font-semibold" : "text-zinc-300"
                     }`}
                 >
@@ -42,9 +42,9 @@ const VoiceParticipant = memo(({ participant, isSpeaking }) => {
 
             {isSpeaking && (
                 <div className="flex items-center gap-[2px] flex-shrink-0">
-                    <div className="w-[2.5px] h-3 bg-amber-400 rounded-full animate-pulse" />
-                    <div className="w-[2.5px] h-4 bg-amber-400 rounded-full animate-bounce" />
-                    <div className="w-[2.5px] h-2.5 bg-amber-400 rounded-full animate-pulse" />
+                    <div className="w-[2px] h-2.5 bg-amber-400 rounded-full animate-pulse" />
+                    <div className="w-[2px] h-3.5 bg-amber-400 rounded-full animate-bounce" />
+                    <div className="w-[2px] h-2 bg-amber-400 rounded-full animate-pulse" />
                 </div>
             )}
         </div>

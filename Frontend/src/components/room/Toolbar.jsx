@@ -242,17 +242,17 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
 
   return (
       <>
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 pointer-events-auto">
+        <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1.5 sm:gap-2 pointer-events-auto max-w-[96vw]">
           {hasActiveMap && (
-              <>
+              <div className="max-w-full overflow-x-auto no-scrollbar">
                 <DrawSubToolbar />
                 <TextSubToolbar />
                 <FogSubToolbar />
-              </>
+              </div>
           )}
 
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl shadow-2xl backdrop-blur-xl text-zinc-200">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-zinc-900/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-2xl text-zinc-200 max-w-full overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-0.5 sm:gap-1">
               {primaryTools.map((t) => {
                 if (!t.allowed) return null;
                 const Icon = t.icon;
@@ -271,7 +271,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                           disabled={isDisabled}
                           onClick={() => handleToolClick(t.id)}
                           className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150",
+                              "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0",
                               isDisabled
                                   ? "text-zinc-600 opacity-40 cursor-not-allowed"
                                   : isActive
@@ -279,7 +279,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                                       : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 cursor-pointer"
                           )}
                       >
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                     </Tooltip>
                 );
@@ -288,7 +288,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
 
             {!isGM && hasActiveMap && (
                 <>
-                  <div className="h-6 w-px bg-zinc-800 mx-1" />
+                  <div className="h-5 sm:h-6 w-px bg-zinc-800 mx-0.5 sm:mx-1 shrink-0" />
                   <Tooltip
                       content="My Character"
                       subContent={
@@ -301,19 +301,19 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                         type="button"
                         onClick={handleMyCharacterClick}
                         className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
+                            "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0",
                             myExistingToken
                                 ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20"
                                 : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 animate-pulse shadow-md shadow-amber-500/10"
                         )}
                     >
-                      <User className="w-5 h-5" />
+                      <User className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </Tooltip>
                 </>
             )}
 
-            <div className="h-6 w-px bg-zinc-800 mx-1" />
+            <div className="h-5 sm:h-6 w-px bg-zinc-800 mx-0.5 sm:mx-1 shrink-0" />
 
             {(isGM || permissions?.canAssets) && (
                 <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها" shortcut="A">
@@ -321,7 +321,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                       type="button"
                       onClick={() => toggleMenu("asset")}
                       className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
+                          "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0",
                           isAssetOpen
                               ? "bg-amber-500 text-zinc-950 font-bold shadow-md shadow-amber-500/20"
                               : !hasActiveMap
@@ -329,7 +329,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                                   : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                       )}
                   >
-                    <ImageIcon className="w-5 h-5" />
+                    <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </Tooltip>
             )}
@@ -340,40 +340,41 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                       type="button"
                       onClick={() => toggleMenu("settings")}
                       className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer",
+                          "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0",
                           isSettingsOpen
                               ? "bg-amber-500 text-zinc-950 font-bold shadow-md shadow-amber-500/20"
                               : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                       )}
                   >
-                    <Settings className="w-5 h-5" />
+                    <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </Tooltip>
             )}
           </div>
         </div>
 
-        <div className="fixed bottom-6 right-6 z-30 flex items-center gap-1.5 p-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-md text-xs text-zinc-300">
+        {/* کنترل‌های بزرگ‌نمایی: در گوشی به بالای تولبار می‌رود تا تداخلی نداشته باشد */}
+        <div className="fixed bottom-18 sm:bottom-6 right-3 sm:right-6 z-30 flex items-center gap-1 p-1 sm:p-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-md text-xs text-zinc-300">
           <button
               type="button"
               disabled={!hasActiveMap}
               onClick={() => setZoom((z) => Math.max(z - 0.15, MIN_ZOOM))}
               className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-colors",
                   !hasActiveMap
                       ? "text-zinc-700 cursor-not-allowed"
                       : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
               )}
               title="کوچک‌نمایی"
           >
-            <ZoomOut className="w-4 h-4" />
+            <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
           <button
               type="button"
               disabled={!hasActiveMap}
               onClick={resetView}
               className={cn(
-                  "px-2 h-8 rounded-lg font-mono text-xs transition-colors",
+                  "px-1.5 sm:px-2 h-7 sm:h-8 rounded-lg font-mono text-[10px] sm:text-xs transition-colors",
                   !hasActiveMap
                       ? "text-zinc-700 cursor-not-allowed"
                       : "text-zinc-300 hover:bg-zinc-800 cursor-pointer"
@@ -387,14 +388,14 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
               disabled={!hasActiveMap}
               onClick={() => setZoom((z) => Math.min(z + 0.15, MAX_ZOOM))}
               className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-colors",
                   !hasActiveMap
                       ? "text-zinc-700 cursor-not-allowed"
                       : "text-zinc-400 hover:bg-zinc-800 cursor-pointer"
               )}
               title="بزرگ‌نمایی"
           >
-            <ZoomIn className="w-4 h-4" />
+            <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </>

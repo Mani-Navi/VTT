@@ -79,7 +79,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   if (!canAccessAssets) {
     return (
         <div
-            className="fixed top-16 right-6 z-50 w-80 bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-5 text-zinc-100 font-fa select-none text-center"
+            className="fixed inset-x-3 bottom-4 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-80 bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-5 text-zinc-100 font-fa select-none text-center"
             dir="rtl"
             onWheel={(e) => e.stopPropagation()}
         >
@@ -233,7 +233,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
 
   return (
       <div
-          className="fixed top-16 right-6 z-50 w-[460px] max-w-[95vw] bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-4 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-150"
+          className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-[460px] max-w-[95vw] bg-zinc-900/98 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-4 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-150 max-h-[82vh] flex flex-col"
           dir="rtl"
           onWheel={(e) => e.stopPropagation()}
       >
@@ -256,7 +256,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3">
+        <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 my-3 shrink-0">
           {[
             { id: "maps", label: "نقشه‌ها", icon: MapPin },
             { id: "tokens", label: "توکن‌ها", icon: Sparkles },
@@ -285,14 +285,14 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           })}
         </div>
 
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 shrink-0">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="جستجو در منابع..."
+                placeholder="جستجو..."
                 className="w-full pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
             />
           </div>
@@ -331,9 +331,9 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
         {showUrlInput && (
             <form
                 onSubmit={handleAddFromUrl}
-                className="p-3 mb-3 bg-zinc-950/80 border border-amber-500/30 rounded-2xl space-y-2 animate-in fade-in"
+                className="p-3 mb-3 bg-zinc-950/80 border border-amber-500/30 rounded-2xl space-y-2 animate-in fade-in shrink-0"
             >
-              <div className="text-[11px] font-bold text-amber-400">افزودن تصویر از وب (لینک مستقیم):</div>
+              <div className="text-[11px] font-bold text-amber-400">افزودن از وب (لینک مستقیم):</div>
               <input
                   type="url"
                   required
@@ -348,7 +348,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                     type="text"
                     value={assetNameInput}
                     onChange={(e) => setAssetNameInput(e.target.value)}
-                    placeholder="نام دلخواه (اختیاری)"
+                    placeholder="نام دلخواه"
                     className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500"
                 />
                 <Button size="sm" variant="amber" type="submit" isLoading={isUploading} className="text-xs font-bold">
@@ -358,18 +358,13 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
             </form>
         )}
 
-        <div className="flex justify-between items-center px-1 mb-2 text-[10px] text-zinc-500 font-medium">
-          <span>فرمت‌های مجاز: JPG, PNG, WEBP, GIF</span>
-          <span>حداکثر حجم مجاز: {SIZE_LIMITS[activeTab]?.label}</span>
-        </div>
-
         {uploadError && (
-            <div className="mb-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-[11px] text-rose-400 text-center font-bold">
+            <div className="mb-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-[11px] text-rose-400 text-center font-bold shrink-0">
               {uploadError}
             </div>
         )}
 
-        <div className="max-h-[48vh] overflow-y-auto pr-1 custom-scrollbar space-y-3">
+        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3">
           {activeTab === "maps" && (
               <div>
                 <span className="text-[11px] font-bold text-zinc-400 mb-2 block">نقشه‌های پیش‌فرض سیستم:</span>
@@ -406,7 +401,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
             <span className="text-[11px] font-bold text-zinc-400 mb-2 block">
               {!hasActiveMap
                   ? "ابتدا نقشه را انتخاب کنید تا بتوانید توکن اضافه نمایید."
-                  : "برای افزودن به بازی، روی توکن کلیک کنید:"}
+                  : "برای افزودن، روی توکن کلیک کنید:"}
             </span>
                 <div className="grid grid-cols-3 gap-2">
                   {filteredPresets.map((token) => (
@@ -438,7 +433,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           {filteredUserAssets.length > 0 && (
               <div className="pt-3 border-t border-zinc-800/80">
             <span className="text-[11px] font-bold text-amber-400/90 mb-2 block">
-              فایل‌های شخصی ذخیره‌شده شما ({SIZE_LIMITS[activeTab]?.label}):
+              فایل‌های شخصی شما:
             </span>
                 <div className="grid grid-cols-3 gap-2">
                   {filteredUserAssets.map((asset) => (

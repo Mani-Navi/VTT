@@ -30,9 +30,6 @@ import { TokenEditorModal } from "../../components/room/TokenEditorModal.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
 
-/**
- * مرز خطای اختصاصی کانواس برای جلوگیری از سقوط کل صفحه اتاق در خطاهای Konva/WebGL
- */
 class CanvasErrorBoundary extends Component {
     constructor(props) {
         super(props);
@@ -91,7 +88,6 @@ export const RoomPage = () => {
     const effectiveRoomId = urlParamId;
     const { isGM, permissions: userPermissions } = usePermissions(roomData);
 
-    // پاکسازی سریع دیتای اتاق قبلی به محض لود اتاق جدید یا خروج
     useEffect(() => {
         setRoomData(null);
         setOnlineMembers([]);
@@ -118,7 +114,6 @@ export const RoomPage = () => {
             const action = event.action || (event.data ? event.action : null);
             const data = event.data !== undefined ? event.data : event;
 
-            // خروج آنی هنگام بسته شدن اتاق
             if (action === "ROOM_CLOSED") {
                 wsService.disconnect();
                 toast.warning(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.", "پایان نشست اتاق");
@@ -126,7 +121,6 @@ export const RoomPage = () => {
                 return;
             }
 
-            // خروج آنی هنگام حذف شدن اتاق
             if (action === "ROOM_DELETED") {
                 wsService.disconnect();
                 toast.error(data || "اتاق توسط سازنده برای همیشه حذف شد.", "اتاق حذف شد");
@@ -134,7 +128,6 @@ export const RoomPage = () => {
                 return;
             }
 
-            // خروج آنی هنگام کیک شدن کاربر
             if (action === "MEMBER_KICKED") {
                 const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
                 const targetUid = String(data?.userId || "").toLowerCase().trim();
@@ -149,7 +142,6 @@ export const RoomPage = () => {
                 }
             }
 
-            // خروج آنی هنگام مسدود شدن (Ban) کاربر
             if (action === "MEMBER_BANNED") {
                 const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
                 const targetUid = String(data?.userId || "").toLowerCase().trim();
@@ -273,7 +265,7 @@ export const RoomPage = () => {
     };
 
     return (
-        <div className="relative w-screen h-screen overflow-hidden bg-[#090a0f] select-none font-fa">
+        <div className="relative w-screen h-[100dvh] overflow-hidden bg-[#090a0f] select-none font-fa">
             <PlayerMenu
                 isGM={isGM}
                 roomId={effectiveRoomId}
@@ -283,11 +275,12 @@ export const RoomPage = () => {
 
             <SceneBar isGM={isGM} roomId={effectiveRoomId} />
 
+            {/* هدر اکشن‌ها: در گوشی بسیار فشرده و مرتب در گوشه چپ */}
             <header
-                className="fixed top-4 left-6 z-30 flex items-center gap-2.5 pointer-events-auto"
+                className="fixed top-2.5 sm:top-4 left-2.5 sm:left-6 z-30 flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto"
                 dir="ltr"
             >
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-xl text-[11px]">
+                <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-xl text-[11px]">
           <span
               className={`w-2 h-2 rounded-full ${
                   isConnected
@@ -295,7 +288,7 @@ export const RoomPage = () => {
                       : "bg-amber-500"
               }`}
           />
-                    <span className="text-zinc-300 font-mono text-[10px]">
+                    <span className="hidden sm:inline text-zinc-300 font-mono text-[10px]">
             {isConnected ? "Live Sync" : "Connecting..."}
           </span>
                 </div>
@@ -303,7 +296,7 @@ export const RoomPage = () => {
                 <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="hidden sm:flex w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
                     title="راهنمای کلیدها"
                 >
                     <HelpCircle className="w-4 h-4" />
@@ -312,35 +305,35 @@ export const RoomPage = () => {
                 <button
                     type="button"
                     onClick={toggleFullscreen}
-                    className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
                     title="تمام صفحه"
                 >
-                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 </button>
 
                 {isGM && (
                     <button
                         type="button"
                         onClick={handleCloseRoom}
-                        className="px-2.5 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 flex items-center gap-1.5 shadow-xl backdrop-blur-xl transition-all cursor-pointer font-bold text-xs"
+                        className="px-2 sm:px-2.5 h-8 sm:h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 flex items-center gap-1 shadow-xl backdrop-blur-xl transition-all cursor-pointer font-bold text-xs"
                         title="بستن و غیرفعال‌سازی اتاق"
                     >
                         <PowerOff className="w-3.5 h-3.5" />
-                        <span>بستن اتاق</span>
+                        <span className="hidden sm:inline">بستن اتاق</span>
                     </button>
                 )}
 
                 <button
                     type="button"
                     onClick={() => navigate("/dashboard")}
-                    className="w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
                     title="خروج از اتاق"
                 >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
             </header>
 
-            {/* بوم بازی محافظت‌شده با ErrorBoundary طبق بند ۴ سند */}
+            {/* بوم بازی */}
             <CanvasErrorBoundary>
                 <GameCanvas isGM={isGM} permissions={userPermissions} />
             </CanvasErrorBoundary>

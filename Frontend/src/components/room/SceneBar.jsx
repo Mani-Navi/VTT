@@ -103,15 +103,15 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
     return (
         <div
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-3 py-1.5 bg-zinc-950/85 border border-zinc-800/90 rounded-2xl shadow-2xl shadow-black/70 backdrop-blur-xl font-fa select-none pointer-events-auto"
+            className="fixed top-12 sm:top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-zinc-950/90 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-xl font-fa select-none pointer-events-auto max-w-[94vw]"
             dir="rtl"
         >
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-zinc-300 text-xs font-semibold shrink-0">
-                <Layers className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-zinc-900/80 border border-zinc-800/60 text-zinc-300 text-xs font-semibold shrink-0">
+                <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
                 <span className="hidden sm:inline">صحنه‌ها</span>
             </div>
 
-            <div className="flex items-center gap-1.5 max-w-[55vw] overflow-x-auto custom-scrollbar py-0.5 px-0.5">
+            <div className="flex items-center gap-1.5 max-w-[65vw] sm:max-w-[55vw] overflow-x-auto no-scrollbar py-0.5 px-0.5">
                 {scenes.map((scene) => {
                     const isActive = String(currentScene?.id || "").toLowerCase() === String(scene.id || "").toLowerCase();
                     const isEditingThis = editingSceneId === scene.id;
@@ -121,14 +121,14 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                             <form
                                 key={scene.id}
                                 onSubmit={(e) => saveRename(scene.id, e)}
-                                className="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-xl border border-amber-500 shadow-md shrink-0 animate-in fade-in duration-150"
+                                className="flex items-center gap-1.5 bg-zinc-900 px-2 py-1 rounded-xl border border-amber-500 shadow-md shrink-0 animate-in fade-in duration-150"
                             >
                                 <input
                                     type="text"
                                     value={editingName}
                                     onChange={(e) => setEditingName(e.target.value)}
                                     autoFocus
-                                    className="w-28 px-1 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
+                                    className="w-24 sm:w-28 px-1 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
                                 />
                                 <button
                                     type="submit"
@@ -153,16 +153,16 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                             onClick={() => isGM && switchScene(scene.id, true, roomId)}
                             onDoubleClick={(e) => isGM && startEditing(scene, e)}
                             className={cn(
-                                "group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0",
+                                "group relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all shrink-0",
                                 isActive
-                                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/20 border border-amber-400/40 cursor-default"
+                                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-md border border-amber-400/40 cursor-default"
                                     : isGM
                                         ? "bg-zinc-900/60 border border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 hover:bg-zinc-800/60 cursor-pointer"
                                         : "bg-zinc-900/40 border border-zinc-800/40 text-zinc-500 cursor-default"
                             )}
                             title={isGM ? "برای سوییچ کلیک و برای ویرایش نام دابل‌کلیک کنید" : ""}
                         >
-                            <span className="truncate max-w-[150px] tracking-wide">{scene.name}</span>
+                            <span className="truncate max-w-[110px] sm:max-w-[150px] tracking-wide">{scene.name}</span>
 
                             {isGM && (
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-150 mr-0.5">
@@ -208,10 +208,10 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                         <button
                             type="button"
                             onClick={() => setIsCreating(true)}
-                            className="h-8 px-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800/80 hover:border-amber-500/50 text-amber-400 flex items-center gap-1 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                            className="h-7 sm:h-8 px-2 sm:px-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800/80 hover:border-amber-500/50 text-amber-400 flex items-center gap-1 text-xs font-semibold transition-all cursor-pointer shadow-sm"
                             title="ایجاد صحنه جدید"
                         >
-                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                             <span className="hidden md:inline">صحنه جدید</span>
                         </button>
                     ) : (
@@ -225,7 +225,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                                 onChange={(e) => setNewSceneName(e.target.value)}
                                 placeholder="نام صحنه..."
                                 autoFocus
-                                className="w-32 px-2 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
+                                className="w-24 sm:w-32 px-1.5 py-0.5 bg-transparent text-xs text-zinc-100 font-medium focus:outline-none"
                             />
                             <button
                                 type="submit"
