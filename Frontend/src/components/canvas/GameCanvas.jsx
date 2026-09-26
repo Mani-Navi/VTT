@@ -29,6 +29,7 @@ import {
   Dices,
   Scroll,
   Trash2,
+  X,
 } from "lucide-react";
 
 const generateUUID = () => {
@@ -86,6 +87,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const setPendingEmoji = useCanvasStore((state) => state.setPendingEmoji);
 
   const rulerType = useCanvasStore((state) => state.rulerType);
+  const measurement = useCanvasStore((state) => state.measurement);
 
   const setZoom = useCanvasStore((state) => state.setZoom);
   const setStagePos = useCanvasStore((state) => state.setStagePos);
@@ -138,6 +140,17 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
   const canUseFog = isGM || Boolean(permissions?.canFog);
 
   const myIdentifier = String(user?.id || user?.userId || user?.username || "player-1");
+
+  // حذف خودکار خط‌کش به محض تغییر ابزار فعال
+  useEffect(() => {
+    if (activeTool !== TOOLS.RULER) {
+      if (useCanvasStore.getState().measurement) {
+        endMeasurement();
+        wsService.send("RULER_CLEAR", { userId: myIdentifier });
+      }
+      isInteracting.current = false;
+    }
+  }, [activeTool, endMeasurement, myIdentifier]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -245,7 +258,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       const fogIdStr = String(selectedFogId);
       const sceneId = currentScene?.id;
 
-      // ۱. حذف آنی از استور محلی
       if (removeFogShape) {
         removeFogShape(fogIdStr);
       }
@@ -258,11 +270,9 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         points: { id: fogIdStr, type: "DELETE" },
       };
 
-      // ۲. برادکست وب‌سوکت برای حذف آنی روی صفحه تمام پلیرها
       wsService.send("FOG_DELETE", payload);
       wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", payload);
 
-      // ۳. درخواست REST به سرور جهت پاک‌سازی دائمی از دیتابیس (جلوگیری از بازگشت پس از ریلود)
       try {
         await fogApi.deleteFog(fogIdStr, sceneId);
       } catch (err) {
@@ -285,7 +295,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     currentScene?.id,
   ]);
 
-  // محاسبه موقعیت مکانی آیتم انتخاب‌شده برای نمایش پنل حذف درست در بالای آن
   const selectionInfo = useMemo(() => {
     if (activeTool !== TOOLS.SELECT && activeTool !== TOOLS.FOG) return null;
 
@@ -445,7 +454,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     setPendingEmoji,
   ]);
 
-  // رویدادهای کیبورد (Escape برای لغو و Delete/Backspace برای حذف آیتم انتخابی)
   useEffect(() => {
     const handleKeyDown = (e) => {
       const tagName = e.target.tagName.toLowerCase();
@@ -460,7 +468,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         liveDrawingRef.current = null;
         setLiveFog(null);
         liveFogRef.current = null;
-        if (activeTool === TOOLS.RULER) {
+        if (activeTool === TOOLS.RULER || measurement) {
           endMeasurement();
           wsService.send("RULER_CLEAR", { userId: myIdentifier });
         }
@@ -486,6 +494,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     activeTool,
+    measurement,
     endMeasurement,
     myIdentifier,
     inlineTextEditor,
@@ -553,6 +562,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             e.target === e.target.getStage() || e.target.name() === "map-background";
         if (isClickedOnEmpty) {
           clearSelection();
+          if (measurement && activeTool !== TOOLS.RULER) {
+            endMeasurement();
+            wsService.send("RULER_CLEAR", { userId: myIdentifier });
+          }
         }
 
         if (isSelectMode || activeTool === TOOLS.PAN) {
@@ -581,7 +594,15 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         }
 
         if (activeTool === TOOLS.RULER) {
-          if (e.evt.button === 0) {
+          // در صورتی که کاربر کلیک راست کرده باشد، یا در موبایل دوباره روی همان نقطه بزند
+          if (e.evt.button === 2) {
+            endMeasurement();
+            wsService.send("RULER_CLEAR", { userId: myIdentifier });
+            isInteracting.current = false;
+            return;
+          }
+
+          if (e.evt.button === 0 || e.evt.button === undefined) {
             if (!isInteracting.current) {
               isInteracting.current = true;
               startMeasurement(pos.x, pos.y);
@@ -597,6 +618,15 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 rulerType: rulerType,
               });
             } else {
+              // اگر در موبایل دوباره روی همان نقطه بدون جابجایی ضربه زد، لغو کند
+              const curMeas = useCanvasStore.getState().measurement;
+              if (curMeas && Math.hypot(pos.x - curMeas.startX, pos.y - curMeas.startY) < 15 && curMeas.waypoints.length === 0) {
+                endMeasurement();
+                wsService.send("RULER_CLEAR", { userId: myIdentifier });
+                isInteracting.current = false;
+                return;
+              }
+
               addMeasurementWaypoint(pos.x, pos.y);
               const currentMeas = useCanvasStore.getState().measurement;
               wsService.send("RULER_UPDATE", {
@@ -607,10 +637,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 rulerType: rulerType,
               });
             }
-          } else if (e.evt.button === 2) {
-            endMeasurement();
-            wsService.send("RULER_CLEAR", { userId: myIdentifier });
-            isInteracting.current = false;
           }
           return;
         }
@@ -876,6 +902,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         fogAction,
         fogPolygonVertices,
         addFogShape,
+        measurement,
       ]
   );
 
@@ -1291,7 +1318,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             }}
         />
 
-        {/* پنل اکشن شناور برای حذف آیتم انتخاب‌شده در ابزار Select */}
+        {/* پنل حذف آیتم انتخاب‌شده در ابزار Select */}
         {selectionInfo && (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && (
             <div
                 className="absolute z-40 pointer-events-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-950/95 border border-zinc-700/80 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
@@ -1306,8 +1333,8 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 <span className="text-[11px] font-bold text-zinc-200 max-w-[140px] truncate select-none">
-                  {selectionInfo.label}
-                </span>
+              {selectionInfo.label}
+            </span>
               </div>
 
               <div className="w-px h-3.5 bg-zinc-800 mx-0.5" />
@@ -1316,11 +1343,33 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                   type="button"
                   onClick={handleDeleteSelected}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-sm"
-                  title="حذف آیتم انتخابی (یا کلید Delete / Backspace)"
+                  title="حذف آیتم انتخابی"
               >
                 <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
                 <span>حذف</span>
               </button>
+            </div>
+        )}
+
+        {/* دکمه شناور بستن خط‌کش مخصوص گوشی و دسکتاپ با یک لمس */}
+        {measurement && (
+            <div
+                className="absolute z-40 pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950/95 border border-zinc-700/80 rounded-xl shadow-2xl backdrop-blur-xl text-xs text-zinc-300 cursor-pointer hover:border-rose-500/80 hover:text-rose-400 active:scale-95 animate-in fade-in duration-100"
+                style={{
+                  left: `${Math.max(60, Math.min(dimensions.width - 80, stageX + (measurement.currentX ?? measurement.startX) * zoom))}px`,
+                  top: `${Math.max(60, Math.min(dimensions.height - 40, stageY + (measurement.currentY ?? measurement.startY) * zoom - 40))}px`,
+                  transform: "translate(-50%, -100%)",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  endMeasurement();
+                  wsService.send("RULER_CLEAR", { userId: myIdentifier });
+                  isInteracting.current = false;
+                }}
+                title="بستن و لغو خط‌کش"
+            >
+              <X className="w-3.5 h-3.5 text-rose-400 stroke-[2.5]" />
+              <span className="font-bold text-[11px] font-fa">بستن خط‌کش</span>
             </div>
         )}
 

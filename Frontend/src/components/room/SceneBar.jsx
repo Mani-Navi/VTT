@@ -105,9 +105,9 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
     return (
         <>
-            {/* نسخه موبایل: کپسول وسط‌چین در همان خط بالای صفحه (top-3) بدون هیچ تداخلی */}
-            <div className="sm:hidden fixed top-3 left-1/2 -translate-x-1/2 z-30 font-fa select-none" dir="rtl">
-                <div className="relative">
+            {/* به جای left-1/2 از left-[54%] استفاده می‌کنیم تا به سمت راست شیفت پیدا کند */}
+            <div className="sm:hidden fixed top-3 left-[54%] -translate-x-1/2 z-30 font-fa select-none" dir="rtl">
+            <div className="relative">
                     <button
                         type="button"
                         onClick={() => setIsMobileOpen(!isMobileOpen)}
