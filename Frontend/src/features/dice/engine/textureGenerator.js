@@ -1,5 +1,6 @@
 // src/features/dice/engine/textureGenerator.js
 import * as THREE from 'three';
+import { formatDieValue } from './diceDefinitions';
 
 /**
  * تعداد اضلاعِ حاشیه‌ای که دور هر عدد رسم می‌شود، فقط برای هم‌خوانی بصری با
@@ -139,12 +140,6 @@ function lighten(hex, amount) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-function formatValue(dieType, value) {
-    if (dieType === 'd100') return value === 0 ? '00' : String(value);
-    if (dieType === 'd10') return String(value); // 0..9، بدون صفرِ اضافه
-    return String(value);
-}
-
 /**
  * ورودی‌اش خروجیِ diceDefinitions است: dieConfig.faces = [{normal, value}, ...]
  * (همان ترتیبی که geometry.groups با آن ساخته شده)، پس material[i] دقیقاً
@@ -156,7 +151,7 @@ export function createDiceMaterials(dieConfig, options = {}) {
     return dieConfig.faces.map(({ value }) => {
         const isCrit = dieType === 'd20' && value === 20;
         const isCritFail = dieType === 'd20' && value === 1;
-        const texture = createFaceTexture(dieType, formatValue(dieType, value), {
+        const texture = createFaceTexture(dieType, formatDieValue(dieType, value), {
             ...options,
             isCrit,
             isCritFail,

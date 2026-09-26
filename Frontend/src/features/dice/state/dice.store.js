@@ -1,5 +1,6 @@
 // src/features/dice/state/dice.store.js
 import { create } from 'zustand';
+import { DICE_CONFIGS } from '../engine/diceDefinitions';
 
 export const useDiceStore = create((set, get) => ({
     isOpen: false,
@@ -12,7 +13,11 @@ export const useDiceStore = create((set, get) => ({
     setOpen: (isOpen) => set({ isOpen }),
 
     triggerRoll: (diceTypes = ['d20']) => {
-        const newDice = diceTypes.map((type, idx) => ({
+        // اعتبارسنجی نوع تاس‌ها؛ حالا که هر ۷ نوع D&D پشتیبانی می‌شود، این فقط
+        // جلوی یک تایپوی احتمالی در نام تاس را می‌گیرد (نه یک محدودیت واقعی)
+        const safeTypes = diceTypes.map((t) => (DICE_CONFIGS[t] ? t : 'd20'));
+
+        const newDice = safeTypes.map((type, idx) => ({
             id: `${type}-${Date.now()}-${idx}-${Math.random()}`,
             type,
             settled: false,
