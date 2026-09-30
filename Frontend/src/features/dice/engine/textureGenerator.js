@@ -1,113 +1,100 @@
 import * as THREE from 'three';
 
 /**
- * ایجاد بافت گرد یا مثلثی روی یک بوم با فونت استاندارد رومیزی
+ * تولید پویای بافت مرمر بنفش اشرافی با رگه‌های طلایی و اعداد حکاکی‌شده
  */
-export function createNumberTexture(text, options = {}) {
-    const {
-        size = 256,
-        bgColor = '#1e293b',
-        textColor = '#f8fafc',
-        accentColor = '#f59e0b',
-        isD20 = false,
-    } = options;
-
+export function createAmethystMarbleTexture(text, size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    // پس‌زمینه پایه
-    ctx.fillStyle = bgColor;
+    // ۱. پس‌زمینه گرادیانتی بنفش ارغوانی تیره
+    const bgGrad = ctx.createRadialGradient(
+        size * 0.4, size * 0.4, size * 0.1,
+        size * 0.5, size * 0.5, size * 0.7
+    );
+    bgGrad.addColorStop(0, '#3b1d60');
+    bgGrad.addColorStop(0.5, '#26133f');
+    bgGrad.addColorStop(1, '#160b24');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, size, size);
 
-    if (isD20) {
-        // خطوط محیطی حاشیه وجه برای D20
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(size * 0.5, size * 0.08);
-        ctx.lineTo(size * 0.92, size * 0.88);
-        ctx.lineTo(size * 0.08, size * 0.88);
-        ctx.closePath();
-        ctx.stroke();
-    } else {
-        // کادر گرد ظریف برای وجوه D6
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 8;
-        ctx.strokeRect(12, 12, size - 24, size - 24);
-    }
+    // ۲. ترسیم رگه‌های طبیعی مرمر (Marble Veining)
+    ctx.save();
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.filter = 'blur(12px)';
 
-    // رسم عدد اصلی
-    ctx.fillStyle = textColor;
-    ctx.font = `bold ${isD20 ? 82 : 110}px 'Cinzel', 'Trebuchet MS', 'Arial', sans-serif`;
+    // رگه‌های بنفش روشن مه‌آلود
+    ctx.strokeStyle = 'rgba(147, 51, 234, 0.28)';
+    ctx.beginPath();
+    ctx.moveTo(size * 0.1, size * 0.2);
+    ctx.bezierCurveTo(size * 0.4, size * 0.1, size * 0.6, size * 0.8, size * 0.9, size * 0.85);
+    ctx.stroke();
+
+    // رگه‌های طلایی محو در عمق سنگ
+    ctx.strokeStyle = 'rgba(217, 119, 6, 0.22)';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(size * 0.85, size * 0.15);
+    ctx.bezierCurveTo(size * 0.5, size * 0.4, size * 0.4, size * 0.7, size * 0.15, size * 0.9);
+    ctx.stroke();
+    ctx.restore();
+
+    // ۳. ترسیم عدد با فونت سریف و گرادینت ورق طلا (Gold Leaf)
+    const textStr = String(text);
+    const fontSize = textStr.length >= 2 ? 145 : 190;
+    ctx.font = `bold ${fontSize}px "Cinzel", "Times New Roman", Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const centerY = isD20 ? size * 0.58 : size * 0.5;
-    ctx.fillText(String(text), size * 0.5, centerY);
+    // سایه عمیق حکاکی در سنگ
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 6;
 
-    // نقطه زیر ۶ و ۹ برای جلوگیری از اشتباه در بازی D&D
+    // گرادیانت طلای متالیک کهنه
+    const goldGrad = ctx.createLinearGradient(0, size * 0.2, 0, size * 0.8);
+    goldGrad.addColorStop(0, '#fef08a');
+    goldGrad.addColorStop(0.4, '#eab308');
+    goldGrad.addColorStop(0.7, '#ca8a04');
+    goldGrad.addColorStop(1, '#854d0e');
+
+    ctx.fillStyle = goldGrad;
+    ctx.fillText(textStr, size * 0.5, size * 0.52);
+
+    // خط باریک دور طلایی برای برجستگی
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(textStr, size * 0.5, size * 0.52);
+
+    // نقطه زیر ۶ و ۹
     if (text === 6 || text === 9) {
-        ctx.fillStyle = accentColor;
+        ctx.fillStyle = goldGrad;
         ctx.beginPath();
-        ctx.arc(size * 0.5, centerY + (isD20 ? 34 : 44), 6, 0, Math.PI * 2);
+        ctx.arc(size * 0.5, size * 0.5 + 90, 10, 0, Math.PI * 2);
         ctx.fill();
     }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.needsUpdate = true;
-
     return texture;
 }
 
-/**
- * تولید متریال‌های ۶ وجه تاس D6
- * ترتیب وجوه Three.js Box: [+X, -X, +Y, -Y, +Z, -Z]
- */
-export function createD6Materials(bgColor = '#1e3a8a') {
-    // بر اساس نگاشت استاندارد diceDefinitions:
-    // +X: 3, -X: 4, +Y: 6, -Y: 1, +Z: 5, -Z: 2
-    const values = [3, 4, 6, 1, 5, 2];
-
+export function createMaterialsForType(type, values) {
     return values.map((val) => {
-        const tex = createNumberTexture(val, {
-            bgColor,
-            textColor: '#ffffff',
-            accentColor: '#38bdf8',
-            isD20: false,
-        });
+        const isCrit = type === 'd20' && val === 20;
+        const tex = createAmethystMarbleTexture(val);
 
         return new THREE.MeshStandardMaterial({
             map: tex,
-            roughness: 0.3,
-            metalness: 0.1,
-        });
-    });
-}
-
-/**
- * تولید ۲۰ متریال مجزا برای وجوه D20
- */
-export function createD20Materials(d20Values, bgColor = '#881337') {
-    return d20Values.map((val) => {
-        const isCrit = val === 20;
-        const isCritFail = val === 1;
-
-        const tex = createNumberTexture(val, {
-            bgColor: isCrit ? '#701a75' : isCritFail ? '#450a0a' : bgColor,
-            textColor: isCrit ? '#fde047' : '#ffffff',
-            accentColor: isCrit ? '#fbbf24' : '#f43f5e',
-            isD20: true,
-        });
-
-        return new THREE.MeshStandardMaterial({
-            map: tex,
-            roughness: 0.35,
-            metalness: 0.2,
+            roughness: isCrit ? 0.12 : 0.22, // براقیت رزینی لوکس
+            metalness: 0.12,
             flatShading: true,
+            side: THREE.DoubleSide,
         });
     });
 }

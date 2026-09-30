@@ -1,101 +1,130 @@
-// src/features/dice/components/DiceOverlay.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
-import { Dices, RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X, Eye, Plus, Search } from 'lucide-react';
+
+const DICE_TYPES = [
+    { type: 'd4', label: '4' },
+    { type: 'd6', label: '6' },
+    { type: 'd8', label: '8' },
+    { type: 'd10', label: '0' },
+    { type: 'd12', label: '12' },
+    { type: 'd20', label: '20' },
+    { type: 'd100', label: '00' },
+];
 
 export function DiceOverlay() {
     const { isOpen, isRolling, results, totalSum, setOpen, triggerRoll, clearDice } = useDiceStore();
+    const [selectedPool, setSelectedPool] = useState([]);
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
-            {/* ظرف اصلی سینی ۳D */}
-            <div className="relative w-full max-w-2xl h-[70vh] max-h-[580px] bg-slate-950/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+    // با کلیک روی هر تاس، مستقیماً به استخر اضافه و رول می‌شود
+    const handleQuickAdd = (type) => {
+        const nextPool = [...selectedPool, type];
+        setSelectedPool(nextPool);
+        triggerRoll(nextPool);
+    };
 
-                {/* نوار بالای مودال */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800/80 bg-slate-900/50">
-                    <div className="flex items-center gap-2 text-amber-400 font-bold">
-                        <Dices className="w-5 h-5" />
-                        <span>پرتاب تاس سه‌بعدی فیزیکی</span>
+    const handleReRoll = () => {
+        if (selectedPool.length > 0) {
+            triggerRoll(selectedPool);
+        } else {
+            triggerRoll(['d20']);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-md select-none font-fa">
+
+            {/* بدنه کل سینی و سایدبار */}
+            <div className="relative flex h-[92vh] max-h-[820px] w-full max-w-[480px] sm:max-w-[520px] rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 bg-[#0e0f13]">
+
+                {/* سایدبار عمودی سمت چپ دقیقاً مشابه اسکرین‌شات */}
+                <aside className="w-16 sm:w-18 bg-[#181920]/95 border-r border-zinc-800/80 flex flex-col items-center py-4 z-20 shrink-0">
+
+                    {/* نشانگر بزرگ d20 در بالای سایدبار */}
+                    <button
+                        onClick={() => handleQuickAdd('d20')}
+                        className="w-11 h-11 rounded-2xl bg-purple-950/60 border border-purple-500/40 text-amber-300 font-serif font-black flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition"
+                        title="رول D20"
+                    >
+                        20
+                    </button>
+
+                    <div className="w-8 h-px bg-zinc-800 my-3" />
+
+                    {/* لیست عمودی انواع تاس‌ها با استایل فانتزی */}
+                    <div className="flex-1 flex flex-col items-center gap-2 overflow-y-auto no-scrollbar w-full px-1">
+                        {DICE_TYPES.map((d) => (
+                            <button
+                                key={d.type}
+                                onClick={() => handleQuickAdd(d.type)}
+                                className="w-10 h-10 rounded-xl bg-purple-950/30 hover:bg-purple-900/50 border border-purple-500/20 hover:border-amber-500/40 text-amber-200/90 font-serif text-xs font-bold flex flex-col items-center justify-center transition active:scale-90"
+                            >
+                                <span>{d.label}</span>
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="w-8 h-px bg-zinc-800 my-2" />
+
+                    {/* ابزارهای پایین سایدبار */}
+                    <div className="flex flex-col items-center gap-3 text-zinc-400">
                         <button
-                            onClick={clearDice}
-                            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
-                            title="پاک‌کردن سینی"
+                            onClick={() => setSelectedPool([])}
+                            className="p-2 hover:text-white transition"
+                            title="پاک‌کردن انتخاب‌ها"
                         >
-                            <RotateCcw className="w-4 h-4" />
+                            <Eye className="w-4 h-4" />
                         </button>
                         <button
+                            onClick={() => handleQuickAdd('d6')}
+                            className="p-2 hover:text-white transition text-xs font-bold"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={clearDice}
+                            className="p-2 hover:text-white transition"
+                        >
+                            <Search className="w-4 h-4" />
+                        </button>
+                    </div>
+                </aside>
+
+                {/* سینی فیزیکی سه‌بعدی و هدر شناور */}
+                <div className="relative flex-1 h-full w-full bg-[#100f13] overflow-hidden">
+
+                    {/* هدر شناور مینیمال: Re-roll، عدد مجموع، و دکمه X */}
+                    <div className="absolute top-4 inset-x-6 z-20 flex items-center justify-between pointer-events-auto">
+                        <button
+                            onClick={handleReRoll}
+                            className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300 hover:text-white transition active:rotate-180 duration-300"
+                            title="رول مجدد"
+                        >
+                            <RotateCcw className="w-5 h-5" />
+                        </button>
+
+                        {/* عدد مجموع بزرگ و درخشان سفید */}
+                        <div className="flex items-center justify-center">
+              <span className={`text-5xl font-black tracking-tight drop-shadow-md ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-zinc-100'}`}>
+                {results.length > 0 ? totalSum : ''}
+              </span>
+                        </div>
+
+                        <button
                             onClick={() => setOpen(false)}
-                            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                            className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300 hover:text-white transition"
+                            title="بستن سینی"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
-                </div>
 
-                {/* بستر رندر فیزیک ۳D */}
-                <div className="relative flex-1 w-full h-full">
+                    {/* رندر سه‌بعدی سینی و تاس‌های مرمر بنفش */}
                     <DiceCanvas />
 
-                    {/* بنر اعلام نتیجه نهایی در پایین سینی */}
-                    {results.length > 0 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-slate-900/90 border border-amber-500/40 px-6 py-2.5 rounded-2xl shadow-xl backdrop-blur-md">
-                            <span className="text-slate-300 text-sm">مجموع:</span>
-                            <span className={`text-2xl font-black ${isRolling ? 'text-slate-400 animate-pulse' : 'text-amber-400'}`}>
-                {totalSum}
-              </span>
-                            <div className="flex items-center gap-1.5 border-r border-slate-700 pr-3 mr-1">
-                                {results.map((r, i) => (
-                                    <span key={i} className="text-xs bg-slate-800 text-slate-200 px-2 py-0.5 rounded font-mono">
-                    {r.value}
-                  </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* نوار دکمه‌های پرتاب سریع */}
-                <div className="p-4 bg-slate-900/80 border-t border-slate-800 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <button
-                            disabled={isRolling}
-                            onClick={() => triggerRoll(['d20'])}
-                            className="px-4 py-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition active:scale-95 shadow-lg shadow-red-900/20"
-                        >
-                            رول 1d20
-                        </button>
-                        <button
-                            disabled={isRolling}
-                            onClick={() => triggerRoll(['d20', 'd20'])}
-                            className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 rounded-xl text-sm transition active:scale-95"
-                        >
-                            Advantage (2d20)
-                        </button>
-                        <button
-                            disabled={isRolling}
-                            onClick={() => triggerRoll(['d6'])}
-                            className="px-4 py-2 bg-blue-700/80 hover:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition active:scale-95 shadow-lg shadow-blue-900/20"
-                        >
-                            رول 1d6
-                        </button>
-                        <button
-                            disabled={isRolling}
-                            onClick={() => triggerRoll(['d6', 'd6', 'd6'])}
-                            className="px-4 py-2 bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-700/50 rounded-xl text-sm transition active:scale-95"
-                        >
-                            3d6
-                        </button>
-                    </div>
-
-                    <span className="text-xs text-slate-500 hidden sm:inline">
-            فیزیک بلادرنگ WASM (Rapier)
-          </span>
                 </div>
 
             </div>
