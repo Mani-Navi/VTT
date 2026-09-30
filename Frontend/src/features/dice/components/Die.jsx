@@ -142,7 +142,6 @@ export function Die({
         isSettledRef.current = true;
 
         if (!isRemoteRoll) {
-            // ذخیره موقعیت و زاویه فضایی دقیق برای ارسال به سایر کلاینت‌ها
             const pos = rigidBodyRef.current.translation();
             const rot = rigidBodyRef.current.rotation();
             setDieResult(id, winningValue, {
@@ -268,6 +267,7 @@ export function Die({
         <RigidBody
             ref={rigidBodyRef}
             colliders="hull"
+            ccd={true} // جلوگیری قطعی از فرار تاس از درزها و گوشه‌ها با سرعت بالا
             position={initialPos}
             rotation={initialRotation}
             linearVelocity={initialLinearVelocity}
