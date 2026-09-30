@@ -1,3 +1,4 @@
+// src/services/websocket.service.js
 import { Client } from "@stomp/stompjs";
 import { useWebSocketStore } from "../store/websocket.store.js";
 import { WS_EVENTS } from "../constants/wsEvents.js";
@@ -210,8 +211,9 @@ class WebSocketService {
         action = type;
         break;
       case "DICE_ROLL":
-        destination = `/app/room/${this.currentRoomId}/dice`;
-        action = "ROLL";
+        // ارسال به اندپوینت جنریک برای جلوگیری از فیلتر شدن آبجکت تاس توسط DTO محدود بک‌اند
+        destination = `/app/room/${this.currentRoomId}/event`;
+        action = "DICE_ROLL";
         break;
       case WS_EVENTS.SETTINGS_UPDATED:
       case "SETTINGS_UPDATE":

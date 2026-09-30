@@ -282,19 +282,14 @@ export function useWebSocket(roomId, onMessage = null) {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
 
-      // دریافت مشخصات کاربر محلی برای عدم تکرار پرتابی که خودش زده
-      let myUserId = 'me';
-      try {
-        const stored = localStorage.getItem('vtt_user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          myUserId = parsed.id || parsed.userId || 'me';
-        }
-      } catch (e) {}
+      // دریافت آیدی منحصر‌به‌فرد همین تب
+      const currentTabId = sessionStorage.getItem('vtt_tab_id');
 
-      // اگر پرتاب توسط بازیکنی دیگر انجام شده باشد، شبیه‌سازی روی کلاینت ما اجرا شود
-      if (data && data.dice && Array.isArray(data.dice) && data.senderId !== myUserId) {
-        useDiceStore.getState().triggerRemoteRoll(data.dice, data.rollerName);
+      // اگر پرتاب از تبی غیر از این تب آمده باشد، شبیه‌سازی روی این کلاینت اجرا شود
+      if (data && data.dice && Array.isArray(data.dice)) {
+        if (!currentTabId || data.senderTabId !== currentTabId) {
+          useDiceStore.getState().triggerRemoteRoll(data.dice, data.rollerName);
+        }
       }
 
       if (data && useSceneStore.getState().addDiceRoll) {

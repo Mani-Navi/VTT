@@ -3,13 +3,22 @@ import { create } from 'zustand';
 import { diceAudio } from '../engine/diceAudio';
 import { wsService } from '../../../services/websocket.service';
 
-// دریافت شناسه کاربر فعلی برای جلوگیری از اجرای تکراری رویدادهای بازگشتی از سرور
+// ایجاد آیدی منحصربه‌فرد برای هر تب مرورگر
+const getClientTabId = () => {
+    let tabId = sessionStorage.getItem('vtt_tab_id');
+    if (!tabId) {
+        tabId = 'tab_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+        sessionStorage.setItem('vtt_tab_id', tabId);
+    }
+    return tabId;
+};
+
 const getCurrentUser = () => {
     try {
         const stored = localStorage.getItem('vtt_user');
         if (stored) return JSON.parse(stored);
     } catch (e) {}
-    return { id: 'local-user', username: 'بازیکن' };
+    return { username: 'بازیکن' };
 };
 
 export const useDiceStore = create((set, get) => ({
@@ -24,12 +33,10 @@ export const useDiceStore = create((set, get) => ({
 
     setOpen: (isOpen) => set({ isOpen }),
 
-    /**
-     * پرتاب تاس توسط بازیکن محلی و برودکست به تمام اعضای اتاق
-     */
     triggerRoll: (diceTypes = ['d20'], customPhysics = null) => {
         diceAudio.playThrow(diceTypes.length);
         const user = getCurrentUser();
+        const tabId = getClientTabId();
 
         const newDice = diceTypes.map((type, idx) => {
             const spreadX = (Math.random() - 0.5) * 1.5;
@@ -91,28 +98,25 @@ export const useDiceStore = create((set, get) => ({
             };
         });
 
-        // به‌روزرسانی محلی
         set({
             isOpen: true,
             isRolling: true,
             isRemoteRoll: false,
-            rollerName: null, // پرتاب متعلق به کاربر فعلی است
+            rollerName: null,
             activeDice: newDice,
             results: [],
             totalSum: 0,
         });
 
-        // ارسال به وب‌سوکت برای بقیه بازیکنان
+        // ارسال به وب‌سوکت با شناسه تب
         wsService.send('DICE_ROLL', {
-            senderId: user.id || user.userId || 'me',
+            senderTabId: tabId,
+            senderId: user.id || user.userId || tabId,
             rollerName: user.displayName || user.username || user.name || 'بازیکن',
             dice: newDice,
         });
     },
 
-    /**
-     * اجرای پرتاب تاس دریافت شده از سایر بازیکنان از طریق وب‌سوکت
-     */
     triggerRemoteRoll: (remoteDice, rollerName) => {
         if (!remoteDice || !Array.isArray(remoteDice) || remoteDice.length === 0) return;
 
