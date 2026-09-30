@@ -1,7 +1,8 @@
+// src/features/dice/components/DiceOverlay.jsx
 import React, { useState, useEffect } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
-import { RotateCcw, X, Plus } from 'lucide-react';
+import { RotateCcw, X, Trash2, Dices, Zap } from 'lucide-react';
 
 const DICE_TYPES = [
     { type: 'd4', label: 'D4' },
@@ -15,9 +16,15 @@ const DICE_TYPES = [
 
 export function DiceOverlay() {
     const { isOpen, isRolling, results, totalSum, setOpen, triggerRoll, clearDice, activeDice } = useDiceStore();
-    const [selectedPool, setSelectedPool] = useState([]);
 
-    // تایمر پاک‌سازی خودکار تاس‌ها ۳.۵ ثانیه پس از توقف کامل
+    // حالت انتخاب: 'quick' (تکی و سریع) یا 'pool' (ترکیبی و انتخابی)
+    const [mode, setMode] = useState('quick');
+    // استخر تاس‌های انتخابی برای حالت چندتایی: { d4: 0, d6: 2, d20: 1, ... }
+    const [poolCounts, setPoolCounts] = useState({});
+    // نگهداری آخرین پرتاب انجام‌شده برای دکمه رول مجدد
+    const [lastRollTypes, setLastRollTypes] = useState(['d20']);
+
+    // پاکسازی خودکار ۴.۵ ثانیه پس از سکون کامل همه تاس‌ها
     useEffect(() => {
         let timer;
         if (!isRolling && results.length > 0 && activeDice.length > 0) {
@@ -30,56 +37,109 @@ export function DiceOverlay() {
 
     if (!isOpen && activeDice.length === 0) return null;
 
-    const handleQuickAdd = (type) => {
+    // ۱. پرتاب تکی و سریع (فقط همان تاس انتخاب‌شده)
+    const handleQuickRoll = (type) => {
+        let diceToRoll = [];
         if (type === 'd100') {
-            const nextPool = ['d100', 'd10'];
-            setSelectedPool(nextPool);
-            triggerRoll(nextPool);
-            return;
+            diceToRoll = ['d100', 'd10']; // جفت صدگان و یکان طبق قوانین D&D
+        } else {
+            diceToRoll = [type];
         }
-        const nextPool = [...selectedPool, type];
-        setSelectedPool(nextPool);
-        triggerRoll(nextPool);
+        setLastRollTypes(diceToRoll);
+        triggerRoll(diceToRoll);
     };
 
+    // ۲. افزودن تاس به استخر (حالت چندتایی)
+    const handleAddToPool = (type) => {
+        setPoolCounts((prev) => ({
+            ...prev,
+            [type]: (prev[type] || 0) + 1,
+        }));
+    };
+
+    // ۳. کاهش تاس از استخر
+    const handleRemoveFromPool = (type, e) => {
+        e.stopPropagation();
+        setPoolCounts((prev) => {
+            const current = prev[type] || 0;
+            if (current <= 1) {
+                const next = { ...prev };
+                delete next[type];
+                return next;
+            }
+            return { ...prev, [type]: current - 1 };
+        });
+    };
+
+    // ۴. خالی کردن کل استخر
+    const handleClearPool = () => {
+        setPoolCounts({});
+    };
+
+    // ۵. پرتاب کل استخر ساخته‌شده
+    const handleRollPool = () => {
+        const diceToRoll = [];
+        Object.entries(poolCounts).forEach(([type, count]) => {
+            for (let i = 0; i < count; i++) {
+                if (type === 'd100') {
+                    diceToRoll.push('d100', 'd10');
+                } else {
+                    diceToRoll.push(type);
+                }
+            }
+        });
+
+        if (diceToRoll.length === 0) return;
+
+        setLastRollTypes(diceToRoll);
+        triggerRoll(diceToRoll);
+    };
+
+    // مجموع تعداد تاس‌های حاضر در استخر
+    const totalPoolDiceCount = Object.values(poolCounts).reduce((a, b) => a + b, 0);
+
+    // رول مجدد آخرین ترکیب پرتاب‌شده
     const handleReRoll = () => {
-        if (selectedPool.length > 0) {
-            triggerRoll(selectedPool);
+        if (lastRollTypes.length > 0) {
+            triggerRoll(lastRollTypes);
         } else {
             triggerRoll(['d20']);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[110] pointer-events-none select-none font-fa">
+        <div className="fixed inset-0 z-[110] pointer-events-none select-none font-fa" dir="rtl">
 
-            {/* رندر بلادرنگ ۳D تاس‌ها مستقیماً روی نقشه بازی */}
+            {/* رندر بلادرنگ سه‌بعدی فیزیک تاس‌ها روی مپ */}
             <div className="absolute inset-0">
                 <DiceCanvas />
             </div>
 
-            {/* بنر نتیجه نهایی بزرگ و درخشان در بالای صفحه */}
+            {/* بنر نتیجه نهایی در بالای صفحه */}
             {results.length > 0 && (
-                <div className="absolute top-16 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex items-center gap-3 bg-zinc-950/85 border border-purple-500/40 px-6 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md">
-                        <span className="text-zinc-400 text-xs font-bold">نتیجه پرتاب:</span>
-                        <span className={`text-4xl font-black font-mono ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-amber-400'}`}>
-              {totalSum}
-            </span>
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-3.5 bg-zinc-950/90 border border-purple-500/40 px-5 py-2.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+                        <span className="text-zinc-400 text-xs font-medium">مجموع:</span>
+                        <span className={`text-3xl font-black font-mono tracking-tight ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]'}`}>
+                            {totalSum}
+                        </span>
 
-                        {/* تفکیک مقادیر هر تاس */}
-                        <div className="flex items-center gap-1.5 border-r border-zinc-800 pr-3 mr-1">
+                        {/* تفکیک مقادیر تک‌تک تاس‌ها */}
+                        <div className="flex items-center gap-1.5 border-r border-zinc-800 pr-3.5 mr-1">
                             {results.map((r, i) => (
-                                <span key={i} className="text-xs bg-purple-950/70 border border-purple-500/30 text-amber-200 px-2 py-0.5 rounded-lg font-mono font-bold">
-                  {r.value}
-                </span>
+                                <span
+                                    key={i}
+                                    className="text-xs bg-purple-950/60 border border-purple-500/30 text-amber-200/90 px-2 py-0.5 rounded-lg font-mono font-bold shadow-inner"
+                                >
+                                    {r.value}
+                                </span>
                             ))}
                         </div>
 
                         <button
                             onClick={handleReRoll}
-                            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
-                            title="رول مجدد"
+                            className="p-1.5 text-zinc-400 hover:text-amber-300 rounded-lg hover:bg-zinc-800/80 transition"
+                            title="پرتاب مجدد"
                         >
                             <RotateCcw className="w-4 h-4" />
                         </button>
@@ -87,30 +147,117 @@ export function DiceOverlay() {
                 </div>
             )}
 
-            {/* داک شناور و مینیمال انتخاب تاس‌ها در پایین-راست نقشه (بدون سد کردن دید) */}
-            <div className="absolute bottom-6 left-6 pointer-events-auto flex items-center gap-1.5 bg-zinc-950/90 border border-zinc-800/90 p-1.5 rounded-2xl shadow-2xl backdrop-blur-xl">
-                {DICE_TYPES.map((d) => (
+            {/* کنترل‌پنل شناور انتخاب تاس (طراحی شده هماهنگ با HUD بازی) */}
+            <div className="absolute bottom-6 left-6 pointer-events-auto flex flex-col gap-2">
+
+                {/* استخر تاس‌های انتخاب‌شده در حالت چندتایی */}
+                {mode === 'pool' && totalPoolDiceCount > 0 && (
+                    <div className="bg-zinc-950/95 border border-purple-500/30 p-2 rounded-2xl shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                        <div className="flex items-center gap-1.5 flex-wrap max-w-xs">
+                            {Object.entries(poolCounts).map(([type, count]) => (
+                                <button
+                                    key={type}
+                                    onClick={(e) => handleRemoveFromPool(type, e)}
+                                    title="برای حذف یک عدد کلیک کنید"
+                                    className="flex items-center gap-1 px-2 py-1 rounded-xl bg-purple-950/70 border border-purple-500/40 text-amber-300 text-xs font-mono font-bold hover:bg-rose-950/60 hover:border-rose-500/50 hover:text-rose-200 transition group"
+                                >
+                                    <span>{count}×</span>
+                                    <span className="uppercase">{type}</span>
+                                    <span className="text-[10px] text-zinc-500 group-hover:text-rose-300 mr-0.5">×</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={handleClearPool}
+                                className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-zinc-800 transition"
+                                title="پاکسازی استخر"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+
+                            <button
+                                onClick={handleRollPool}
+                                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition flex items-center gap-1.5"
+                            >
+                                <Dices className="w-3.5 h-3.5" />
+                                <span>پرتاب ({totalPoolDiceCount})</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* داک اصلی دکمه‌های تاس */}
+                <div className="flex items-center gap-1.5 bg-zinc-950/95 border border-zinc-800/90 p-1.5 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+
+                    {/* سوئیچر حالت (سریع vs استخر) */}
+                    <div className="flex items-center bg-zinc-900/90 p-0.5 rounded-xl border border-zinc-800/80 ml-1">
+                        <button
+                            onClick={() => setMode('quick')}
+                            className={`p-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                                mode === 'quick'
+                                    ? 'bg-purple-950 border border-purple-500/40 text-amber-300 shadow-sm'
+                                    : 'text-zinc-400 hover:text-zinc-200'
+                            }`}
+                            title="پرتاب سریع (تکی)"
+                        >
+                            <Zap className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={() => setMode('pool')}
+                            className={`p-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                                mode === 'pool'
+                                    ? 'bg-purple-950 border border-purple-500/40 text-amber-300 shadow-sm'
+                                    : 'text-zinc-400 hover:text-zinc-200'
+                            }`}
+                            title="حالت استخر (چندتایی)"
+                        >
+                            <Dices className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    <div className="w-px h-5 bg-zinc-800 mx-0.5" />
+
+                    {/* لیست دکمه‌های تاس D4 تا D100 */}
+                    {DICE_TYPES.map((d) => {
+                        const inPoolCount = poolCounts[d.type] || 0;
+                        return (
+                            <button
+                                key={d.type}
+                                onClick={() => {
+                                    if (mode === 'quick') {
+                                        handleQuickRoll(d.type);
+                                    } else {
+                                        handleAddToPool(d.type);
+                                    }
+                                }}
+                                className="relative px-2.5 py-1.5 rounded-xl bg-purple-950/30 hover:bg-purple-900/50 border border-purple-500/20 hover:border-amber-500/40 text-amber-200 font-serif text-xs font-bold transition active:scale-95 group"
+                            >
+                                <span>{d.label}</span>
+                                {mode === 'pool' && inPoolCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-zinc-950 text-[10px] font-sans font-black rounded-full flex items-center justify-center shadow-md animate-in zoom-in-75">
+                                        {inPoolCount}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+
+                    <div className="w-px h-5 bg-zinc-800 mx-0.5" />
+
+                    {/* دکمه بستن لایه */}
                     <button
-                        key={d.type}
-                        onClick={() => handleQuickAdd(d.type)}
-                        className="px-2.5 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/20 hover:border-amber-500/40 text-amber-300 font-serif text-xs font-bold transition active:scale-90"
+                        onClick={() => {
+                            clearDice();
+                            setOpen(false);
+                        }}
+                        className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-zinc-900 transition"
+                        title="بستن"
                     >
-                        {d.label}
+                        <X className="w-4 h-4" />
                     </button>
-                ))}
-
-                <div className="w-px h-5 bg-zinc-800 mx-1" />
-
-                <button
-                    onClick={() => {
-                        clearDice();
-                        setOpen(false);
-                    }}
-                    className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-lg transition"
-                    title="بستن"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+                </div>
             </div>
 
         </div>
