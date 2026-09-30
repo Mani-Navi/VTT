@@ -1,3 +1,4 @@
+// src/features/dice/components/DiceCanvas.jsx
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
@@ -13,12 +14,14 @@ export function DiceCanvas() {
             shadows
             gl={{ alpha: true, antialias: true }}
             camera={{ position: [0, 16, 0.01], fov: 45 }}
-            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+            style={{
+                width: '100%',
+                height: '100%',
+                pointerEvents: activeDice.length > 0 ? 'auto' : 'none',
+            }}
         >
-            {/* نور محیطی ملایم */}
             <ambientLight intensity={0.7} color="#fed7aa" />
 
-            {/* نور اصلی که سایه تاس‌ها را روی مپ ۲بعدی زیرین می‌اندازد */}
             <directionalLight
                 position={[6, 18, 8]}
                 intensity={1.9}
