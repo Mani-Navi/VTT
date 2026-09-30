@@ -1,13 +1,13 @@
-// src/features/dice/components/Die.jsx
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
 import { DICE_CONFIGS } from '../engine/diceDefinitions';
-import { createD6Materials, createD20Materials } from '../engine/textureGenerator';
+import { createMaterialsForType } from '../engine/textureGenerator';
 import { useDiceStore } from '../state/dice.store';
 
 const UP_VECTOR = new THREE.Vector3(0, 1, 0);
+const DOWN_VECTOR = new THREE.Vector3(0, -1, 0);
 const VELOCITY_THRESHOLD = 0.08;
 const ANGULAR_THRESHOLD = 0.12;
 const REQUIRED_STABLE_FRAMES = 25;
@@ -28,43 +28,61 @@ export function Die({
     const isSettledRef = useRef(false);
     const spawnTimeRef = useRef(Date.now());
 
+    // تولید هندسه چندمتریاله و نگاشت دقیق UV و Materialها
     const { geometry, materials } = useMemo(() => {
-        if (type === 'd20') {
-            const geom = new THREE.IcosahedronGeometry(config.radius, 0).toNonIndexed();
-            geom.clearGroups();
+        const geom = config.createGeometry();
+        const faceValues = config.faces.map((f) => f.value);
 
-            const uvs = [];
-            for (let i = 0; i < 20; i++) {
-                geom.addGroup(i * 3, 3, i);
-                uvs.push(
-                    0.5, 0.95,
-                    0.05, 0.05,
-                    0.95, 0.05
-                );
-            }
-            geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-            geom.computeVertexNormals();
-
-            const mats = createD20Materials(config.faces.map((f) => f.value));
+        // نگاشت استاندارد ۶ وجه تاس d6
+        if (type === 'd6') {
+            const d6Order = [3, 4, 6, 1, 5, 2];
+            const mats = createMaterialsForType('d6', d6Order);
             return { geometry: geom, materials: mats };
         }
 
-        const geom = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-        const mats = createD6Materials();
+        const faceCount = config.faces.length;
+        geom.clearGroups();
+
+        // تعیین تعداد مثلث‌های تشکیل‌دهنده هر وجه
+        const trianglesPerFace =
+            type === 'd10' || type === 'd100' ? 2 : type === 'd12' ? 3 : 1;
+
+        for (let i = 0; i < faceCount; i++) {
+            geom.addGroup(i * trianglesPerFace * 3, trianglesPerFace * 3, i);
+        }
+
+        // اگر ژئومتری از قبل مختصات UV نداشت، نگاشت مثلثی اعمال شود
+        if (!geom.attributes.uv) {
+            const uvs = [];
+            for (let i = 0; i < faceCount; i++) {
+                for (let t = 0; t < trianglesPerFace; t++) {
+                    uvs.push(0.5, 0.95, 0.05, 0.05, 0.95, 0.05);
+                }
+            }
+            geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        }
+
+        geom.computeVertexNormals();
+
+        const mats = createMaterialsForType(type, faceValues);
         return { geometry: geom, materials: mats };
     }, [type, config]);
 
+    // الگوریتم قطعی استخراج عدد وجه برنده پس از سکون
     const calculateTopValue = () => {
         if (!rigidBodyRef.current || isSettledRef.current) return;
         const rotation = rigidBodyRef.current.rotation();
         const quat = new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+
+        // در D4 چون روی قاعده می‌خوابد، وجه روی زمین برنده است؛ در سایر تاس‌ها وجه رو به آسمان
+        const targetVector = type === 'd4' ? DOWN_VECTOR : UP_VECTOR;
 
         let maxDot = -Infinity;
         let winningValue = null;
 
         for (const face of config.faces) {
             const worldNormal = face.normal.clone().applyQuaternion(quat);
-            const dot = worldNormal.dot(UP_VECTOR);
+            const dot = worldNormal.dot(targetVector);
 
             if (dot > maxDot) {
                 maxDot = dot;
@@ -72,8 +90,8 @@ export function Die({
             }
         }
 
-        // رفع حالت لبه (Cocked Die) با ریزضربه فیزیکی
-        if (maxDot < 0.62) {
+        // حالت تاس کج/ایستاده روی لبه (Cocked Die): اعمال ریزضربه اصلاحی
+        if (maxDot < 0.6) {
             rigidBodyRef.current.applyImpulse({ x: 0.15, y: 0.6, z: 0.15 }, true);
             rigidBodyRef.current.applyTorqueImpulse({ x: 0.3, y: 0.3, z: 0.3 }, true);
             stableFrameCounter.current = 0;
@@ -84,10 +102,11 @@ export function Die({
         setDieResult(id, winningValue);
     };
 
+    // حلقه مانیتورینگ سرعت و سکون فیزیکی در هر فریم
     useFrame(() => {
         if (isSettledRef.current || !rigidBodyRef.current) return;
 
-        // جلوگیری از ثبت نتیجه در ۱ ثانیه اول پرتاب
+        // جلوگیری از تشخیص اشتباه در ثانیه اول پرتاب
         if (Date.now() - spawnTimeRef.current < 900) return;
 
         const linvel = rigidBodyRef.current.linvel();
@@ -105,7 +124,7 @@ export function Die({
             stableFrameCounter.current = 0;
         }
 
-        // تایم‌اوت اضطراری در ثانیه ۵.۵
+        // تایم‌اوت اضطراری در صورت نوسان‌های نامحسوس
         if (Date.now() - spawnTimeRef.current > 5500) {
             calculateTopValue();
         }
@@ -119,8 +138,8 @@ export function Die({
             rotation={initialRotation}
             linearVelocity={initialLinearVelocity}
             angularVelocity={initialAngularVelocity}
-            restitution={0.5}
-            friction={0.4}
+            restitution={0.46} // کشسانی طبیعی برای پرش روی نمد
+            friction={0.5}     // اصطکاک استاندارد رزین
             linearDamping={0.08}
             angularDamping={0.12}
         >
