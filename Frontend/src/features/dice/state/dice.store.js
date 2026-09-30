@@ -1,5 +1,6 @@
 // src/features/dice/state/dice.store.js
 import { create } from 'zustand';
+import { diceAudio } from '../engine/diceAudio';
 
 export const useDiceStore = create((set, get) => ({
     isOpen: false,
@@ -12,6 +13,7 @@ export const useDiceStore = create((set, get) => ({
     setOpen: (isOpen) => set({ isOpen }),
 
     triggerRoll: (diceTypes = ['d20']) => {
+        diceAudio.playThrow(diceTypes.length);
         const newDice = diceTypes.map((type, idx) => ({
             id: `${type}-${Date.now()}-${idx}-${Math.random()}`,
             type,

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { DICE_CONFIGS } from '../engine/diceDefinitions';
 import { createMaterialsForType } from '../engine/textureGenerator';
 import { useDiceStore } from '../state/dice.store';
+import { diceAudio } from '../engine/diceAudio';
 
 const UP_VECTOR = new THREE.Vector3(0, 1, 0);
 const DOWN_VECTOR = new THREE.Vector3(0, -1, 0);
@@ -67,6 +68,18 @@ export function Die({
         const mats = createMaterialsForType(type, faceValues);
         return { geometry: geom, materials: mats };
     }, [type, config]);
+
+    const handleCollision = (event) => {
+        if (!rigidBodyRef.current) return;
+        const linvel = rigidBodyRef.current.linvel();
+        const speed = Math.hypot(linvel.x, linvel.y, linvel.z);
+
+        // اگر ضربه محسوس باشد، متناسب با سرعت صدا تولید می‌شود
+        if (speed > 0.8) {
+            const intensity = Math.min(speed / 16, 1.0);
+            diceAudio.playImpact(intensity);
+        }
+    };
 
     // الگوریتم قطعی استخراج عدد وجه برنده پس از سکون
     const calculateTopValue = () => {
@@ -138,10 +151,11 @@ export function Die({
             rotation={initialRotation}
             linearVelocity={initialLinearVelocity}
             angularVelocity={initialAngularVelocity}
-            restitution={0.46} // کشسانی طبیعی برای پرش روی نمد
-            friction={0.5}     // اصطکاک استاندارد رزین
+            restitution={0.46}
+            friction={0.5}
             linearDamping={0.08}
             angularDamping={0.12}
+            onCollisionEnter={handleCollision} // اتصال صدای برخورد
         >
             <mesh
                 geometry={geometry}
@@ -151,4 +165,5 @@ export function Die({
             />
         </RigidBody>
     );
+
 }
