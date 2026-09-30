@@ -30,6 +30,7 @@ export function Die({
     const isRemoteRoll = useDiceStore((s) => s.isRemoteRoll);
     const broadcastReThrow = useDiceStore((s) => s.broadcastReThrow);
     const remoteReThrow = useDiceStore((s) => s.remoteReThrow);
+    const settledTransforms = useDiceStore((s) => s.settledTransforms);
 
     const stableFrameCounter = useRef(0);
     const isSettledRef = useRef(false);
@@ -38,7 +39,19 @@ export function Die({
     const isDraggingRef = useRef(false);
     const dragHistoryRef = useRef([]);
 
-    // گوش دادن به پرتاب مجدد دست که از سرور می‌آید
+    // همگام‌سازی دوران و موقعیت قطعی دریافتی از پرتاب‌کننده
+    useEffect(() => {
+        if (!isRemoteRoll || !settledTransforms?.[id] || !rigidBodyRef.current) return;
+
+        const target = settledTransforms[id];
+        rigidBodyRef.current.setTranslation(target.position, true);
+        rigidBodyRef.current.setRotation(target.rotation, true);
+        rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        rigidBodyRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        isSettledRef.current = true;
+    }, [settledTransforms, id, isRemoteRoll]);
+
+    // پرتاب مجدد دست
     useEffect(() => {
         if (!remoteReThrow || remoteReThrow.dieId !== id || !rigidBodyRef.current) return;
 
@@ -127,9 +140,15 @@ export function Die({
         }
 
         isSettledRef.current = true;
-        // فقط خود پرتاب‌کننده برنده را سِت و برودکست می‌کند؛ بقیه از DICE_SETTLED دریافت می‌کنند
+
         if (!isRemoteRoll) {
-            setDieResult(id, winningValue);
+            // ذخیره موقعیت و زاویه فضایی دقیق برای ارسال به سایر کلاینت‌ها
+            const pos = rigidBodyRef.current.translation();
+            const rot = rigidBodyRef.current.rotation();
+            setDieResult(id, winningValue, {
+                position: { x: pos.x, y: pos.y, z: pos.z },
+                rotation: { x: rot.x, y: rot.y, z: rot.z, w: rot.w },
+            });
         }
     };
 
@@ -158,9 +177,8 @@ export function Die({
         }
     });
 
-    // ۱. گرفتن تاس با ماوس (فقط برای صاحب تاس مجاز است)
     const handlePointerDown = (e) => {
-        if (isRemoteRoll) return; // قفل تعامل برای سایر بازیکنان
+        if (isRemoteRoll) return;
         e.stopPropagation();
         e.target.setPointerCapture(e.pointerId);
 
@@ -238,7 +256,6 @@ export function Die({
         stableFrameCounter.current = 0;
         isSettledRef.current = false;
 
-        // همگام‌سازی بلادرنگ پرتاب مجدد برای بقیه بازیکنان اتاق
         broadcastReThrow(
             id,
             { x: lastPos.x, y: 3.2, z: lastPos.z },

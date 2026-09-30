@@ -29,6 +29,7 @@ export const useDiceStore = create((set, get) => ({
     rollerName: null,
     isRemoteRoll: false,
     remoteReThrow: null,
+    settledTransforms: {}, // نگهداری موقعیت و دوران قطعی تمام تاس‌ها
     rollHistory: [],
 
     setOpen: (isOpen) => set({ isOpen }),
@@ -103,6 +104,7 @@ export const useDiceStore = create((set, get) => ({
             isRolling: true,
             isRemoteRoll: false,
             rollerName: null,
+            settledTransforms: {},
             activeDice: newDice,
             results: [],
             totalSum: 0,
@@ -122,17 +124,17 @@ export const useDiceStore = create((set, get) => ({
         diceAudio.playThrow(remoteDice.length);
 
         set({
-            isOpen: false, // منوی انتخاب برای دیگران باز نشود
+            isOpen: false,
             isRolling: true,
             isRemoteRoll: true,
             rollerName: rollerName || 'هم‌تیمی',
+            settledTransforms: {},
             activeDice: remoteDice,
             results: [],
             totalSum: 0,
         });
     },
 
-    // پرتاب مجدد تاس با دست توسط پرتاب‌کننده
     broadcastReThrow: (dieId, translation, velocity, angularVelocity) => {
         const tabId = getClientTabId();
         wsService.send('DICE_RETHROW', {
@@ -148,17 +150,17 @@ export const useDiceStore = create((set, get) => ({
         set({ remoteReThrow: { ...data, timestamp: Date.now() }, isRolling: true });
     },
 
-    // اعمال نتیجه معتبر و قطعی از سمت پرتاب‌کننده اصلی
-    setRemoteResults: (results, totalSum) => {
+    setRemoteResults: (results, totalSum, transforms = {}) => {
         set({
             results,
             totalSum,
+            settledTransforms: transforms || {},
             isRolling: false,
         });
     },
 
-    setDieResult: (dieId, value) => {
-        const { activeDice, results, isRemoteRoll } = get();
+    setDieResult: (dieId, value, transform = null) => {
+        const { activeDice, results, isRemoteRoll, settledTransforms } = get();
 
         const updatedDice = activeDice.map((d) =>
             d.id === dieId ? { ...d, settled: true, value } : d
@@ -171,6 +173,10 @@ export const useDiceStore = create((set, get) => ({
             ...results.filter((r) => r.id !== dieId),
             { id: dieId, type: dieType, value: Number(value) },
         ];
+
+        const updatedTransforms = transform
+            ? { ...settledTransforms, [dieId]: transform }
+            : settledTransforms;
 
         const allSettled = updatedDice.every((d) => d.settled);
 
@@ -190,10 +196,10 @@ export const useDiceStore = create((set, get) => ({
             activeDice: updatedDice,
             results: newResults,
             totalSum: sum,
+            settledTransforms: updatedTransforms,
             isRolling: !allSettled,
         });
 
-        // اگر خود پرتاب‌کننده تاس را متوقف کرد، نتیجه معتبر را به همه می‌فرستد
         if (allSettled) {
             if (!isRemoteRoll) {
                 const tabId = getClientTabId();
@@ -201,6 +207,7 @@ export const useDiceStore = create((set, get) => ({
                     senderTabId: tabId,
                     results: newResults,
                     totalSum: sum,
+                    transforms: updatedTransforms,
                 });
             }
 
@@ -213,5 +220,5 @@ export const useDiceStore = create((set, get) => ({
         }
     },
 
-    clearDice: () => set({ activeDice: [], results: [], totalSum: 0, isRolling: false, rollerName: null, isRemoteRoll: false }),
+    clearDice: () => set({ activeDice: [], results: [], totalSum: 0, isRolling: false, rollerName: null, isRemoteRoll: false, settledTransforms: {} }),
 }));

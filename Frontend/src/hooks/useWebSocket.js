@@ -269,7 +269,6 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۶. همگام‌سازی بلادرنگ فیزیک و رویدادهای تاس
     const unsubDice = wsService.on("DICE_ROLL", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -287,18 +286,17 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۶.۱. دریافت نتایج معتبر قطعی از پرتاب‌کننده
+    // ۶.۱. دریافت نتایج معتبر به همراه موقعیت و دوران دقیق سه‌بعدی تمام تاس‌ها
     const unsubDiceSettled = wsService.on("DICE_SETTLED", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
       const currentTabId = sessionStorage.getItem('vtt_tab_id');
 
       if (data && (!currentTabId || data.senderTabId !== currentTabId)) {
-        useDiceStore.getState().setRemoteResults(data.results, data.totalSum);
+        useDiceStore.getState().setRemoteResults(data.results, data.totalSum, data.transforms);
       }
     });
 
-    // ۶.۲. دریافت پرتاب مجدد تاس با دست
     const unsubDiceReThrow = wsService.on("DICE_RETHROW", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
