@@ -1,4 +1,3 @@
-// src/features/dice/components/Die.jsx
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
@@ -19,6 +18,7 @@ const DRAG_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), -3.2);
 export function Die({
                         id,
                         type,
+                        theme = 'amethyst',
                         initialPos,
                         initialRotation,
                         initialLinearVelocity,
@@ -71,7 +71,7 @@ export function Die({
 
         if (type === 'd6') {
             const d6Order = [3, 4, 6, 1, 5, 2];
-            const mats = createMaterialsForType('d6', d6Order);
+            const mats = createMaterialsForType('d6', d6Order, theme);
             return { geometry: geom, materials: mats };
         }
 
@@ -97,9 +97,9 @@ export function Die({
 
         geom.computeVertexNormals();
 
-        const mats = createMaterialsForType(type, faceValues);
+        const mats = createMaterialsForType(type, faceValues, theme);
         return { geometry: geom, materials: mats };
-    }, [type, config]);
+    }, [type, config, theme]);
 
     const handleCollision = () => {
         if (!rigidBodyRef.current || isDraggingRef.current) return;
@@ -267,7 +267,7 @@ export function Die({
         <RigidBody
             ref={rigidBodyRef}
             colliders="hull"
-            ccd={true} // جلوگیری قطعی از فرار تاس از درزها و گوشه‌ها با سرعت بالا
+            ccd={true}
             position={initialPos}
             rotation={initialRotation}
             linearVelocity={initialLinearVelocity}

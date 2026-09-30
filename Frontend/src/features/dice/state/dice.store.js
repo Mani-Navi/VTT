@@ -1,4 +1,3 @@
-// src/features/dice/state/dice.store.js
 import { create } from 'zustand';
 import { diceAudio } from '../engine/diceAudio';
 import { wsService } from '../../../services/websocket.service';
@@ -20,6 +19,14 @@ const getCurrentUser = () => {
     return { username: 'بازیکن' };
 };
 
+const getSavedTheme = () => {
+    try {
+        const saved = localStorage.getItem('vtt_dice_theme');
+        if (saved) return saved;
+    } catch (e) {}
+    return 'midnight';
+};
+
 export const useDiceStore = create((set, get) => ({
     isOpen: false,
     isRolling: false,
@@ -31,6 +38,14 @@ export const useDiceStore = create((set, get) => ({
     remoteReThrow: null,
     settledTransforms: {}, // نگهداری موقعیت و دوران قطعی تمام تاس‌ها
     rollHistory: [],
+    selectedTheme: getSavedTheme(),
+
+    setSelectedTheme: (theme) => {
+        try {
+            localStorage.setItem('vtt_dice_theme', theme);
+        } catch (e) {}
+        set({ selectedTheme: theme });
+    },
 
     setOpen: (isOpen) => set({ isOpen }),
 
@@ -38,6 +53,7 @@ export const useDiceStore = create((set, get) => ({
         diceAudio.playThrow(diceTypes.length);
         const user = getCurrentUser();
         const tabId = getClientTabId();
+        const theme = get().selectedTheme;
 
         const newDice = diceTypes.map((type, idx) => {
             const spreadX = (Math.random() - 0.5) * 1.5;
@@ -86,6 +102,7 @@ export const useDiceStore = create((set, get) => ({
             return {
                 id: `${type}-${Date.now()}-${idx}-${Math.random()}`,
                 type,
+                theme,
                 settled: false,
                 value: null,
                 initialPos,

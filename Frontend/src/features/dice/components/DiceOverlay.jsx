@@ -1,7 +1,7 @@
-// src/features/dice/components/DiceOverlay.jsx
 import React, { useState } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
+import { DICE_THEMES } from '../engine/textureGenerator';
 import { RotateCcw, X, Trash2, Dices, Zap, User } from 'lucide-react';
 
 const DICE_TYPES = [
@@ -15,7 +15,20 @@ const DICE_TYPES = [
 ];
 
 export function DiceOverlay() {
-    const { isOpen, isRolling, results, totalSum, rollerName, isRemoteRoll, setOpen, triggerRoll, clearDice, activeDice } = useDiceStore();
+    const {
+        isOpen,
+        isRolling,
+        results,
+        totalSum,
+        rollerName,
+        isRemoteRoll,
+        setOpen,
+        triggerRoll,
+        clearDice,
+        activeDice,
+        selectedTheme,
+        setSelectedTheme,
+    } = useDiceStore();
 
     const [mode, setMode] = useState('quick');
     const [poolCounts, setPoolCounts] = useState({});
@@ -184,6 +197,28 @@ export function DiceOverlay() {
                     )}
 
                     <div className="flex items-center gap-1.5 bg-zinc-950/95 border border-zinc-800/90 p-1.5 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+
+                        {/* انتخاب تِم رنگی ۶‌گانه */}
+                        <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800/80 ml-1">
+                            {Object.values(DICE_THEMES).map((t) => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setSelectedTheme(t.id)}
+                                    title={t.name}
+                                    className={`w-5 h-5 rounded-full transition-all duration-150 relative ${
+                                        selectedTheme === t.id
+                                            ? 'ring-2 ring-amber-400 scale-110 shadow-[0_0_8px_rgba(251,191,36,0.5)] z-10'
+                                            : 'opacity-70 hover:opacity-100 hover:scale-105'
+                                    }`}
+                                    style={{
+                                        background: `linear-gradient(135deg, ${t.bgCenter} 0%, ${t.bgEdge} 100%)`,
+                                        border: `1.5px solid ${t.borderColor || '#ca8a04'}`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="w-px h-5 bg-zinc-800 mx-0.5" />
 
                         <div className="flex items-center bg-zinc-900/90 p-0.5 rounded-xl border border-zinc-800/80 ml-1">
                             <button
