@@ -1,57 +1,39 @@
 import React from 'react';
+import { useThree } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 
-export function Tray({ width = 7.6, length = 13.8, wallHeight = 12 }) {
+export function Tray() {
+    const { viewport } = useThree();
+    const width = viewport.width;
+    const height = viewport.height;
     const halfW = width / 2;
-    const halfL = length / 2;
-    const rimThickness = 0.5;
-    const rimHeight = 0.8;
+    const halfH = height / 2;
+    const wallThickness = 1.0;
+    const wallHeight = 12.0;
 
     return (
-        <group position={[0, -0.4, 0]}>
-            {/* کف نمدی/چرمی مات سینی */}
-            <RigidBody type="fixed" friction={0.65} restitution={0.32}>
-                <CuboidCollider args={[halfW, 0.4, halfL]} position={[0, -0.4, 0]} />
-                <mesh receiveShadow position={[0, -0.39, 0]}>
-                    <boxGeometry args={[width, 0.8, length]} />
-                    <meshStandardMaterial
-                        color="#141316"
-                        roughness={0.92}
-                        metalness={0.05}
-                    />
+        <group position={[0, 0, 0]}>
+            {/* کف سینی نامرئی با قابلیت دریافت سایه زنده روی نقشه */}
+            <RigidBody type="fixed" friction={0.6} restitution={0.35}>
+                <CuboidCollider args={[halfW * 1.5, 0.2, halfH * 1.5]} position={[0, -0.2, 0]} />
+
+                {/* این متریال فقط سایه تاس‌ها را روی نقشه زیرین می‌اندازد و خود سطح شفاف است */}
+                <mesh receiveShadow position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <planeGeometry args={[width * 2, height * 2]} />
+                    <shadowMaterial opacity={0.38} />
                 </mesh>
             </RigidBody>
 
-            {/* قاب چوبی گردوی تیره دور سینی (ماهوگانی با لبه‌های پخ‌خورده) */}
-            <group position={[0, 0, 0]}>
-                {/* لبه بالایی */}
-                <mesh position={[0, rimHeight / 2 - 0.2, -halfL - rimThickness / 2]} receiveShadow castShadow>
-                    <boxGeometry args={[width + rimThickness * 2, rimHeight, rimThickness]} />
-                    <meshStandardMaterial color="#24130d" roughness={0.4} metalness={0.1} />
-                </mesh>
-                {/* لبه پایینی */}
-                <mesh position={[0, rimHeight / 2 - 0.2, halfL + rimThickness / 2]} receiveShadow castShadow>
-                    <boxGeometry args={[width + rimThickness * 2, rimHeight, rimThickness]} />
-                    <meshStandardMaterial color="#24130d" roughness={0.4} metalness={0.1} />
-                </mesh>
-                {/* لبه چپ */}
-                <mesh position={[-halfW - rimThickness / 2, rimHeight / 2 - 0.2, 0]} receiveShadow castShadow>
-                    <boxGeometry args={[rimThickness, rimHeight, length]} />
-                    <meshStandardMaterial color="#20100a" roughness={0.4} metalness={0.1} />
-                </mesh>
-                {/* لبه راست */}
-                <mesh position={[halfW + rimThickness / 2, rimHeight / 2 - 0.2, 0]} receiveShadow castShadow>
-                    <boxGeometry args={[rimThickness, rimHeight, length]} />
-                    <meshStandardMaterial color="#20100a" roughness={0.4} metalness={0.1} />
-                </mesh>
-            </group>
-
-            {/* دیواره‌های برخورددهنده فیزیکی نامرئی */}
-            <RigidBody type="fixed" friction={0.25} restitution={0.45}>
-                <CuboidCollider args={[halfW, wallHeight / 2, 0.5]} position={[0, wallHeight / 2, -halfL]} />
-                <CuboidCollider args={[halfW, wallHeight / 2, 0.5]} position={[0, wallHeight / 2, halfL]} />
-                <CuboidCollider args={[0.5, wallHeight / 2, halfL]} position={[-halfW, wallHeight / 2, 0]} />
-                <CuboidCollider args={[0.5, wallHeight / 2, halfL]} position={[halfW, wallHeight / 2, 0]} />
+            {/* دیواره‌های نامرئی منطبق بر لبه‌های کادر صفحه نمایش */}
+            <RigidBody type="fixed" friction={0.2} restitution={0.5}>
+                {/* دیوار بالا (شمال) */}
+                <CuboidCollider args={[halfW + wallThickness, wallHeight / 2, wallThickness / 2]} position={[0, wallHeight / 2, -halfH - wallThickness / 2]} />
+                {/* دیوار پایین (جنوب) */}
+                <CuboidCollider args={[halfW + wallThickness, wallHeight / 2, wallThickness / 2]} position={[0, wallHeight / 2, halfH + wallThickness / 2]} />
+                {/* دیوار چپ (غرب) */}
+                <CuboidCollider args={[wallThickness / 2, wallHeight / 2, halfH + wallThickness]} position={[-halfW - wallThickness / 2, wallHeight / 2, 0]} />
+                {/* دیوار راست (شرق) */}
+                <CuboidCollider args={[wallThickness / 2, wallHeight / 2, halfH + wallThickness]} position={[halfW + wallThickness / 2, wallHeight / 2, 0]} />
             </RigidBody>
         </group>
     );

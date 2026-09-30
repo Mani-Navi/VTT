@@ -1,33 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
-import { RotateCcw, X, Eye, Plus, Search } from 'lucide-react';
+import { RotateCcw, X, Plus } from 'lucide-react';
 
 const DICE_TYPES = [
-    { type: 'd4', label: '4' },
-    { type: 'd6', label: '6' },
-    { type: 'd8', label: '8' },
-    { type: 'd10', label: '0' },
-    { type: 'd12', label: '12' },
-    { type: 'd20', label: '20' },
-    { type: 'd100', label: '00' }, // تاس درصد جفتی
+    { type: 'd4', label: 'D4' },
+    { type: 'd6', label: 'D6' },
+    { type: 'd8', label: 'D8' },
+    { type: 'd10', label: 'D10' },
+    { type: 'd12', label: 'D12' },
+    { type: 'd20', label: 'D20' },
+    { type: 'd100', label: 'D100' },
 ];
 
 export function DiceOverlay() {
-    const { isOpen, isRolling, results, totalSum, setOpen, triggerRoll, clearDice } = useDiceStore();
+    const { isOpen, isRolling, results, totalSum, setOpen, triggerRoll, clearDice, activeDice } = useDiceStore();
     const [selectedPool, setSelectedPool] = useState([]);
 
-    if (!isOpen) return null;
+    // تایمر پاک‌سازی خودکار تاس‌ها ۳.۵ ثانیه پس از توقف کامل
+    useEffect(() => {
+        let timer;
+        if (!isRolling && results.length > 0 && activeDice.length > 0) {
+            timer = setTimeout(() => {
+                clearDice();
+            }, 4500);
+        }
+        return () => clearTimeout(timer);
+    }, [isRolling, results, activeDice, clearDice]);
+
+    if (!isOpen && activeDice.length === 0) return null;
 
     const handleQuickAdd = (type) => {
         if (type === 'd100') {
-            // در D&D تاس d100 همواره جفت ده‌گان + یکان پرتاب می‌شود
             const nextPool = ['d100', 'd10'];
             setSelectedPool(nextPool);
             triggerRoll(nextPool);
             return;
         }
-
         const nextPool = [...selectedPool, type];
         setSelectedPool(nextPool);
         triggerRoll(nextPool);
@@ -42,104 +51,68 @@ export function DiceOverlay() {
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-md select-none font-fa">
+        <div className="fixed inset-0 z-[110] pointer-events-none select-none font-fa">
 
-            {/* سینی مستطیلی چوبی و سایدبار عمودی */}
-            <div className="relative flex h-[92vh] max-h-[820px] w-full max-w-[480px] sm:max-w-[520px] rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 bg-[#0e0f13]">
+            {/* رندر بلادرنگ ۳D تاس‌ها مستقیماً روی نقشه بازی */}
+            <div className="absolute inset-0">
+                <DiceCanvas />
+            </div>
 
-                {/* سایدبار عمودی سمت چپ */}
-                <aside className="w-16 sm:w-18 bg-[#181920]/95 border-r border-zinc-800/80 flex flex-col items-center py-4 z-20 shrink-0">
+            {/* بنر نتیجه نهایی بزرگ و درخشان در بالای صفحه */}
+            {results.length > 0 && (
+                <div className="absolute top-16 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-3 bg-zinc-950/85 border border-purple-500/40 px-6 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md">
+                        <span className="text-zinc-400 text-xs font-bold">نتیجه پرتاب:</span>
+                        <span className={`text-4xl font-black font-mono ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-amber-400'}`}>
+              {totalSum}
+            </span>
 
-                    <button
-                        onClick={() => handleQuickAdd('d20')}
-                        className="w-11 h-11 rounded-2xl bg-purple-950/60 border border-purple-500/40 text-amber-300 font-serif font-black flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition"
-                        title="رول D20"
-                    >
-                        20
-                    </button>
+                        {/* تفکیک مقادیر هر تاس */}
+                        <div className="flex items-center gap-1.5 border-r border-zinc-800 pr-3 mr-1">
+                            {results.map((r, i) => (
+                                <span key={i} className="text-xs bg-purple-950/70 border border-purple-500/30 text-amber-200 px-2 py-0.5 rounded-lg font-mono font-bold">
+                  {r.value}
+                </span>
+                            ))}
+                        </div>
 
-                    <div className="w-8 h-px bg-zinc-800 my-3" />
-
-                    {/* لیست دکمه‌های تاس */}
-                    <div className="flex-1 flex flex-col items-center gap-2 overflow-y-auto no-scrollbar w-full px-1">
-                        {DICE_TYPES.map((d) => (
-                            <button
-                                key={d.type}
-                                onClick={() => handleQuickAdd(d.type)}
-                                className="w-10 h-10 rounded-xl bg-purple-950/30 hover:bg-purple-900/50 border border-purple-500/20 hover:border-amber-500/40 text-amber-200/90 font-serif text-xs font-bold flex flex-col items-center justify-center transition active:scale-90"
-                            >
-                                <span>{d.label}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="w-8 h-px bg-zinc-800 my-2" />
-
-                    <div className="flex flex-col items-center gap-3 text-zinc-400">
-                        <button onClick={() => setSelectedPool([])} className="p-2 hover:text-white transition">
-                            <Eye className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleQuickAdd('d6')} className="p-2 hover:text-white transition text-xs font-bold">
-                            <Plus className="w-4 h-4" />
-                        </button>
-                        <button onClick={clearDice} className="p-2 hover:text-white transition">
-                            <Search className="w-4 h-4" />
-                        </button>
-                    </div>
-                </aside>
-
-                {/* سینی فیزیکی سه‌بعدی */}
-                <div className="relative flex-1 h-full w-full bg-[#100f13] overflow-hidden">
-
-                    {/* هدر شناور: Re-roll، عدد مجموع، و خروج */}
-                    <div className="absolute top-4 inset-x-6 z-20 flex items-center justify-between pointer-events-auto">
                         <button
                             onClick={handleReRoll}
-                            className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300 hover:text-white transition active:rotate-180 duration-300"
+                            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
                             title="رول مجدد"
                         >
-                            <RotateCcw className="w-5 h-5" />
-                        </button>
-
-                        {/* عدد نهایی بزرگ در مرکز */}
-                        <div className="flex items-center justify-center">
-              <span className={`text-5xl font-black tracking-tight drop-shadow-md ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-zinc-100'}`}>
-                {results.length > 0 ? totalSum : ''}
-              </span>
-                        </div>
-
-                        <button
-                            onClick={() => setOpen(false)}
-                            className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300 hover:text-white transition"
-                            title="بستن سینی"
-                        >
-                            <X className="w-5 h-5" />
+                            <RotateCcw className="w-4 h-4" />
                         </button>
                     </div>
-
-                    {/* بنر تفکیک ده‌گان و یکان در پایین سینی */}
-                    {results.length > 0 && (
-                        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-zinc-900/90 border border-purple-500/30 px-4 py-2 rounded-2xl shadow-xl backdrop-blur-md">
-                            {results.map((r, idx) => (
-                                <div key={idx} className="flex items-center gap-1 text-xs">
-                                    <span className="text-zinc-400 font-bold">{r.type === 'd100' ? 'ده‌گان:' : r.type === 'd10' ? 'یکان:' : ''}</span>
-                                    <span className="font-mono bg-purple-950/80 border border-purple-500/40 text-amber-300 px-2 py-0.5 rounded-lg font-bold">
-                    {r.value}
-                  </span>
-                                    {idx < results.length - 1 && <span className="text-zinc-500">+</span>}
-                                </div>
-                            ))}
-                            <span className="text-zinc-400 font-bold mr-1">=</span>
-                            <span className="text-amber-400 font-black text-sm">{totalSum}</span>
-                        </div>
-                    )}
-
-                    {/* رندر سه‌بعدی Canvas */}
-                    <DiceCanvas />
-
                 </div>
+            )}
 
+            {/* داک شناور و مینیمال انتخاب تاس‌ها در پایین-راست نقشه (بدون سد کردن دید) */}
+            <div className="absolute bottom-6 left-6 pointer-events-auto flex items-center gap-1.5 bg-zinc-950/90 border border-zinc-800/90 p-1.5 rounded-2xl shadow-2xl backdrop-blur-xl">
+                {DICE_TYPES.map((d) => (
+                    <button
+                        key={d.type}
+                        onClick={() => handleQuickAdd(d.type)}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/20 hover:border-amber-500/40 text-amber-300 font-serif text-xs font-bold transition active:scale-90"
+                    >
+                        {d.label}
+                    </button>
+                ))}
+
+                <div className="w-px h-5 bg-zinc-800 mx-1" />
+
+                <button
+                    onClick={() => {
+                        clearDice();
+                        setOpen(false);
+                    }}
+                    className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-lg transition"
+                    title="بستن"
+                >
+                    <X className="w-4 h-4" />
+                </button>
             </div>
+
         </div>
     );
 }

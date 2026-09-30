@@ -11,24 +11,26 @@ export function DiceCanvas() {
     return (
         <Canvas
             shadows
-            camera={{ position: [0, 15.5, 0.05], fov: 48 }}
-            style={{ width: '100%', height: '100%' }}
+            gl={{ alpha: true, antialias: true }}
+            camera={{ position: [0, 16, 0.01], fov: 45 }}
+            style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
         >
-            {/* نور محیطی گرم برای حفظ جزئیات در سایه‌ها */}
-            <ambientLight intensity={0.55} color="#fed7aa" />
+            {/* نور محیطی ملایم */}
+            <ambientLight intensity={0.7} color="#fed7aa" />
 
-            {/* نور اصلی زاویه‌دار برای هایلایت‌های طلایی و سایه‌های پرکنتراست */}
+            {/* نور اصلی که سایه تاس‌ها را روی مپ ۲بعدی زیرین می‌اندازد */}
             <directionalLight
-                position={[4, 16, 6]}
-                intensity={1.8}
+                position={[6, 18, 8]}
+                intensity={1.9}
                 castShadow
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
+                shadow-camera-near={0.5}
+                shadow-camera-far={35}
                 shadow-bias={-0.0001}
             />
 
-            {/* نور نقطه‌ای ملایم جهت شفافیت رگه‌های بنفش */}
-            <pointLight position={[-4, 8, -5]} intensity={0.6} color="#c084fc" />
+            <pointLight position={[-6, 10, -6]} intensity={0.5} color="#c084fc" />
 
             <Suspense fallback={null}>
                 <Physics gravity={[0, -32, 0]} timeStep={1 / 60}>
