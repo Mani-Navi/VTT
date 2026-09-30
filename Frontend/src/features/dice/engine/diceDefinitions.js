@@ -1,9 +1,5 @@
 import * as THREE from 'three';
 
-/**
- * متد جادویی پروجکشن UV:
- * هر وجه ۳بعدی را به صفحه ۲بعدی با مرکزیت (0.5, 0.5) مپ می‌کند تا عدد دقیقاً وسط وجه چاپ شود.
- */
 function applyPlanarUVs(geom, faces, trianglesPerFace, faceRadius) {
     const pos = geom.attributes.position;
     const uvs = [];
@@ -12,15 +8,13 @@ function applyPlanarUVs(geom, faces, trianglesPerFace, faceRadius) {
     for (let f = 0; f < faces.length; f++) {
         const normal = faces[f].normal;
 
-        // تعریف بردار Up محلی برای حفظ جهت عمودی اعداد
         let upRef = new THREE.Vector3(0, 1, 0);
-        if (Math.abs(normal.dot(upRef)) > 0.9) {
+        if (Math.abs(normal.dot(upRef)) > 0.88) {
             upRef.set(0, 0, 1);
         }
         const tangent = new THREE.Vector3().crossVectors(upRef, normal).normalize();
         const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
 
-        // محاسبه مرکز وجه
         const faceCenter = new THREE.Vector3();
         const startIndex = f * trianglesPerFace * 3;
         const totalVerts = trianglesPerFace * 3;
@@ -30,7 +24,6 @@ function applyPlanarUVs(geom, faces, trianglesPerFace, faceRadius) {
         }
         faceCenter.divideScalar(totalVerts);
 
-        // نگاشت مختصات UV برای هر راس به مرکز (0.5, 0.5)
         for (let v = 0; v < totalVerts; v++) {
             const vert = new THREE.Vector3().fromBufferAttribute(pos, startIndex + v);
             const diff = new THREE.Vector3().subVectors(vert, faceCenter);
@@ -47,9 +40,9 @@ function applyPlanarUVs(geom, faces, trianglesPerFace, faceRadius) {
     geom.computeVertexNormals();
 }
 
-// ---------------- D4 (Tetrahedron) ----------------
+// ---------------- D4 (20mm / 4 Faces) ----------------
 function createD4Data() {
-    const radius = 1.4;
+    const radius = 1.35;
     const geom = new THREE.TetrahedronGeometry(radius, 0).toNonIndexed();
     const pos = geom.attributes.position;
     const faces = [];
@@ -63,11 +56,11 @@ function createD4Data() {
         faces.push({ normal, value: values[i] });
     }
 
-    applyPlanarUVs(geom, faces, 1, radius * 1.1);
+    applyPlanarUVs(geom, faces, 1, radius * 1.05);
     return { type: 'd4', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D6 (Box) ----------------
+// ---------------- D6 (16mm / 6 Faces) ----------------
 export const D6_DEFINITION = {
     type: 'd6',
     radius: 1.0,
@@ -79,10 +72,10 @@ export const D6_DEFINITION = {
         { normal: new THREE.Vector3( 0,  0,  1), value: 5 },
         { normal: new THREE.Vector3( 0,  0, -1), value: 2 },
     ],
-    createGeometry: () => new THREE.BoxGeometry(1.5, 1.5, 1.5),
+    createGeometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4),
 };
 
-// ---------------- D8 (Octahedron) ----------------
+// ---------------- D8 (20mm / 8 Faces) ----------------
 function createD8Data() {
     const radius = 1.35;
     const geom = new THREE.OctahedronGeometry(radius, 0).toNonIndexed();
@@ -98,20 +91,19 @@ function createD8Data() {
         faces.push({ normal, value: d8Values[i] });
     }
 
-    applyPlanarUVs(geom, faces, 1, radius * 1.1);
+    applyPlanarUVs(geom, faces, 1, radius * 1.05);
     return { type: 'd8', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D10 & D100 (100% Symmetrical Pentagonal Trapezohedron) ----------------
+// ---------------- D10 & D100 (17mm / Pentagonal Trapezohedron) ----------------
 function createD10GeometryData(isPercentile = false) {
-    const H = 1.35;    // ارتفاع قطب‌ها
-    const R = 1.20;    // شعاع استوا
-    const h = 0.35;    // دندانه‌های زیگزاگی استوا
+    const H = 1.35;
+    const R = 1.20;
+    const h = 0.35;
 
     const topPole = new THREE.Vector3(0, H, 0);
     const bottomPole = new THREE.Vector3(0, -H, 0);
 
-    // ۱۰ راس زیگزاگی استوا (متناوب: زوج‌ها بالا +h، فردها پایین -h)
     const ring = [];
     for (let i = 0; i < 10; i++) {
         const angle = (i * Math.PI) / 5;
@@ -123,12 +115,11 @@ function createD10GeometryData(isPercentile = false) {
     const uvs = [];
     const faces = [];
 
-    // آرایش اعداد استاندارد D&D (مجموع وجوه متقابل = ۹ یا ۹۰)
+    // آرایش اعداد مطابق شیت پوستر:
     const upperValues = isPercentile ? [0, 20, 40, 60, 80] : [0, 2, 4, 6, 8];
     const lowerValues = isPercentile ? [90, 70, 50, 30, 10] : [9, 7, 5, 3, 1];
 
     function addKite(pApex, pWaistRight, pOppositeTip, pWaistLeft, faceValue) {
-        // مرکز دقیق هندسی کایت
         const center = new THREE.Vector3()
             .add(pApex)
             .add(pOppositeTip)
@@ -136,7 +127,6 @@ function createD10GeometryData(isPercentile = false) {
             .add(pWaistLeft)
             .multiplyScalar(0.25);
 
-        // محاسبه بردار عمود بیرونی
         const diagLong = new THREE.Vector3().subVectors(pOppositeTip, pApex);
         const diagWaist = new THREE.Vector3().subVectors(pWaistLeft, pWaistRight);
         let normal = new THREE.Vector3().crossVectors(diagLong, diagWaist).normalize();
@@ -145,7 +135,6 @@ function createD10GeometryData(isPercentile = false) {
         }
         faces.push({ normal, value: faceValue });
 
-        // محور عمودی UV دقیقاً در راستای قطر طولی به سمت نوک قطب
         const upUV = new THREE.Vector3().subVectors(pApex, center).normalize();
         const rightUV = new THREE.Vector3().crossVectors(upUV, normal).normalize();
 
@@ -160,7 +149,6 @@ function createD10GeometryData(isPercentile = false) {
         const uvR = getUV(pWaistRight);
         const uvL = getUV(pWaistLeft);
 
-        // متد ثبت مثلث با تضمین جهت چرخش پادساعتگرد (CCW)
         function pushTri(a, b, c, uvA, uvB, uvC) {
             const e1 = new THREE.Vector3().subVectors(b, a);
             const e2 = new THREE.Vector3().subVectors(c, a);
@@ -174,26 +162,25 @@ function createD10GeometryData(isPercentile = false) {
             }
         }
 
-        // دو مثلث تشکیل‌دهنده کایت بدون هیچ پیچش
         pushTri(pApex, pWaistLeft, pOppositeTip, uvApex, uvL, uvTip);
         pushTri(pApex, pOppositeTip, pWaistRight, uvApex, uvTip, uvR);
     }
 
-    // ۱. ساخت ۵ کایت بالایی (نوک بالا = topPole، نوک پایین = راس‌های فرد -h)
+    // ۵ کایت بالا
     for (let i = 0; i < 5; i++) {
         const pApex = topPole;
-        const pBottomTip = ring[(i * 2 + 1) % 10]; // راس پایین
-        const pWaistRight = ring[i * 2];            // راس راست (+h)
-        const pWaistLeft = ring[(i * 2 + 2) % 10];  // راس چپ (+h)
+        const pBottomTip = ring[(i * 2 + 1) % 10];
+        const pWaistRight = ring[i * 2];
+        const pWaistLeft = ring[(i * 2 + 2) % 10];
         addKite(pApex, pWaistRight, pBottomTip, pWaistLeft, upperValues[i]);
     }
 
-    // ۲. ساخت ۵ کایت پایینی (نوک پایین = bottomPole، نوک بالا = راس‌های زوج +h)
+    // ۵ کایت پایین
     for (let i = 0; i < 5; i++) {
         const pApex = bottomPole;
-        const pTopTip = ring[(i * 2 + 2) % 10];     // راس بالا
-        const pWaistRight = ring[(i * 2 + 3) % 10]; // راس راست (-h)
-        const pWaistLeft = ring[(i * 2 + 1) % 10];  // راس چپ (-h)
+        const pTopTip = ring[(i * 2 + 2) % 10];
+        const pWaistRight = ring[(i * 2 + 3) % 10];
+        const pWaistLeft = ring[(i * 2 + 1) % 10];
         addKite(pApex, pWaistRight, pTopTip, pWaistLeft, lowerValues[i]);
     }
 
@@ -214,9 +201,10 @@ function createD10GeometryData(isPercentile = false) {
         createGeometry: () => geom.clone(),
     };
 }
-// ---------------- D12 (Dodecahedron - 12 Pentagons) ----------------
+
+// ---------------- D12 (22mm / Dodecahedron) ----------------
 function createD12Data() {
-    const radius = 1.3;
+    const radius = 1.35;
     const geom = new THREE.DodecahedronGeometry(radius, 0).toNonIndexed();
     const pos = geom.attributes.position;
     const faces = [];
@@ -234,9 +222,9 @@ function createD12Data() {
     return { type: 'd12', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D20 (Icosahedron - 20 Triangles) ----------------
+// ---------------- D20 (20mm / Icosahedron) ----------------
 function createD20Data() {
-    const radius = 1.25;
+    const radius = 1.3;
     const geom = new THREE.IcosahedronGeometry(radius, 0).toNonIndexed();
     const pos = geom.attributes.position;
     const faces = [];
@@ -253,7 +241,7 @@ function createD20Data() {
         faces.push({ normal, value: d20Values[i] });
     }
 
-    applyPlanarUVs(geom, faces, 1, radius * 0.85);
+    applyPlanarUVs(geom, faces, 1, radius * 0.9);
     return { type: 'd20', radius, faces, createGeometry: () => geom.clone() };
 }
 
@@ -262,7 +250,7 @@ export const DICE_CONFIGS = {
     d6: D6_DEFINITION,
     d8: createD8Data(),
     d10: createD10GeometryData(false),
-    d100: createD10GeometryData(true),
+    d100: createD10GeometryData(true), // عیناً همان ژئومتری d10 با ارقام ده‌گان
     d12: createD12Data(),
     d20: createD20Data(),
 };
