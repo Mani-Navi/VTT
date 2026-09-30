@@ -1,5 +1,5 @@
 // src/features/dice/components/Die.jsx
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -14,7 +14,6 @@ const VELOCITY_THRESHOLD = 0.08;
 const ANGULAR_THRESHOLD = 0.12;
 const REQUIRED_STABLE_FRAMES = 25;
 
-// صفحه مجازی ارتفاع هنگام نگه‌داشتن تاس در هوا
 const DRAG_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), -3.2);
 
 export function Die({
@@ -28,16 +27,31 @@ export function Die({
     const rigidBodyRef = useRef(null);
     const config = DICE_CONFIGS[type] || DICE_CONFIGS.d6;
     const setDieResult = useDiceStore((s) => s.setDieResult);
+    const isRemoteRoll = useDiceStore((s) => s.isRemoteRoll);
+    const broadcastReThrow = useDiceStore((s) => s.broadcastReThrow);
+    const remoteReThrow = useDiceStore((s) => s.remoteReThrow);
 
     const stableFrameCounter = useRef(0);
     const isSettledRef = useRef(false);
     const spawnTimeRef = useRef(Date.now());
 
-    // وضعیت درگ سه‌بعدی
     const isDraggingRef = useRef(false);
-    const dragHistoryRef = useRef([]); // ذخیره موقعیت‌های اخیر برای محاسبه شتاب پرتاب
+    const dragHistoryRef = useRef([]);
 
-    // تولید هندسه چندمتریاله و نگاشت دقیق UV و Materialها
+    // گوش دادن به پرتاب مجدد دست که از سرور می‌آید
+    useEffect(() => {
+        if (!remoteReThrow || remoteReThrow.dieId !== id || !rigidBodyRef.current) return;
+
+        rigidBodyRef.current.setTranslation(remoteReThrow.translation, true);
+        rigidBodyRef.current.setLinvel(remoteReThrow.velocity, true);
+        rigidBodyRef.current.setAngvel(remoteReThrow.angularVelocity, true);
+
+        diceAudio.playThrow(1);
+        spawnTimeRef.current = Date.now();
+        stableFrameCounter.current = 0;
+        isSettledRef.current = false;
+    }, [remoteReThrow, id]);
+
     const { geometry, materials } = useMemo(() => {
         const geom = config.createGeometry();
         const faceValues = config.faces.map((f) => f.value);
@@ -85,7 +99,6 @@ export function Die({
         }
     };
 
-    // محاسبه وجه برنده پس از توقف
     const calculateTopValue = () => {
         if (!rigidBodyRef.current || isSettledRef.current || isDraggingRef.current) return;
         const rotation = rigidBodyRef.current.rotation();
@@ -114,10 +127,12 @@ export function Die({
         }
 
         isSettledRef.current = true;
-        setDieResult(id, winningValue);
+        // فقط خود پرتاب‌کننده برنده را سِت و برودکست می‌کند؛ بقیه از DICE_SETTLED دریافت می‌کنند
+        if (!isRemoteRoll) {
+            setDieResult(id, winningValue);
+        }
     };
 
-    // حلقه فیزیک و سکون
     useFrame(() => {
         if (isDraggingRef.current || isSettledRef.current || !rigidBodyRef.current) return;
 
@@ -143,13 +158,14 @@ export function Die({
         }
     });
 
-    // ۱. گرفتن تاس با ماوس (برداشتن از زمین)
+    // ۱. گرفتن تاس با ماوس (فقط برای صاحب تاس مجاز است)
     const handlePointerDown = (e) => {
+        if (isRemoteRoll) return; // قفل تعامل برای سایر بازیکنان
         e.stopPropagation();
         e.target.setPointerCapture(e.pointerId);
 
         isDraggingRef.current = true;
-        isSettledRef.current = true; // جلوگیری از خواندن عدد حین جابجایی
+        isSettledRef.current = true;
         dragHistoryRef.current = [];
 
         document.body.style.cursor = 'grabbing';
@@ -160,20 +176,17 @@ export function Die({
         }
     };
 
-    // ۲. حرکت دادن تاس در هوا به دنبال ماوس
     const handlePointerMove = (e) => {
-        if (!isDraggingRef.current || !rigidBodyRef.current) return;
+        if (isRemoteRoll || !isDraggingRef.current || !rigidBodyRef.current) return;
         e.stopPropagation();
 
         const targetPoint = new THREE.Vector3();
         if (e.ray && e.ray.intersectPlane(DRAG_PLANE, targetPoint)) {
-            // نگه داشتن تاس در ارتفاع ۳.۲ واحدی
             rigidBodyRef.current.setTranslation(
                 { x: targetPoint.x, y: 3.2, z: targetPoint.z },
                 true
             );
 
-            // ثبت تاریخچه برای محاسبه بردار شتاب پرتاب دست بازیکن
             const now = performance.now();
             dragHistoryRef.current.push({ x: targetPoint.x, z: targetPoint.z, time: now });
             if (dragHistoryRef.current.length > 5) {
@@ -182,55 +195,56 @@ export function Die({
         }
     };
 
-    // ۳. رها کردن یا شوت کردن تاس
     const handlePointerUp = (e) => {
-        if (!isDraggingRef.current || !rigidBodyRef.current) return;
+        if (isRemoteRoll || !isDraggingRef.current || !rigidBodyRef.current) return;
         e.stopPropagation();
         e.target.releasePointerCapture(e.pointerId);
 
         isDraggingRef.current = false;
         document.body.style.cursor = 'default';
 
-        // محاسبه سرعت و جهت پرتاب دست بازیکن
         let vx = (Math.random() - 0.5) * 4;
         let vz = (Math.random() - 0.5) * 4;
 
         const history = dragHistoryRef.current;
+        let lastPos = { x: 0, z: 0 };
         if (history.length >= 2) {
             const first = history[0];
             const last = history[history.length - 1];
+            lastPos = last;
             const dt = Math.max(16, last.time - first.time) / 1000;
 
             const calcVx = (last.x - first.x) / dt;
             const calcVz = (last.z - first.z) / dt;
 
-            // اعمال ضریب شتاب با سقف مجاز
             vx = THREE.MathUtils.clamp(calcVx * 0.85, -28, 28);
             vz = THREE.MathUtils.clamp(calcVz * 0.85, -28, 28);
         }
 
-        // سرعت رو به پایین و جلو
         const vy = -4 - Math.random() * 4;
+        const finalVelocity = { x: vx, y: vy, z: vz };
+        const finalAngvel = {
+            x: (Math.random() - 0.5) * 45,
+            y: (Math.random() - 0.5) * 45,
+            z: (Math.random() - 0.5) * 45,
+        };
 
-        rigidBodyRef.current.setLinvel({ x: vx, y: vy, z: vz }, true);
+        rigidBodyRef.current.setLinvel(finalVelocity, true);
+        rigidBodyRef.current.setAngvel(finalAngvel, true);
 
-        // چرخش و غلتش پرقدرت حین پرتاب مجدد
-        rigidBodyRef.current.setAngvel(
-            {
-                x: (Math.random() - 0.5) * 45,
-                y: (Math.random() - 0.5) * 45,
-                z: (Math.random() - 0.5) * 45,
-            },
-            true
-        );
-
-        // صدای پرتاب مجدد
         diceAudio.playThrow(1);
 
-        // ریست وضعیت برای محاسبه نتیجه جدید
         spawnTimeRef.current = Date.now();
         stableFrameCounter.current = 0;
         isSettledRef.current = false;
+
+        // همگام‌سازی بلادرنگ پرتاب مجدد برای بقیه بازیکنان اتاق
+        broadcastReThrow(
+            id,
+            { x: lastPos.x, y: 3.2, z: lastPos.z },
+            finalVelocity,
+            finalAngvel
+        );
     };
 
     return (
@@ -256,10 +270,10 @@ export function Die({
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerOver={() => {
-                    if (!isDraggingRef.current) document.body.style.cursor = 'grab';
+                    if (!isRemoteRoll && !isDraggingRef.current) document.body.style.cursor = 'grab';
                 }}
                 onPointerOut={() => {
-                    if (!isDraggingRef.current) document.body.style.cursor = 'default';
+                    if (!isRemoteRoll && !isDraggingRef.current) document.body.style.cursor = 'default';
                 }}
             />
         </RigidBody>

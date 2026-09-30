@@ -22,7 +22,6 @@ export function useWebSocket(roomId, onMessage = null) {
     const token = localStorage.getItem("vtt_jwt");
     wsService.connect(roomId, token);
 
-    // ۱. کاربران آنلاین
     const unsubUsers = wsService.on("USERS_UPDATE", (data) => {
       if (onMessageRef.current) onMessageRef.current(data);
     });
@@ -43,7 +42,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "MEMBER_BANNED", data });
     });
 
-    // ۲. جابجایی و ویرایش توکن
     const unsubToken = wsService.on(WS_EVENTS.TOKEN_MOVED, (data) => {
       if (data) {
         useSceneStore.getState().syncTokenFromSocket(data);
@@ -65,7 +63,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "CONDITION_POOL_UPDATE", data });
     });
 
-    // ۳. افزودن و حذف نقاشی
     const unsubDraw = wsService.on(WS_EVENTS.DRAWING_ADDED, (data) => {
       if (data) {
         useSceneStore.getState().addDrawing(data);
@@ -98,7 +95,6 @@ export function useWebSocket(roomId, onMessage = null) {
       useSceneStore.getState().clearDrawings();
     });
 
-    // ۳.۳. نشانگر لیزری
     const unsubLaserMove = wsService.on("LASER_MOVE", (data) => {
       if (data && data.x !== undefined && data.y !== undefined) {
         useCanvasStore.getState().updateRemoteLaser(data);
@@ -111,7 +107,6 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۳.۴. خط‌کش اندازه‌گیری
     const unsubRulerUpdate = wsService.on("RULER_UPDATE", (data) => {
       if (data && data.startX !== undefined && data.currentX !== undefined) {
         useCanvasStore.getState().updateRemoteMeasurement(data);
@@ -128,7 +123,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current({ action: "PERMISSION_UPDATED", data });
     });
 
-    // ۵. به‌روزرسانی و حذف جامع مه جنگ
     const handleFogPayload = (data) => {
       if (!data) return;
       const store = useSceneStore.getState();
@@ -221,7 +215,6 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۵.۲. تنظیمات گرید و اتاق
     const handleSettingsPayload = (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -267,7 +260,6 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubSettingsUpdate = wsService.on("SETTINGS_UPDATE", handleSettingsPayload);
     const unsubSettingsUpdated = wsService.on("SETTINGS_UPDATED", handleSettingsPayload);
 
-    // ۵.۳. دوربین
     const unsubViewportSync = wsService.on(WS_EVENTS.VIEWPORT_SYNC, (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
@@ -277,15 +269,12 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۶. همگام‌سازی بلادرنگ فیزیک سه‌بعدی تاس بین همه بازیکنان
+    // ۶. همگام‌سازی بلادرنگ فیزیک و رویدادهای تاس
     const unsubDice = wsService.on("DICE_ROLL", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;
-
-      // دریافت آیدی منحصر‌به‌فرد همین تب
       const currentTabId = sessionStorage.getItem('vtt_tab_id');
 
-      // اگر پرتاب از تبی غیر از این تب آمده باشد، شبیه‌سازی روی این کلاینت اجرا شود
       if (data && data.dice && Array.isArray(data.dice)) {
         if (!currentTabId || data.senderTabId !== currentTabId) {
           useDiceStore.getState().triggerRemoteRoll(data.dice, data.rollerName);
@@ -298,7 +287,28 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۷. تغییر صحنه
+    // ۶.۱. دریافت نتایج معتبر قطعی از پرتاب‌کننده
+    const unsubDiceSettled = wsService.on("DICE_SETTLED", (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
+      const currentTabId = sessionStorage.getItem('vtt_tab_id');
+
+      if (data && (!currentTabId || data.senderTabId !== currentTabId)) {
+        useDiceStore.getState().setRemoteResults(data.results, data.totalSum);
+      }
+    });
+
+    // ۶.۲. دریافت پرتاب مجدد تاس با دست
+    const unsubDiceReThrow = wsService.on("DICE_RETHROW", (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
+      const currentTabId = sessionStorage.getItem('vtt_tab_id');
+
+      if (data && (!currentTabId || data.senderTabId !== currentTabId)) {
+        useDiceStore.getState().applyRemoteReThrow(data);
+      }
+    });
+
     const unsubScene = wsService.on("SCENE_ACTIVATED", async (data) => {
       const targetSceneId = data?.sceneId || data?.id || (typeof data === "string" ? data : null);
       if (targetSceneId) {
@@ -314,7 +324,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۸. ساخت صحنه
     const unsubSceneCreate = wsService.on("SCENE_CREATED", async (data) => {
       const newScene = data?.scene || (data?.id ? data : null);
       const store = useSceneStore.getState();
@@ -331,7 +340,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۹. حذف صحنه
     const unsubSceneDelete = wsService.on("SCENE_DELETE", async (data) => {
       if (data && data.sceneId) {
         const targetId = String(data.sceneId).toLowerCase();
@@ -346,7 +354,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۱۰. به‌روزرسانی مپ صحنه
     const unsubSceneUpdate = wsService.on("SCENE_UPDATED", (data) => {
       if (data && data.sceneId) {
         const targetId = String(data.sceneId).toLowerCase();
@@ -366,7 +373,6 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۱۱. تغییر نام صحنه
     const unsubRename = wsService.on("SCENE_RENAME", (data) => {
       if (data && data.sceneId && data.name) {
         const targetId = String(data.sceneId).toLowerCase();
@@ -416,6 +422,8 @@ export function useWebSocket(roomId, onMessage = null) {
       unsubSettingsUpdated();
       unsubViewportSync();
       unsubDice();
+      unsubDiceSettled();
+      unsubDiceReThrow();
       unsubScene();
       unsubSceneCreate();
       unsubSceneDelete();

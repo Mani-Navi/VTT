@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import { diceAudio } from '../engine/diceAudio';
 import { wsService } from '../../../services/websocket.service';
 
-// ایجاد آیدی منحصربه‌فرد برای هر تب مرورگر
 const getClientTabId = () => {
     let tabId = sessionStorage.getItem('vtt_tab_id');
     if (!tabId) {
@@ -29,6 +28,7 @@ export const useDiceStore = create((set, get) => ({
     totalSum: 0,
     rollerName: null,
     isRemoteRoll: false,
+    remoteReThrow: null,
     rollHistory: [],
 
     setOpen: (isOpen) => set({ isOpen }),
@@ -108,7 +108,6 @@ export const useDiceStore = create((set, get) => ({
             totalSum: 0,
         });
 
-        // ارسال به وب‌سوکت با شناسه تب
         wsService.send('DICE_ROLL', {
             senderTabId: tabId,
             senderId: user.id || user.userId || tabId,
@@ -123,7 +122,7 @@ export const useDiceStore = create((set, get) => ({
         diceAudio.playThrow(remoteDice.length);
 
         set({
-            isOpen: true,
+            isOpen: false, // منوی انتخاب برای دیگران باز نشود
             isRolling: true,
             isRemoteRoll: true,
             rollerName: rollerName || 'هم‌تیمی',
@@ -133,8 +132,33 @@ export const useDiceStore = create((set, get) => ({
         });
     },
 
+    // پرتاب مجدد تاس با دست توسط پرتاب‌کننده
+    broadcastReThrow: (dieId, translation, velocity, angularVelocity) => {
+        const tabId = getClientTabId();
+        wsService.send('DICE_RETHROW', {
+            senderTabId: tabId,
+            dieId,
+            translation,
+            velocity,
+            angularVelocity,
+        });
+    },
+
+    applyRemoteReThrow: (data) => {
+        set({ remoteReThrow: { ...data, timestamp: Date.now() }, isRolling: true });
+    },
+
+    // اعمال نتیجه معتبر و قطعی از سمت پرتاب‌کننده اصلی
+    setRemoteResults: (results, totalSum) => {
+        set({
+            results,
+            totalSum,
+            isRolling: false,
+        });
+    },
+
     setDieResult: (dieId, value) => {
-        const { activeDice, results } = get();
+        const { activeDice, results, isRemoteRoll } = get();
 
         const updatedDice = activeDice.map((d) =>
             d.id === dieId ? { ...d, settled: true, value } : d
@@ -169,7 +193,17 @@ export const useDiceStore = create((set, get) => ({
             isRolling: !allSettled,
         });
 
+        // اگر خود پرتاب‌کننده تاس را متوقف کرد، نتیجه معتبر را به همه می‌فرستد
         if (allSettled) {
+            if (!isRemoteRoll) {
+                const tabId = getClientTabId();
+                wsService.send('DICE_SETTLED', {
+                    senderTabId: tabId,
+                    results: newResults,
+                    totalSum: sum,
+                });
+            }
+
             set((state) => ({
                 rollHistory: [
                     { id: Date.now(), results: newResults, total: sum, timestamp: new Date() },
@@ -179,5 +213,5 @@ export const useDiceStore = create((set, get) => ({
         }
     },
 
-    clearDice: () => set({ activeDice: [], results: [], totalSum: 0, isRolling: false, rollerName: null }),
+    clearDice: () => set({ activeDice: [], results: [], totalSum: 0, isRolling: false, rollerName: null, isRemoteRoll: false }),
 }));
