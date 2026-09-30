@@ -95,21 +95,23 @@ function createD8Data() {
     return { type: 'd8', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D10 & D100 (17mm / Pentagonal Trapezohedron) ----------------
-// ---------------- D10 & D100 (Official 20mm x 20mm Blueprint Specification) ----------------
+// ---------------- D10 & D100 (100% Flat-Faced Planar Pentagonal Trapezohedron) ----------------
 function createD10GeometryData(isPercentile = false) {
-    // بر اساس ابعاد دقیق شیت: Height: 20mm | Width: 20mm (نسبت 1 به 1)
-    const H = 1.20;    // ارتفاع قطب‌ها (۱۰ میلی‌متر از مرکز به هر طرف)
-    const R = 1.20;    // شعاع استوا (۱۰ میلی‌متر از مرکز به هر طرف)
-    const h = 0.26;    // آفست متقارن دندانه‌های زیگزاگی مطابق بلوپرینت
+    // ابعاد استاندارد بر اساس بلوپرینت ۲۰ میلی‌متری
+    const H = 1.30;    // ارتفاع قطب‌ها
+    const R = 1.25;    // شعاع بیرونی استوا
+
+    // فرمول طلایی مسطح‌سازی کایت‌ها: (1 - cos36) / (1 + cos36) = 0.1055728
+    // این نسبت تضمین می‌کند دو مثلث هر کایت زاویه 0 درجه با هم دارند و کاملاً تخت هستند
+    const h = H * 0.105572809; // دقیقاً 0.13724
 
     const topPole = new THREE.Vector3(0, H, 0);
     const bottomPole = new THREE.Vector3(0, -H, 0);
 
-    // ۱۰ رأس دور استوا (۵ راس در +h و ۵ راس در -h)
+    // ۱۰ راس زیگزاگی استوا با زاویه ۳۶ درجه
     const ring = [];
     for (let i = 0; i < 10; i++) {
-        const angle = (i * Math.PI) / 5; // زاویه ۳۶ درجه
+        const angle = (i * Math.PI) / 5;
         const y = i % 2 === 0 ? h : -h;
         ring.push(new THREE.Vector3(Math.cos(angle) * R, y, Math.sin(angle) * R));
     }
@@ -118,11 +120,11 @@ function createD10GeometryData(isPercentile = false) {
     const uvs = [];
     const faces = [];
 
-    // آرایش ارقام استاندارد D&D (مجموع وجوه متقابل = ۹ یا ۹۰)
+    // چینش اعداد استاندارد D&D
     const upperValues = isPercentile ? [0, 20, 40, 60, 80] : [0, 2, 4, 6, 8];
     const lowerValues = isPercentile ? [90, 70, 50, 30, 10] : [9, 7, 5, 3, 1];
 
-    function addKite(pApex, pWaistRight, pOppositeTip, pWaistLeft, faceValue) {
+    function addFlatKite(pApex, pWaistRight, pOppositeTip, pWaistLeft, faceValue) {
         const center = new THREE.Vector3()
             .add(pApex)
             .add(pOppositeTip)
@@ -130,7 +132,7 @@ function createD10GeometryData(isPercentile = false) {
             .add(pWaistLeft)
             .multiplyScalar(0.25);
 
-        // محاسبه بردار نرمال قطعی کایت
+        // محاسبه بردار عمود سطح کایت مسطح
         const diagLong = new THREE.Vector3().subVectors(pOppositeTip, pApex);
         const diagWaist = new THREE.Vector3().subVectors(pWaistLeft, pWaistRight);
         let normal = new THREE.Vector3().crossVectors(diagLong, diagWaist).normalize();
@@ -139,11 +141,10 @@ function createD10GeometryData(isPercentile = false) {
         }
         faces.push({ normal, value: faceValue });
 
-        // محورهای دوبعدی تراز با نوک الماس کایت
+        // محورهای دوبعدی UV دقیقاً تراز با قطر طولی
         const upUV = new THREE.Vector3().subVectors(pApex, center).normalize();
         const rightUV = new THREE.Vector3().crossVectors(upUV, normal).normalize();
 
-        // مقیاس متناسب با بلوپرینت ۲۰ میلی‌متری
         const scale = 2.05;
         function getUV(pt) {
             const d = new THREE.Vector3().subVectors(pt, center);
@@ -155,40 +156,32 @@ function createD10GeometryData(isPercentile = false) {
         const uvR = getUV(pWaistRight);
         const uvL = getUV(pWaistLeft);
 
-        // دو مثلث تشکیل دهنده هر کایت با جهت پادساعتگرد (CCW)
-        function pushTri(a, b, c, uvA, uvB, uvC) {
-            const e1 = new THREE.Vector3().subVectors(b, a);
-            const e2 = new THREE.Vector3().subVectors(c, a);
-            const cross = new THREE.Vector3().crossVectors(e1, e2);
-            if (cross.dot(normal) < 0) {
-                positions.push(...a.toArray(), ...c.toArray(), ...b.toArray());
-                uvs.push(...uvA, ...uvC, ...uvB);
-            } else {
-                positions.push(...a.toArray(), ...b.toArray(), ...c.toArray());
-                uvs.push(...uvA, ...uvB, ...uvC);
-            }
-        }
+        // دو مثلث تشکیل دهنده کایت که حالا به دلیل فرمول طلایی، ۱۰۰٪ در یک صفحه مسطح قرار دارند
+        // مثلث اول
+        positions.push(...pApex.toArray(), ...pWaistLeft.toArray(), ...pOppositeTip.toArray());
+        uvs.push(...uvApex, ...uvL, ...uvTip);
 
-        pushTri(pApex, pWaistLeft, pOppositeTip, uvApex, uvL, uvTip);
-        pushTri(pApex, pOppositeTip, pWaistRight, uvApex, uvTip, uvR);
+        // مثلث دوم
+        positions.push(...pApex.toArray(), ...pOppositeTip.toArray(), ...pWaistRight.toArray());
+        uvs.push(...uvApex, ...uvTip, ...uvR);
     }
 
-    // ۵ کایت بالایی
+    // ۱. ساخت ۵ کایت بالایی (نوک بالا = topPole)
     for (let i = 0; i < 5; i++) {
         const pApex = topPole;
-        const pBottomTip = ring[(i * 2 + 1) % 10];
-        const pWaistRight = ring[i * 2];
-        const pWaistLeft = ring[(i * 2 + 2) % 10];
-        addKite(pApex, pWaistRight, pBottomTip, pWaistLeft, upperValues[i]);
+        const pBottomTip = ring[(i * 2 + 1) % 10]; // راس پایین در -h
+        const pWaistRight = ring[i * 2];            // راس راست در +h
+        const pWaistLeft = ring[(i * 2 + 2) % 10];  // راس چپ در +h
+        addFlatKite(pApex, pWaistRight, pBottomTip, pWaistLeft, upperValues[i]);
     }
 
-    // ۵ کایت پایینی
+    // ۲. ساخت ۵ کایت پایینی (نوک پایین = bottomPole)
     for (let i = 0; i < 5; i++) {
         const pApex = bottomPole;
-        const pTopTip = ring[(i * 2 + 2) % 10];
-        const pWaistRight = ring[(i * 2 + 3) % 10];
-        const pWaistLeft = ring[(i * 2 + 1) % 10];
-        addKite(pApex, pWaistRight, pTopTip, pWaistLeft, lowerValues[i]);
+        const pTopTip = ring[(i * 2 + 2) % 10];     // راس بالا در +h
+        const pWaistRight = ring[(i * 2 + 3) % 10]; // راس راست در -h
+        const pWaistLeft = ring[(i * 2 + 1) % 10];  // راس چپ در -h
+        addFlatKite(pApex, pWaistRight, pTopTip, pWaistLeft, lowerValues[i]);
     }
 
     const geom = new THREE.BufferGeometry();
