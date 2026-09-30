@@ -102,20 +102,19 @@ function createD8Data() {
     return { type: 'd8', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D10 & D100 (Standard Symmetrical Pentagonal Trapezohedron) ----------------
+// ---------------- D10 & D100 (100% Symmetrical Pentagonal Trapezohedron) ----------------
 function createD10GeometryData(isPercentile = false) {
-    // تناسبات استاندارد تاس‌های معتبر رومیزی (Chessex)
-    const H = 1.35;    // ارتفاع نوک‌های بالا و پایین
+    const H = 1.35;    // ارتفاع قطب‌ها
     const R = 1.20;    // شعاع استوا
-    const h = 0.35;    // زوایای دندانه استوا
+    const h = 0.35;    // دندانه‌های زیگزاگی استوا
 
     const topPole = new THREE.Vector3(0, H, 0);
     const bottomPole = new THREE.Vector3(0, -H, 0);
 
-    // ۱۰ راس متناوب دور استوا
+    // ۱۰ راس زیگزاگی استوا (متناوب: زوج‌ها بالا +h، فردها پایین -h)
     const ring = [];
     for (let i = 0; i < 10; i++) {
-        const angle = (i * Math.PI) / 5; // هر ۳۶ درجه
+        const angle = (i * Math.PI) / 5;
         const y = i % 2 === 0 ? h : -h;
         ring.push(new THREE.Vector3(Math.cos(angle) * R, y, Math.sin(angle) * R));
     }
@@ -124,66 +123,78 @@ function createD10GeometryData(isPercentile = false) {
     const uvs = [];
     const faces = [];
 
-    // چینش استاندارد تاس:
-    // ۵ وجه بالا: 60, 40, 80, 0, 20 (یا 6, 4, 8, 0, 2)
-    // ۵ وجه پایین: 30, 50, 10, 90, 70 (یا 3, 5, 1, 9, 7)
-    const upperValues = isPercentile ? [60, 40, 80, 0, 20] : [6, 4, 8, 0, 2];
-    const lowerValues = isPercentile ? [30, 50, 10, 90, 70] : [3, 5, 1, 9, 7];
+    // آرایش اعداد استاندارد D&D (مجموع وجوه متقابل = ۹ یا ۹۰)
+    const upperValues = isPercentile ? [0, 20, 40, 60, 80] : [0, 2, 4, 6, 8];
+    const lowerValues = isPercentile ? [90, 70, 50, 30, 10] : [9, 7, 5, 3, 1];
 
-    // متد امن برای ساخت کایت با تضمین بردار نرمال بیرونی
-    function addKite(pTop, pRight, pBottom, pLeft, faceValue) {
-        const center = new THREE.Vector3().add(pTop).add(pBottom).add(pRight).add(pLeft).multiplyScalar(0.25);
+    function addKite(pApex, pWaistRight, pOppositeTip, pWaistLeft, faceValue) {
+        // مرکز دقیق هندسی کایت
+        const center = new THREE.Vector3()
+            .add(pApex)
+            .add(pOppositeTip)
+            .add(pWaistRight)
+            .add(pWaistLeft)
+            .multiplyScalar(0.25);
 
-        // بردار عمود از ضرب اقطار کایت
-        const diag1 = new THREE.Vector3().subVectors(pBottom, pTop);
-        const diag2 = new THREE.Vector3().subVectors(pLeft, pRight);
-        let normal = new THREE.Vector3().crossVectors(diag1, diag2).normalize();
-
-        // اگر نرمال به سمت داخل تاس بود، آن را برعکس می‌کنیم تا رو به بیرون شود
+        // محاسبه بردار عمود بیرونی
+        const diagLong = new THREE.Vector3().subVectors(pOppositeTip, pApex);
+        const diagWaist = new THREE.Vector3().subVectors(pWaistLeft, pWaistRight);
+        let normal = new THREE.Vector3().crossVectors(diagLong, diagWaist).normalize();
         if (normal.dot(center) < 0) {
             normal.negate();
         }
         faces.push({ normal, value: faceValue });
 
-        // محورهای ۲بعدی برای نگاشت صاف متن
-        const upAxis = new THREE.Vector3().subVectors(pTop, center).normalize();
-        const rightAxis = new THREE.Vector3().crossVectors(upAxis, normal).normalize();
+        // محور عمودی UV دقیقاً در راستای قطر طولی به سمت نوک قطب
+        const upUV = new THREE.Vector3().subVectors(pApex, center).normalize();
+        const rightUV = new THREE.Vector3().crossVectors(upUV, normal).normalize();
 
+        const scale = 2.35;
         function getUV(pt) {
             const d = new THREE.Vector3().subVectors(pt, center);
-            return [0.5 + d.dot(rightAxis) / 2.1, 0.5 + d.dot(upAxis) / 2.1];
+            return [0.5 + d.dot(rightUV) / scale, 0.5 + d.dot(upUV) / scale];
         }
 
-        const uvT = getUV(pTop);
-        const uvR = getUV(pRight);
-        const uvB = getUV(pBottom);
-        const uvL = getUV(pLeft);
+        const uvApex = getUV(pApex);
+        const uvTip = getUV(pOppositeTip);
+        const uvR = getUV(pWaistRight);
+        const uvL = getUV(pWaistLeft);
 
-        // مثلث اول کایت: Top -> Left -> Bottom
-        positions.push(...pTop.toArray(), ...pLeft.toArray(), ...pBottom.toArray());
-        uvs.push(...uvT, ...uvL, ...uvB);
+        // متد ثبت مثلث با تضمین جهت چرخش پادساعتگرد (CCW)
+        function pushTri(a, b, c, uvA, uvB, uvC) {
+            const e1 = new THREE.Vector3().subVectors(b, a);
+            const e2 = new THREE.Vector3().subVectors(c, a);
+            const cross = new THREE.Vector3().crossVectors(e1, e2);
+            if (cross.dot(normal) < 0) {
+                positions.push(...a.toArray(), ...c.toArray(), ...b.toArray());
+                uvs.push(...uvA, ...uvC, ...uvB);
+            } else {
+                positions.push(...a.toArray(), ...b.toArray(), ...c.toArray());
+                uvs.push(...uvA, ...uvB, ...uvC);
+            }
+        }
 
-        // مثلث دوم کایت: Top -> Bottom -> Right
-        positions.push(...pTop.toArray(), ...pBottom.toArray(), ...pRight.toArray());
-        uvs.push(...uvT, ...uvB, ...uvR);
+        // دو مثلث تشکیل‌دهنده کایت بدون هیچ پیچش
+        pushTri(pApex, pWaistLeft, pOppositeTip, uvApex, uvL, uvTip);
+        pushTri(pApex, pOppositeTip, pWaistRight, uvApex, uvTip, uvR);
     }
 
-    // ۱. ساخت ۵ کایت بالایی
+    // ۱. ساخت ۵ کایت بالایی (نوک بالا = topPole، نوک پایین = راس‌های فرد -h)
     for (let i = 0; i < 5; i++) {
-        const k = i * 2;
-        const pRight = ring[k];
-        const pBottom = ring[(k + 1) % 10];
-        const pLeft = ring[(k + 2) % 10];
-        addKite(topPole, pRight, pBottom, pLeft, upperValues[i]);
+        const pApex = topPole;
+        const pBottomTip = ring[(i * 2 + 1) % 10]; // راس پایین
+        const pWaistRight = ring[i * 2];            // راس راست (+h)
+        const pWaistLeft = ring[(i * 2 + 2) % 10];  // راس چپ (+h)
+        addKite(pApex, pWaistRight, pBottomTip, pWaistLeft, upperValues[i]);
     }
 
-    // ۲. ساخت ۵ کایت پایینی
+    // ۲. ساخت ۵ کایت پایینی (نوک پایین = bottomPole، نوک بالا = راس‌های زوج +h)
     for (let i = 0; i < 5; i++) {
-        const k = i * 2 + 1;
-        const pRight = ring[(k + 1) % 10];
-        const pTop = ring[k];
-        const pLeft = ring[(k + 9) % 10];
-        addKite(bottomPole, pLeft, pTop, pRight, lowerValues[i]);
+        const pApex = bottomPole;
+        const pTopTip = ring[(i * 2 + 2) % 10];     // راس بالا
+        const pWaistRight = ring[(i * 2 + 3) % 10]; // راس راست (-h)
+        const pWaistLeft = ring[(i * 2 + 1) % 10];  // راس چپ (-h)
+        addKite(pApex, pWaistRight, pTopTip, pWaistLeft, lowerValues[i]);
     }
 
     const geom = new THREE.BufferGeometry();
