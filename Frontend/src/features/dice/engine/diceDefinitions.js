@@ -96,17 +96,20 @@ function createD8Data() {
 }
 
 // ---------------- D10 & D100 (17mm / Pentagonal Trapezohedron) ----------------
+// ---------------- D10 & D100 (Official 20mm x 20mm Blueprint Specification) ----------------
 function createD10GeometryData(isPercentile = false) {
-    const H = 1.35;
-    const R = 1.20;
-    const h = 0.35;
+    // بر اساس ابعاد دقیق شیت: Height: 20mm | Width: 20mm (نسبت 1 به 1)
+    const H = 1.20;    // ارتفاع قطب‌ها (۱۰ میلی‌متر از مرکز به هر طرف)
+    const R = 1.20;    // شعاع استوا (۱۰ میلی‌متر از مرکز به هر طرف)
+    const h = 0.26;    // آفست متقارن دندانه‌های زیگزاگی مطابق بلوپرینت
 
     const topPole = new THREE.Vector3(0, H, 0);
     const bottomPole = new THREE.Vector3(0, -H, 0);
 
+    // ۱۰ رأس دور استوا (۵ راس در +h و ۵ راس در -h)
     const ring = [];
     for (let i = 0; i < 10; i++) {
-        const angle = (i * Math.PI) / 5;
+        const angle = (i * Math.PI) / 5; // زاویه ۳۶ درجه
         const y = i % 2 === 0 ? h : -h;
         ring.push(new THREE.Vector3(Math.cos(angle) * R, y, Math.sin(angle) * R));
     }
@@ -115,7 +118,7 @@ function createD10GeometryData(isPercentile = false) {
     const uvs = [];
     const faces = [];
 
-    // آرایش اعداد مطابق شیت پوستر:
+    // آرایش ارقام استاندارد D&D (مجموع وجوه متقابل = ۹ یا ۹۰)
     const upperValues = isPercentile ? [0, 20, 40, 60, 80] : [0, 2, 4, 6, 8];
     const lowerValues = isPercentile ? [90, 70, 50, 30, 10] : [9, 7, 5, 3, 1];
 
@@ -127,6 +130,7 @@ function createD10GeometryData(isPercentile = false) {
             .add(pWaistLeft)
             .multiplyScalar(0.25);
 
+        // محاسبه بردار نرمال قطعی کایت
         const diagLong = new THREE.Vector3().subVectors(pOppositeTip, pApex);
         const diagWaist = new THREE.Vector3().subVectors(pWaistLeft, pWaistRight);
         let normal = new THREE.Vector3().crossVectors(diagLong, diagWaist).normalize();
@@ -135,10 +139,12 @@ function createD10GeometryData(isPercentile = false) {
         }
         faces.push({ normal, value: faceValue });
 
+        // محورهای دوبعدی تراز با نوک الماس کایت
         const upUV = new THREE.Vector3().subVectors(pApex, center).normalize();
         const rightUV = new THREE.Vector3().crossVectors(upUV, normal).normalize();
 
-        const scale = 2.35;
+        // مقیاس متناسب با بلوپرینت ۲۰ میلی‌متری
+        const scale = 2.05;
         function getUV(pt) {
             const d = new THREE.Vector3().subVectors(pt, center);
             return [0.5 + d.dot(rightUV) / scale, 0.5 + d.dot(upUV) / scale];
@@ -149,6 +155,7 @@ function createD10GeometryData(isPercentile = false) {
         const uvR = getUV(pWaistRight);
         const uvL = getUV(pWaistLeft);
 
+        // دو مثلث تشکیل دهنده هر کایت با جهت پادساعتگرد (CCW)
         function pushTri(a, b, c, uvA, uvB, uvC) {
             const e1 = new THREE.Vector3().subVectors(b, a);
             const e2 = new THREE.Vector3().subVectors(c, a);
@@ -166,7 +173,7 @@ function createD10GeometryData(isPercentile = false) {
         pushTri(pApex, pOppositeTip, pWaistRight, uvApex, uvTip, uvR);
     }
 
-    // ۵ کایت بالا
+    // ۵ کایت بالایی
     for (let i = 0; i < 5; i++) {
         const pApex = topPole;
         const pBottomTip = ring[(i * 2 + 1) % 10];
@@ -175,7 +182,7 @@ function createD10GeometryData(isPercentile = false) {
         addKite(pApex, pWaistRight, pBottomTip, pWaistLeft, upperValues[i]);
     }
 
-    // ۵ کایت پایین
+    // ۵ کایت پایینی
     for (let i = 0; i < 5; i++) {
         const pApex = bottomPole;
         const pTopTip = ring[(i * 2 + 2) % 10];
