@@ -58,9 +58,28 @@ export const useDiceStore = create((set, get) => ({
             d.id === dieId ? { ...d, settled: true, value } : d
         );
 
-        const newResults = [...results.filter((r) => r.id !== dieId), { id: dieId, value }];
+        const targetDie = updatedDice.find((d) => d.id === dieId);
+        const newResults = [
+            ...results.filter((r) => r.id !== dieId),
+            { id: dieId, type: targetDie?.type || 'd20', value },
+        ];
         const allSettled = updatedDice.every((d) => d.settled);
-        const sum = newResults.reduce((acc, curr) => acc + curr.value, 0);
+
+        // محاسبه نتیجه درصدی d100 + d10 طبق استاندارد D&D 5e
+        let sum = 0;
+        const isPercentilePair =
+            newResults.length === 2 &&
+            newResults.some((r) => r.type === 'd100') &&
+            newResults.some((r) => r.type === 'd10');
+
+        if (isPercentilePair) {
+            const tens = newResults.find((r) => r.type === 'd100')?.value || 0;
+            const ones = newResults.find((r) => r.type === 'd10')?.value || 0;
+            // اگر هر دو صفر بیایند نتیجه ۱۰۰ است
+            sum = tens === 0 && ones === 0 ? 100 : tens + ones;
+        } else {
+            sum = newResults.reduce((acc, curr) => acc + curr.value, 0);
+        }
 
         set({
             activeDice: updatedDice,

@@ -102,11 +102,11 @@ function createD8Data() {
     return { type: 'd8', radius, faces, createGeometry: () => geom.clone() };
 }
 
-// ---------------- D10 & D100 (Pentagonal Trapezohedron) ----------------
+// ---------------- D10 & D100 (Classic Symmetrical Trapezohedron) ----------------
 function createD10GeometryData(isPercentile = false) {
-    const H = 1.32;
-    const R = 1.22;
-    const h = 0.32;
+    const H = 1.35;    // ارتفاع قطب‌ها
+    const R = 1.18;    // شعاع استاندارد استوا
+    const h = 0.32;    // دندانه متقارن استوا
 
     const topPole = new THREE.Vector3(0, H, 0);
     const bottomPole = new THREE.Vector3(0, -H, 0);
@@ -121,39 +121,81 @@ function createD10GeometryData(isPercentile = false) {
     }
 
     const positions = [];
+    const uvs = [];
     const faces = [];
+
+    // آرایش اعداد استاندارد d10 و d100
     const upperValues = isPercentile ? [60, 40, 80, 0, 20] : [6, 4, 8, 0, 2];
     const lowerValues = isPercentile ? [30, 50, 10, 90, 70] : [3, 5, 1, 9, 7];
 
+    // ۵ کایت بالایی: عدد به سمت topPole تراز می‌شود
     for (let i = 0; i < 5; i++) {
         const U_curr = upperRing[i];
         const L_curr = lowerRing[i];
         const U_next = upperRing[(i + 1) % 5];
-        const normal = new THREE.Vector3().subVectors(L_curr, topPole).cross(new THREE.Vector3().subVectors(U_next, U_curr)).normalize();
+
+        const diag1 = new THREE.Vector3().subVectors(L_curr, topPole);
+        const diag2 = new THREE.Vector3().subVectors(U_next, U_curr);
+        const normal = new THREE.Vector3().crossVectors(diag1, diag2).normalize();
         faces.push({ normal, value: upperValues[i] });
 
-        positions.push(...topPole.toArray(), ...U_next.toArray(), ...L_curr.toArray());
-        positions.push(...topPole.toArray(), ...L_curr.toArray(), ...U_curr.toArray());
+        // محورهای محلی برای تراز عمودی عدد به سمت نوک قطب
+        const faceCenter = new THREE.Vector3().add(topPole).add(L_curr).multiplyScalar(0.5);
+        const localUp = new THREE.Vector3().subVectors(topPole, faceCenter).normalize();
+        const localRight = new THREE.Vector3().crossVectors(localUp, normal).normalize();
+
+        const verts = [topPole, U_next, L_curr, topPole, L_curr, U_curr];
+        positions.push(
+            ...topPole.toArray(), ...U_next.toArray(), ...L_curr.toArray(),
+            ...topPole.toArray(), ...L_curr.toArray(), ...U_curr.toArray()
+        );
+
+        // نگاشت UV متقارن
+        verts.forEach((v) => {
+            const diff = new THREE.Vector3().subVectors(v, faceCenter);
+            uvs.push(0.5 + diff.dot(localRight) / 2.2, 0.5 + diff.dot(localUp) / 2.2);
+        });
     }
 
+    // ۵ کایت پایینی: عدد به سمت bottomPole تراز می‌شود
     for (let i = 0; i < 5; i++) {
         const L_curr = lowerRing[i];
         const U_next = upperRing[(i + 1) % 5];
         const L_next = lowerRing[(i + 1) % 5];
-        const normal = new THREE.Vector3().subVectors(L_next, L_curr).cross(new THREE.Vector3().subVectors(U_next, bottomPole)).normalize();
+
+        const diag1 = new THREE.Vector3().subVectors(U_next, bottomPole);
+        const diag2 = new THREE.Vector3().subVectors(L_next, L_curr);
+        const normal = new THREE.Vector3().crossVectors(diag2, diag1).normalize();
         faces.push({ normal, value: lowerValues[i] });
 
-        positions.push(...bottomPole.toArray(), ...L_next.toArray(), ...U_next.toArray());
-        positions.push(...bottomPole.toArray(), ...U_next.toArray(), ...L_curr.toArray());
+        const faceCenter = new THREE.Vector3().add(bottomPole).add(U_next).multiplyScalar(0.5);
+        const localUp = new THREE.Vector3().subVectors(bottomPole, faceCenter).normalize();
+        const localRight = new THREE.Vector3().crossVectors(localUp, normal).normalize();
+
+        const verts = [bottomPole, L_next, U_next, bottomPole, U_next, L_curr];
+        positions.push(
+            ...bottomPole.toArray(), ...L_next.toArray(), ...U_next.toArray(),
+            ...bottomPole.toArray(), ...U_next.toArray(), ...L_curr.toArray()
+        );
+
+        verts.forEach((v) => {
+            const diff = new THREE.Vector3().subVectors(v, faceCenter);
+            uvs.push(0.5 + diff.dot(localRight) / 2.2, 0.5 + diff.dot(localUp) / 2.2);
+        });
     }
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    applyPlanarUVs(geom, faces, 2, R * 1.3);
+    geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geom.clearGroups();
+
+    for (let f = 0; f < 10; f++) {
+        geom.addGroup(f * 6, 6, f);
+    }
+    geom.computeVertexNormals();
 
     return { type: isPercentile ? 'd100' : 'd10', radius: R, faces, createGeometry: () => geom.clone() };
 }
-
 // ---------------- D12 (Dodecahedron - 12 Pentagons) ----------------
 function createD12Data() {
     const radius = 1.3;

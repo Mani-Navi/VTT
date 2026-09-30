@@ -19,8 +19,16 @@ export function DiceOverlay() {
 
     if (!isOpen) return null;
 
-    // با کلیک روی هر تاس، مستقیماً به استخر اضافه و رول می‌شود
+// مدیریت افزودن تاس با منطق جفتی برای d100
     const handleQuickAdd = (type) => {
+        if (type === 'd100') {
+            // در D&D تاس d100 همواره دو قلو است: ده‌گان (d100) + یکان (d10)
+            const nextPool = [...selectedPool, 'd100', 'd10'];
+            setSelectedPool(nextPool);
+            triggerRoll(nextPool);
+            return;
+        }
+
         const nextPool = [...selectedPool, type];
         setSelectedPool(nextPool);
         triggerRoll(nextPool);
