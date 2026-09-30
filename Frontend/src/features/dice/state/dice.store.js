@@ -54,30 +54,40 @@ export const useDiceStore = create((set, get) => ({
 
     setDieResult: (dieId, value) => {
         const { activeDice, results } = get();
+
+        // آپدیت وضعیت سکون تاس
         const updatedDice = activeDice.map((d) =>
             d.id === dieId ? { ...d, settled: true, value } : d
         );
 
-        const targetDie = updatedDice.find((d) => d.id === dieId);
+        const currentDie = activeDice.find((d) => d.id === dieId);
+        const dieType = currentDie?.type || 'd20';
+
+        // ذخیره نتیجه تاس به همراه Type دقیق آن
         const newResults = [
             ...results.filter((r) => r.id !== dieId),
-            { id: dieId, type: targetDie?.type || 'd20', value },
+            { id: dieId, type: dieType, value: Number(value) },
         ];
+
         const allSettled = updatedDice.every((d) => d.settled);
 
-        // محاسبه نتیجه درصدی d100 + d10 طبق استاندارد D&D 5e
+        // فرمول قطعی محاسبه مجموع
         let sum = 0;
-        const isPercentilePair =
-            newResults.length === 2 &&
-            newResults.some((r) => r.type === 'd100') &&
-            newResults.some((r) => r.type === 'd10');
+        const tensDie = newResults.find((r) => r.type === 'd100');
+        const onesDie = newResults.find((r) => r.type === 'd10');
 
-        if (isPercentilePair) {
-            const tens = newResults.find((r) => r.type === 'd100')?.value || 0;
-            const ones = newResults.find((r) => r.type === 'd10')?.value || 0;
-            // اگر هر دو صفر بیایند نتیجه ۱۰۰ است
-            sum = tens === 0 && ones === 0 ? 100 : tens + ones;
+        // اگر پرتاب مربوط به جفت تاس درصد (d100 + d10) باشد:
+        if (tensDie && onesDie && newResults.length === 2) {
+            const tensVal = Number(tensDie.value); // مثلاً 00, 10, 20, ..., 90
+            const onesVal = Number(onesDie.value); // مثلاً 0, 1, 2, ..., 9
+
+            if (tensVal === 0 && onesVal === 0) {
+                sum = 100; // قانون رسمی D&D 5e: دو صفر یعنی ۱۰۰
+            } else {
+                sum = tensVal + onesVal; // مثال: 10 + 6 = 16
+            }
         } else {
+            // برای سایر پرتاب‌ها جمع معمولی
             sum = newResults.reduce((acc, curr) => acc + curr.value, 0);
         }
 
