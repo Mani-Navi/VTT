@@ -1,8 +1,10 @@
+// src/hooks/useWebSocket.js
 import { useEffect, useRef, useCallback } from "react";
 import { wsService } from "../services/websocket.service";
 import { useSceneStore } from "../store/scene.store";
 import { useCanvasStore } from "../store/canvas.store";
 import { useWebSocketStore } from "../store/websocket.store";
+import { useDiceStore } from "../features/dice/state/dice.store";
 import { WS_EVENTS } from "../constants/wsEvents.js";
 
 export function useWebSocket(roomId, onMessage = null) {
@@ -153,7 +155,6 @@ export function useWebSocket(roomId, onMessage = null) {
         return;
       }
 
-      // حذف تکه مه از طریق پی‌لود FOG_UPDATED
       if (type === "DELETE" || type === "REMOVE" || type === "FOG_DELETE") {
         const targetId = data.id || data.fogId || data.points?.id;
         if (targetId) {
@@ -170,7 +171,6 @@ export function useWebSocket(roomId, onMessage = null) {
     const unsubFog = wsService.on(WS_EVENTS.FOG_UPDATED, handleFogPayload);
     const unsubFogUpdate = wsService.on("FOG_UPDATE", handleFogPayload);
 
-    // لیسنرهای اختصاصی حذف شکل مه برای پلیرها
     const unsubFogDelete = wsService.on("FOG_DELETE", (data) => {
       const targetId = data?.id || data?.fogId || data?.points?.id || (typeof data === "string" ? data : null);
       if (targetId) {
@@ -277,8 +277,26 @@ export function useWebSocket(roomId, onMessage = null) {
       }
     });
 
-    // ۶. تاس
-    const unsubDice = wsService.on("DICE_ROLL", (data) => {
+    // ۶. همگام‌سازی بلادرنگ فیزیک سه‌بعدی تاس بین همه بازیکنان
+    const unsubDice = wsService.on("DICE_ROLL", (payload) => {
+      if (!payload) return;
+      const data = payload.data !== undefined ? payload.data : payload;
+
+      // دریافت مشخصات کاربر محلی برای عدم تکرار پرتابی که خودش زده
+      let myUserId = 'me';
+      try {
+        const stored = localStorage.getItem('vtt_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          myUserId = parsed.id || parsed.userId || 'me';
+        }
+      } catch (e) {}
+
+      // اگر پرتاب توسط بازیکنی دیگر انجام شده باشد، شبیه‌سازی روی کلاینت ما اجرا شود
+      if (data && data.dice && Array.isArray(data.dice) && data.senderId !== myUserId) {
+        useDiceStore.getState().triggerRemoteRoll(data.dice, data.rollerName);
+      }
+
       if (data && useSceneStore.getState().addDiceRoll) {
         useSceneStore.getState().addDiceRoll(data);
       }

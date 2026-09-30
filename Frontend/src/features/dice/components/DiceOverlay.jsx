@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
-import { RotateCcw, X, Trash2, Dices, Zap } from 'lucide-react';
+import { RotateCcw, X, Trash2, Dices, Zap, User } from 'lucide-react';
 
 const DICE_TYPES = [
     { type: 'd4', label: 'D4' },
@@ -15,17 +15,15 @@ const DICE_TYPES = [
 ];
 
 export function DiceOverlay() {
-    const { isOpen, isRolling, results, totalSum, setOpen, triggerRoll, clearDice, activeDice } = useDiceStore();
+    const { isOpen, isRolling, results, totalSum, rollerName, isRemoteRoll, setOpen, triggerRoll, clearDice, activeDice } = useDiceStore();
 
     const [mode, setMode] = useState('quick');
     const [poolCounts, setPoolCounts] = useState({});
     const [lastRollTypes, setLastRollTypes] = useState(['d20']);
 
-    // بدون تایمر پاک‌سازی خودکار: تاس‌ها روی زمین باقی می‌مانند مگر با زدن دکمه بستن یا پرتاب جدید
-
     if (!isOpen && activeDice.length === 0) return null;
 
-    // ۱. پرتاب خودکار و سریع تکی (تاس‌های قبلی را جایگزین می‌کند)
+    // ۱. پرتاب خودکار و سریع تکی
     const handleQuickRoll = (type) => {
         const diceToRoll = type === 'd100' ? ['d100', 'd10'] : [type];
         setLastRollTypes(diceToRoll);
@@ -96,11 +94,21 @@ export function DiceOverlay() {
                 <DiceCanvas />
             </div>
 
-            {/* بنر نتیجه نهایی در بالای صفحه */}
+            {/* بنر نتیجه نهایی در بالای صفحه (با پشتیبانی از نمایش نام بازیکن پرتاب‌کننده) */}
             {results.length > 0 && (
                 <div className="absolute top-14 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center gap-3.5 bg-zinc-950/90 border border-purple-500/40 px-5 py-2.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-                        <span className="text-zinc-400 text-xs font-medium">مجموع:</span>
+
+                        {/* نشانگر نام پرتاب‌کننده در صورت پرتاب سایر بازیکنان */}
+                        {isRemoteRoll && rollerName ? (
+                            <div className="flex items-center gap-1.5 pl-3 border-l border-zinc-800 text-purple-300 text-xs font-bold">
+                                <User className="w-3.5 h-3.5 text-purple-400" />
+                                <span>{rollerName}:</span>
+                            </div>
+                        ) : (
+                            <span className="text-zinc-400 text-xs font-medium">مجموع:</span>
+                        )}
+
                         <span className={`text-3xl font-black font-mono tracking-tight ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]'}`}>
                             {totalSum}
                         </span>
@@ -116,13 +124,15 @@ export function DiceOverlay() {
                             ))}
                         </div>
 
-                        <button
-                            onClick={handleReRoll}
-                            className="p-1.5 text-zinc-400 hover:text-amber-300 rounded-lg hover:bg-zinc-800/80 transition"
-                            title="پرتاب مجدد"
-                        >
-                            <RotateCcw className="w-4 h-4" />
-                        </button>
+                        {!isRemoteRoll && (
+                            <button
+                                onClick={handleReRoll}
+                                className="p-1.5 text-zinc-400 hover:text-amber-300 rounded-lg hover:bg-zinc-800/80 transition"
+                                title="پرتاب مجدد"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
