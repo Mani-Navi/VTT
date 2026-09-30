@@ -1,5 +1,5 @@
 // src/features/dice/components/DiceOverlay.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
 import { RotateCcw, X, Trash2, Dices, Zap } from 'lucide-react';
@@ -21,20 +21,11 @@ export function DiceOverlay() {
     const [poolCounts, setPoolCounts] = useState({});
     const [lastRollTypes, setLastRollTypes] = useState(['d20']);
 
-    // تایمر پاک‌سازی خودکار تاس‌ها ۴.۵ ثانیه پس از توقف
-    useEffect(() => {
-        let timer;
-        if (!isRolling && results.length > 0 && activeDice.length > 0) {
-            timer = setTimeout(() => {
-                clearDice();
-            }, 4500);
-        }
-        return () => clearTimeout(timer);
-    }, [isRolling, results, activeDice, clearDice]);
+    // بدون تایمر پاک‌سازی خودکار: تاس‌ها روی زمین باقی می‌مانند مگر با زدن دکمه بستن یا پرتاب جدید
 
     if (!isOpen && activeDice.length === 0) return null;
 
-    // ۱. پرتاب خودکار و سریع تکی
+    // ۱. پرتاب خودکار و سریع تکی (تاس‌های قبلی را جایگزین می‌کند)
     const handleQuickRoll = (type) => {
         const diceToRoll = type === 'd100' ? ['d100', 'd10'] : [type];
         setLastRollTypes(diceToRoll);
@@ -68,7 +59,7 @@ export function DiceOverlay() {
         setPoolCounts({});
     };
 
-    // ۵. پرتاب کل استخر به صورت خودکار
+    // ۵. پرتاب کل استخر
     const handleRollPool = () => {
         const diceToRoll = [];
         Object.entries(poolCounts).forEach(([type, count]) => {
@@ -239,7 +230,7 @@ export function DiceOverlay() {
                             setOpen(false);
                         }}
                         className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-zinc-900 transition"
-                        title="بستن"
+                        title="بستن منو و پاکسازی تاس‌ها"
                     >
                         <X className="w-4 h-4" />
                     </button>
