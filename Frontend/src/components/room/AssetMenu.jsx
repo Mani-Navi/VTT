@@ -79,7 +79,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   if (!canAccessAssets) {
     return (
         <div
-            className="fixed inset-x-3 bottom-4 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-80 bg-zinc-900/95 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-5 text-zinc-100 font-fa select-none text-center"
+            className="fixed inset-x-3 bottom-4 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-80 glass-card border border-zinc-800 rounded-3xl shadow-2xl p-5 text-zinc-100 font-fa select-none text-center animate-fade-in-up"
             dir="rtl"
             onWheel={(e) => e.stopPropagation()}
         >
@@ -93,7 +93,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           <Button
               size="sm"
               variant="secondary"
-              className="mt-4 w-full text-xs font-bold"
+              className="mt-4 w-full text-xs font-bold active:scale-95"
               onClick={() => toggleMenu("asset")}
           >
             بستن
@@ -233,24 +233,24 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
 
   return (
       <div
-          className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-[460px] max-w-[95vw] bg-zinc-900/98 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-4 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-150 max-h-[82vh] flex flex-col"
+          className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-[460px] max-w-[95vw] glass-card border border-zinc-800 rounded-3xl shadow-2xl p-4 text-zinc-100 font-fa select-none animate-fade-in-up max-h-[82vh] flex flex-col"
           dir="rtl"
           onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <ImageIcon className="w-5 h-5" />
+              <ImageIcon className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold">کتابخانه منابع (Asset Library)</h4>
-              <p className="text-[11px] text-zinc-400">مدیریت نقشه‌ها و توکن‌ها</p>
+              <h4 className="text-xs sm:text-sm font-bold">کتابخانه منابع (Asset Library)</h4>
+              <p className="text-[10px] sm:text-[11px] text-zinc-400">مدیریت نقشه‌ها و توکن‌ها</p>
             </div>
           </div>
           <button
               type="button"
               onClick={() => toggleMenu("asset")}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer transition-colors"
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 active:scale-90 cursor-pointer transition-all"
           >
             <X className="w-4 h-4" />
           </button>
@@ -272,9 +272,9 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                       setUploadError("");
                     }}
                     className={cn(
-                        "flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                        "flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer active:scale-95",
                         activeTab === tab.id
-                            ? "bg-amber-500 text-zinc-950 shadow-md"
+                            ? "bg-amber-500 text-zinc-950 shadow-md font-black"
                             : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
                     )}
                 >
@@ -293,7 +293,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="جستجو..."
-                className="w-full pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                className="w-full pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500 transition-colors"
             />
           </div>
 
@@ -308,7 +308,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           <Button
               size="sm"
               variant="secondary"
-              className="text-xs font-bold shrink-0 cursor-pointer p-2 rounded-xl"
+              className="text-xs font-bold shrink-0 cursor-pointer p-2 rounded-xl active:scale-90"
               onClick={() => setShowUrlInput(!showUrlInput)}
               title="افزودن با لینک وب"
           >
@@ -318,7 +318,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           <Button
               size="sm"
               variant="amber"
-              className="text-xs font-bold shrink-0 cursor-pointer shadow-md shadow-amber-500/20"
+              className="text-xs font-bold shrink-0 cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
               onClick={() => fileInputRef.current?.click()}
               isLoading={isUploading}
               disabled={activeTab === "maps" && !canUploadMap}
@@ -331,7 +331,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
         {showUrlInput && (
             <form
                 onSubmit={handleAddFromUrl}
-                className="p-3 mb-3 bg-zinc-950/80 border border-amber-500/30 rounded-2xl space-y-2 animate-in fade-in shrink-0"
+                className="p-3 mb-3 bg-zinc-950/80 border border-amber-500/30 rounded-2xl space-y-2 animate-fade-in-up shrink-0"
             >
               <div className="text-[11px] font-bold text-amber-400">افزودن از وب (لینک مستقیم):</div>
               <input
@@ -351,7 +351,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                     placeholder="نام دلخواه"
                     className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-amber-500"
                 />
-                <Button size="sm" variant="amber" type="submit" isLoading={isUploading} className="text-xs font-bold">
+                <Button size="sm" variant="amber" type="submit" isLoading={isUploading} className="text-xs font-bold active:scale-95">
                   ثبت لینک
                 </Button>
               </div>
@@ -359,14 +359,14 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
         )}
 
         {uploadError && (
-            <div className="mb-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-[11px] text-rose-400 text-center font-bold shrink-0">
+            <div className="mb-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-xl text-[11px] text-rose-400 text-center font-bold shrink-0 animate-shake-subtle">
               {uploadError}
             </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3">
+        <div className="flex-1 overflow-y-auto pr-1 space-y-3">
           {activeTab === "maps" && (
-              <div>
+              <div className="animate-fade-in-up">
                 <span className="text-[11px] font-bold text-zinc-400 mb-2 block">نقشه‌های پیش‌فرض سیستم:</span>
                 <div className="grid grid-cols-2 gap-2.5">
                   {filteredPresets.map((map) => (
@@ -374,16 +374,16 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           key={map.id}
                           onClick={() => canUploadMap && handleSelectMap(map.url || map.thumbnailUrl, map.id)}
                           className={cn(
-                              "group relative rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950 transition-all",
+                              "group relative rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950 transition-all duration-200",
                               canUploadMap
-                                  ? "hover:border-amber-500 cursor-pointer hover:scale-[1.02]"
+                                  ? "hover:border-amber-500 cursor-pointer hover:-translate-y-0.5 shadow-sm active:scale-[0.98]"
                                   : "opacity-60 cursor-not-allowed"
                           )}
                       >
                         <img
                             src={getAssetUrl(map.url || map.thumbnailUrl)}
                             alt={map.name}
-                            className="w-full h-24 object-cover group-hover:brightness-110"
+                            className="w-full h-24 object-cover group-hover:brightness-105 transition-all"
                             loading="lazy"
                         />
                         <div className="p-2 bg-zinc-900/90 flex items-center justify-between">
@@ -397,7 +397,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           )}
 
           {activeTab === "tokens" && (
-              <div>
+              <div className="animate-fade-in-up">
             <span className="text-[11px] font-bold text-zinc-400 mb-2 block">
               {!hasActiveMap
                   ? "ابتدا نقشه را انتخاب کنید تا بتوانید توکن اضافه نمایید."
@@ -409,10 +409,10 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           key={token.id}
                           onClick={() => handleAddToken(token.avatarUrl || token.url, token.nameFa || token.name, token)}
                           className={cn(
-                              "group p-2 rounded-2xl border border-zinc-800 bg-zinc-950 transition-all flex flex-col items-center gap-1.5",
+                              "group p-2 rounded-2xl border border-zinc-800 bg-zinc-950 transition-all duration-150 flex flex-col items-center gap-1.5 active:scale-95",
                               !hasActiveMap
                                   ? "opacity-50 cursor-not-allowed"
-                                  : "hover:border-amber-500 cursor-pointer hover:scale-105"
+                                  : "hover:border-amber-500 cursor-pointer hover:bg-zinc-900"
                           )}
                       >
                         <img
@@ -431,7 +431,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           )}
 
           {filteredUserAssets.length > 0 && (
-              <div className="pt-3 border-t border-zinc-800/80">
+              <div className="pt-3 border-t border-zinc-800/80 animate-fade-in-up">
             <span className="text-[11px] font-bold text-amber-400/90 mb-2 block">
               فایل‌های شخصی شما:
             </span>
@@ -447,7 +447,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                             }
                           }}
                           className={cn(
-                              "group relative p-1.5 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col items-center gap-1 transition-all",
+                              "group relative p-1.5 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col items-center gap-1 transition-all active:scale-95",
                               !hasActiveMap && asset.type !== "MAP"
                                   ? "opacity-40 cursor-not-allowed"
                                   : "hover:border-amber-500 cursor-pointer"
@@ -480,3 +480,4 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
 });
 
 AssetMenu.displayName = "AssetMenu";
+export default AssetMenu;

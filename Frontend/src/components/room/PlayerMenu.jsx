@@ -98,7 +98,7 @@ const MemberCard = memo(
                             <div
                                 className={cn(
                                     "w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-inner transition-all duration-150",
-                                    isSpeaking ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-zinc-950 scale-105" : "",
+                                    isSpeaking ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-zinc-950 scale-105 shadow-[0_0_12px_rgba(251,191,36,0.3)]" : "",
                                     isMemberGM
                                         ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                                         : "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
@@ -175,7 +175,7 @@ const MemberCard = memo(
                                 type="button"
                                 onClick={() => onToggleExpand(memberActualId)}
                                 className={cn(
-                                    "w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer",
+                                    "w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-90",
                                     isExpanded
                                         ? "bg-amber-500 text-zinc-950 font-bold"
                                         : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
@@ -189,7 +189,7 @@ const MemberCard = memo(
                 </div>
 
                 {isGM && isExpanded && (
-                    <div className="p-3 bg-zinc-950 border-t border-zinc-800/90 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-3 bg-zinc-950 border-t border-zinc-800/90 space-y-3 animate-fade-in-up">
                         <div className="p-2.5 sm:p-3 bg-zinc-900/80 rounded-2xl border border-zinc-800 space-y-2">
                             <div className="flex items-center justify-between text-xs font-bold text-amber-400">
                                 <div className="flex items-center gap-1.5">
@@ -207,7 +207,7 @@ const MemberCard = memo(
                                         type="button"
                                         onClick={() => onSetRoleTitle(targetType, preset)}
                                         className={cn(
-                                            "px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-medium transition-all cursor-pointer border",
+                                            "px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-medium transition-all cursor-pointer border active:scale-95",
                                             displayTitle === preset
                                                 ? "bg-amber-500/20 text-amber-300 border-amber-500/60 font-bold shadow-sm"
                                                 : "bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800/80"
@@ -235,7 +235,7 @@ const MemberCard = memo(
                                             onSetRoleTitle(targetType, customInputVal);
                                         }
                                     }}
-                                    className="px-2.5 sm:px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-amber-500/20 shrink-0"
+                                    className="px-2.5 sm:px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer transition-all shadow-md shadow-amber-500/20 shrink-0 active:scale-95"
                                 >
                                     اعمال به همه
                                 </button>
@@ -249,7 +249,7 @@ const MemberCard = memo(
                                         type="button"
                                         onClick={() => onToggleMute(member)}
                                         className={cn(
-                                            "py-2 px-1 rounded-xl border text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all",
+                                            "py-2 px-1 rounded-xl border text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all active:scale-95",
                                             member.isMuted
                                                 ? "bg-rose-500/20 border-rose-500/60 text-rose-300 shadow-sm"
                                                 : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-700"
@@ -266,7 +266,7 @@ const MemberCard = memo(
                                     <button
                                         type="button"
                                         onClick={() => onRoleChange(memberActualId, member.role)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-amber-400 hover:bg-zinc-800 hover:border-zinc-700 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-amber-400 hover:bg-zinc-800 hover:border-zinc-700 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all active:scale-95"
                                     >
                                         <Shield className="w-3.5 h-3.5 text-amber-400" />
                                         <span className="truncate">{isMemberGM ? "پلیر" : "میزبان"}</span>
@@ -275,7 +275,7 @@ const MemberCard = memo(
                                     <button
                                         type="button"
                                         onClick={() => onKick(memberActualId, member.username)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all active:scale-95"
                                     >
                                         <UserX className="w-3.5 h-3.5 text-rose-400" />
                                         <span>اخراج</span>
@@ -284,7 +284,7 @@ const MemberCard = memo(
                                     <button
                                         type="button"
                                         onClick={() => onBan(memberActualId, member.username)}
-                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/40 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all"
+                                        className="py-2 px-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-rose-500 hover:bg-rose-500/20 hover:border-rose-500/40 text-[10px] sm:text-xs font-bold flex flex-col items-center gap-1 cursor-pointer transition-all active:scale-95"
                                     >
                                         <Ban className="w-3.5 h-3.5 text-rose-500" />
                                         <span>مسدود</span>
@@ -312,7 +312,7 @@ const MemberCard = memo(
                                                     key={p.key}
                                                     onClick={() => onPermissionToggle(memberActualId, p.key, isAllowed)}
                                                     className={cn(
-                                                        "p-1.5 sm:p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none",
+                                                        "p-1.5 sm:p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none active:scale-95",
                                                         isAllowed
                                                             ? "bg-amber-500/15 border-amber-500/40 text-amber-300 font-medium"
                                                             : "bg-zinc-950 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
@@ -631,12 +631,12 @@ export const PlayerMenu = memo(
 
         return (
             <>
-                {/* تریگر منوی بازیکنان در گوشه راست بالا */}
+                {/* دکمه شمارنده آنلاین در گوشه بالا راست */}
                 <div className="fixed top-3 right-3 sm:top-4 sm:right-6 z-30 font-fa select-none pointer-events-auto" dir="rtl">
                     <button
                         type="button"
                         onClick={() => setIsOpen(!isOpen)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/95 hover:bg-zinc-850 border border-zinc-800/90 text-zinc-200 text-xs font-bold cursor-pointer transition-all shadow-xl backdrop-blur-xl active:scale-95"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-zinc-800/80 text-zinc-200 text-xs font-bold cursor-pointer transition-all duration-150 shadow-lg backdrop-blur-xl active:scale-95"
                     >
                         <Users className="w-3.5 h-3.5 text-amber-400" />
                         <span className="font-mono text-amber-400 font-bold">{membersList.length}</span>
@@ -645,10 +645,10 @@ export const PlayerMenu = memo(
                     </button>
                 </div>
 
-                {/* منو در دسکتاپ: دراپ‌دان معمولی زیر دکمه */}
+                {/* منو در دسکتاپ: دراپ‌دان شیشه‌ای */}
                 {isOpen && (
                     <div
-                        className="hidden sm:block fixed top-16 right-6 z-50 w-96 max-w-[95vw] bg-zinc-900/98 border border-zinc-800 rounded-3xl shadow-2xl backdrop-blur-2xl p-3.5 pt-3 space-y-3 animate-in fade-in zoom-in-95 duration-150 font-fa"
+                        className="hidden sm:block fixed top-16 right-6 z-50 w-96 max-w-[95vw] glass-card border border-zinc-800 rounded-3xl shadow-2xl p-3.5 pt-3 space-y-3 animate-fade-in-up font-fa"
                         dir="rtl"
                     >
                         <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
@@ -662,7 +662,7 @@ export const PlayerMenu = memo(
                             <button
                                 type="button"
                                 onClick={() => copy(displayCode)}
-                                className="flex items-center gap-1 font-mono text-[11px] text-amber-400 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800"
+                                className="flex items-center gap-1 font-mono text-[11px] text-amber-400 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800 active:scale-95 transition-all"
                                 title="کپی کد"
                             >
                                 <span>{displayCode}</span>
@@ -670,7 +670,7 @@ export const PlayerMenu = memo(
                             </button>
                         </div>
 
-                        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
                             {membersList.length === 0 ? (
                                 <div className="text-center py-6 text-zinc-500 text-xs">هیچ کاربری آنلاین نیست</div>
                             ) : (
@@ -750,11 +750,11 @@ export const PlayerMenu = memo(
                                 disabled={!isVoiceConnected}
                                 onClick={toggleMicrophone}
                                 className={cn(
-                                    "w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md select-none",
+                                    "w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md select-none active:scale-[0.98]",
                                     isMicEnabled
                                         ? "bg-emerald-500 text-zinc-950 font-black shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                                         : isVoiceConnected
-                                            ? "bg-zinc-800 text-zinc-200 border border-zinc-700"
+                                            ? "bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-750"
                                             : "bg-zinc-950 text-zinc-600 border border-zinc-800 cursor-not-allowed"
                                 )}
                             >
@@ -765,15 +765,15 @@ export const PlayerMenu = memo(
                     </div>
                 )}
 
-                {/* منو در موبایل: کشوی Bottom Sheet واقعی با z-[100] که تمام صفحه و تولبار را می‌پوشاند */}
+                {/* منو در موبایل: باتم‌شیت با انیمیشن روان */}
                 {isOpen && (
                     <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end pointer-events-auto font-fa" dir="rtl">
                         <div
-                            className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md animate-fade-in-up"
                             onClick={() => setIsOpen(false)}
                         />
 
-                        <div className="relative z-10 w-full max-h-[85dvh] bg-zinc-950 border-t border-zinc-800 rounded-t-[2.5rem] p-4 pb-8 space-y-3.5 shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-200">
+                        <div className="relative z-10 w-full max-h-[85dvh] bg-zinc-950 border-t border-zinc-800 rounded-t-[2.5rem] p-4 pb-8 space-y-3.5 shadow-2xl flex flex-col animate-fade-in-up">
                             <div className="w-12 h-1.5 rounded-full bg-zinc-800 mx-auto -mt-1 mb-1" />
 
                             <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
@@ -789,19 +789,19 @@ export const PlayerMenu = memo(
                                 <button
                                     type="button"
                                     onClick={() => setIsOpen(false)}
-                                    className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer"
+                                    className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer active:scale-90"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
 
                             {voiceError && (
-                                <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+                                <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center animate-shake-subtle">
                                     <span className="text-[11px] text-rose-400">{voiceError}</span>
                                 </div>
                             )}
 
-                            <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
                                 {membersList.length === 0 ? (
                                     <div className="text-center py-6 text-zinc-500 text-xs">هیچ کاربری آنلاین نیست</div>
                                 ) : (
@@ -875,7 +875,6 @@ export const PlayerMenu = memo(
                                 )}
                             </div>
 
-                            {/* دکمه وویس در انتهای شیت: کاملاً آزاد و بدون تداخل با تولبار */}
                             <div className="pt-2 border-t border-zinc-800/80">
                                 {isSelfMutedByGM ? (
                                     <div className="w-full py-2.5 px-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center gap-2 text-xs font-bold">
@@ -919,3 +918,4 @@ export const PlayerMenu = memo(
 );
 
 PlayerMenu.displayName = "PlayerMenu";
+export default PlayerMenu;

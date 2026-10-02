@@ -338,7 +338,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
           maxWidth="lg"
       >
         <div
-            className="space-y-4 max-h-[82vh] overflow-y-auto px-1 font-fa text-zinc-200 select-none custom-scrollbar"
+            className="space-y-4 max-h-[82vh] overflow-y-auto px-1 font-fa text-zinc-200 select-none animate-fade-in-up"
             dir="rtl"
         >
           <div className="p-4 bg-zinc-950/80 rounded-2xl border border-zinc-800/90 shadow-lg space-y-3.5 backdrop-blur-md">
@@ -387,7 +387,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                       type="button"
                       disabled={isUploading}
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 py-2 px-3 bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700 text-zinc-300 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm hover:border-amber-500/50"
+                      className="flex-1 py-2 px-3 bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700 text-zinc-300 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm hover:border-amber-500/50 active:scale-95"
                   >
                     <Upload className="w-4 h-4 text-amber-400" />
                     <span>{isUploading ? "درحال آپلود..." : "آپلود تصویر (تا ۳MB)"}</span>
@@ -396,7 +396,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                   <button
                       type="button"
                       onClick={() => setShowPresetPicker(!showPresetPicker)}
-                      className="py-2 px-4 bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700 text-zinc-300 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-amber-500/50"
+                      className="py-2 px-4 bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700 text-zinc-300 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-amber-500/50 active:scale-95"
                   >
                     <ImageIcon className="w-4 h-4 text-amber-400" />
                     <span>آیکون‌های آماده</span>
@@ -406,24 +406,24 @@ export const TokenEditorModal = memo(({ roomData }) => {
             </div>
 
             {uploadError && (
-                <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl">
+                <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl animate-shake-subtle">
                   {uploadError}
                 </div>
             )}
 
             {showPresetPicker && (
-                <div className="p-3.5 bg-zinc-900/95 rounded-2xl border border-amber-500/50 space-y-2.5 animate-in fade-in zoom-in-95 shadow-xl">
+                <div className="p-3.5 bg-zinc-900/95 rounded-2xl border border-amber-500/50 space-y-2.5 animate-fade-in-up shadow-xl">
                   <div className="flex items-center justify-between text-xs text-amber-400 font-bold border-b border-zinc-800 pb-2">
                     <span>انتخاب آیکون آماده فانتزی:</span>
                     <button
                         type="button"
                         onClick={() => setShowPresetPicker(false)}
-                        className="text-zinc-400 hover:text-zinc-200 cursor-pointer p-1 rounded-lg hover:bg-zinc-800"
+                        className="text-zinc-400 hover:text-zinc-200 cursor-pointer p-1 rounded-lg hover:bg-zinc-800 active:scale-90"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-5 gap-2.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="grid grid-cols-5 gap-2.5 max-h-48 overflow-y-auto pr-1">
                     {PRESET_TOKEN_ICONS.map((preset) => (
                         <button
                             key={preset.id}
@@ -432,7 +432,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                               setAvatarUrl(preset.url);
                               setShowPresetPicker(false);
                             }}
-                            className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                            className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                                 avatarUrl === preset.url
                                     ? "border-amber-500 bg-amber-500/20 shadow-md shadow-amber-500/20 scale-105"
                                     : "border-zinc-800 bg-zinc-950/80 hover:border-zinc-700 hover:bg-zinc-900"
@@ -481,7 +481,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setAllowPlayerHp(!allowPlayerHp)}
-                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer ${
+                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 ${
                                 allowPlayerHp
                                     ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm shadow-amber-500/10"
                                     : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -494,7 +494,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setShowHp(!showHp)}
-                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer ${
+                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 ${
                                 showHp
                                     ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm shadow-emerald-500/10"
                                     : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -558,14 +558,14 @@ export const TokenEditorModal = memo(({ roomData }) => {
                   <button
                       type="button"
                       onClick={handleApplyDamage}
-                      className="flex-1 py-1 text-xs bg-rose-500/15 text-rose-300 border border-rose-500/30 rounded-xl hover:bg-rose-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                      className="flex-1 py-1 text-xs bg-rose-500/15 text-rose-300 border border-rose-500/30 rounded-xl hover:bg-rose-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium active:scale-95"
                   >
                     <Minus className="w-3.5 h-3.5" /> اعمال آسیب
                   </button>
                   <button
                       type="button"
                       onClick={handleApplyHeal}
-                      className="flex-1 py-1 text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium"
+                      className="flex-1 py-1 text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5" /> اعمال شفا
                   </button>
@@ -589,7 +589,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setShowAddConditionPicker(!showAddConditionPicker)}
-                            className="text-xs bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all shadow-md shadow-amber-500/20"
+                            className="text-xs bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all shadow-md shadow-amber-500/20 active:scale-95"
                         >
                           <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> افزودن به فهرست
                         </button>
@@ -601,7 +601,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setAllowPlayerConditions(!allowPlayerConditions)}
-                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer ${
+                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 ${
                                 allowPlayerConditions
                                     ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                                     : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -614,7 +614,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setShowConditions(!showConditions)}
-                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer ${
+                            className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 ${
                                 showConditions
                                     ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                                     : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -628,18 +628,18 @@ export const TokenEditorModal = memo(({ roomData }) => {
                 </div>
 
                 {showAddConditionPicker && isGM && (
-                    <div className="p-3.5 bg-zinc-900/95 rounded-2xl border border-amber-500/50 space-y-2.5 animate-in fade-in zoom-in-95 shadow-xl">
+                    <div className="p-3.5 bg-zinc-900/95 rounded-2xl border border-amber-500/50 space-y-2.5 animate-fade-in-up shadow-xl">
                       <div className="flex items-center justify-between text-xs font-bold text-amber-400 pb-2 border-b border-zinc-800">
                         <span>انتخاب وضعیت برای افزودن به بازی:</span>
                         <button
                             type="button"
                             onClick={() => setShowAddConditionPicker(false)}
-                            className="text-zinc-400 hover:text-zinc-200 cursor-pointer p-1 rounded-lg hover:bg-zinc-800"
+                            className="text-zinc-400 hover:text-zinc-200 cursor-pointer p-1 rounded-lg hover:bg-zinc-800 active:scale-90"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
+                      <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
                         {ALL_DND_CONDITIONS.map((cond) => {
                           const isAlreadyInPool = availableConditions.includes(cond.id);
                           return (
@@ -651,7 +651,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                                   className={`p-2.5 rounded-xl text-right text-xs flex items-center justify-between transition-all ${
                                       isAlreadyInPool
                                           ? "bg-zinc-950/50 text-zinc-600 border border-transparent cursor-not-allowed opacity-50"
-                                          : "bg-zinc-950 border border-zinc-800 hover:border-amber-500 hover:bg-zinc-800/80 text-zinc-200 cursor-pointer shadow-sm"
+                                          : "bg-zinc-950 border border-zinc-800 hover:border-amber-500 hover:bg-zinc-850 text-zinc-200 cursor-pointer shadow-sm active:scale-95"
                                   }`}
                               >
                                 <div className="flex items-center gap-2 truncate">
@@ -669,7 +669,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                <div className="grid grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
                   {availableConditions.length === 0 ? (
                       <div className="col-span-2 text-center py-6 text-xs text-zinc-500 bg-zinc-900/30 rounded-xl border border-dashed border-zinc-800/80">
                         {isGM
@@ -689,7 +689,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                             <div
                                 key={condId}
                                 onClick={() => handleToggleSelectCondition(condId)}
-                                className={`p-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer shadow-sm ${
+                                className={`p-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-[0.98] ${
                                     isSelected
                                         ? "bg-amber-500/15 border-amber-400 text-amber-300 font-bold shadow-amber-500/10 ring-1 ring-amber-500/30"
                                         : "bg-zinc-900/70 border-zinc-800/90 hover:border-zinc-700 hover:bg-zinc-900 text-zinc-300"
@@ -717,7 +717,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                                     <button
                                         type="button"
                                         onClick={(e) => handleRemoveConditionFromPool(e, condId)}
-                                        className="text-zinc-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 cursor-pointer transition-colors"
+                                        className="text-zinc-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 cursor-pointer transition-colors active:scale-90"
                                         title="حذف از فهرست بازی"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -745,7 +745,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                           <button
                               type="button"
                               onClick={() => setAllowPlayerAc(!allowPlayerAc)}
-                              className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                              className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer active:scale-95 ${
                                   allowPlayerAc
                                       ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                                       : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -757,7 +757,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                           <button
                               type="button"
                               onClick={() => setShowAc(!showAc)}
-                              className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                              className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer active:scale-95 ${
                                   showAc
                                       ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
                                       : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -793,7 +793,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                         <button
                             type="button"
                             onClick={() => setAllowPlayerSize(!allowPlayerSize)}
-                            className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer ${
+                            className={`text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 font-medium transition-all cursor-pointer active:scale-95 ${
                                 allowPlayerSize
                                     ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                                     : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -830,7 +830,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                   <button
                       type="button"
                       onClick={() => setShowNotes(!showNotes)}
-                      className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer ${
+                      className={`text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1.5 font-medium transition-all cursor-pointer active:scale-95 ${
                           showNotes
                               ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm shadow-amber-500/10"
                               : "bg-zinc-900 text-zinc-500 border border-zinc-800"
@@ -847,7 +847,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                     value={gmNotes}
                     onChange={(e) => setGmNotes(e.target.value)}
                     placeholder="توضیحات مخفی، معما، تله یا لوت این مورد..."
-                    className="w-full p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 shadow-inner"
+                    className="w-full p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500 shadow-inner resize-none"
                 />
               </div>
           )}
@@ -857,7 +857,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                 <button
                     type="button"
                     onClick={handleDelete}
-                    className="px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all flex items-center gap-2 cursor-pointer border border-rose-500/20 hover:border-rose-500/40"
+                    className="px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all flex items-center gap-2 cursor-pointer border border-rose-500/20 hover:border-rose-500/40 active:scale-95"
                 >
                   <Trash2 className="w-4 h-4" />
                   حذف توکن
@@ -865,10 +865,10 @@ export const TokenEditorModal = memo(({ roomData }) => {
             )}
 
             <div className="flex gap-2.5 mr-auto">
-              <Button variant="ghost" onClick={closeEditor}>
+              <Button variant="ghost" onClick={closeEditor} className="active:scale-95">
                 انصراف
               </Button>
-              <Button variant="amber" onClick={handleSave}>
+              <Button variant="amber" onClick={handleSave} className="active:scale-95">
                 ذخیره تغییرات
               </Button>
             </div>
@@ -879,3 +879,4 @@ export const TokenEditorModal = memo(({ roomData }) => {
 });
 
 TokenEditorModal.displayName = "TokenEditorModal";
+export default TokenEditorModal;

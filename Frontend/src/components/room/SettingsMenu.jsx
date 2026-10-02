@@ -108,7 +108,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
   if (!isGM) {
     return (
         <div
-            className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-84 bg-zinc-950/98 border border-zinc-800/90 rounded-3xl shadow-2xl backdrop-blur-2xl p-6 text-zinc-100 font-fa select-none text-center"
+            className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-84 glass-card border border-zinc-800/90 rounded-3xl shadow-2xl p-6 text-zinc-100 font-fa select-none text-center animate-fade-in-up"
             dir="rtl"
         >
           <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mb-4 shadow-lg shadow-rose-500/10">
@@ -121,7 +121,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           <Button
               size="sm"
               variant="secondary"
-              className="mt-5 w-full text-xs font-bold py-2.5 rounded-xl cursor-pointer"
+              className="mt-5 w-full text-xs font-bold py-2.5 rounded-xl cursor-pointer active:scale-95"
               onClick={() => toggleMenu("settings")}
           >
             متوجه شدم
@@ -249,7 +249,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
 
   return (
       <div
-          className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-[480px] max-w-[95vw] bg-zinc-950/98 border border-zinc-800/90 rounded-3xl shadow-2xl backdrop-blur-3xl p-4 sm:p-5 text-zinc-100 font-fa select-none animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col"
+          className="fixed inset-x-3 bottom-3 sm:bottom-auto sm:top-16 sm:right-6 sm:inset-x-auto z-50 w-auto sm:w-[480px] max-w-[95vw] glass-card border border-zinc-800/90 rounded-3xl shadow-2xl p-4 sm:p-5 text-zinc-100 font-fa select-none animate-fade-in-up max-h-[85vh] flex flex-col"
           dir="rtl"
       >
         <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-800/80 shrink-0">
@@ -270,7 +270,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           <button
               type="button"
               onClick={() => toggleMenu("settings")}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 active:scale-90 transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -290,7 +290,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                        "flex-1 py-1.5 sm:py-2 px-2 sm:px-3 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer",
+                        "flex-1 py-1.5 sm:py-2 px-2 sm:px-3 text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95",
                         isActive
                             ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20 scale-[1.02]"
                             : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
@@ -303,9 +303,9 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           })}
         </div>
 
-        <div className="space-y-3.5 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-3.5 flex-1 overflow-y-auto pr-1">
           {activeTab === "grid" && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in-up">
                 <div className="p-3 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <Grid className="w-3.5 h-3.5 text-amber-400" />
@@ -323,7 +323,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                             type="button"
                             onClick={() => handleChange({ gridType: type.id })}
                             className={cn(
-                                "p-2 rounded-xl border text-right transition-all cursor-pointer flex flex-col gap-0.5",
+                                "p-2.5 rounded-xl border text-right transition-all cursor-pointer flex flex-col gap-0.5 active:scale-[0.98]",
                                 settings.gridType === type.id
                                     ? "bg-amber-500/15 border-amber-500/80 text-amber-300 shadow-sm"
                                     : "bg-zinc-950/80 border-zinc-800/80 text-zinc-400 hover:bg-zinc-900 hover:border-zinc-700"
@@ -352,7 +352,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                             type="button"
                             onClick={() => handleChange({ lineType: lt.id })}
                             className={cn(
-                                "py-1.5 px-2 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer",
+                                "py-1.5 px-2 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer active:scale-95",
                                 settings.lineType === lt.id
                                     ? "bg-amber-500/15 border-amber-500/80 text-amber-300 shadow-sm"
                                     : "bg-zinc-950/80 border-zinc-800/80 text-zinc-400 hover:bg-zinc-900"
@@ -428,7 +428,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                       type="button"
                       onClick={() => handleChange({ isGridSnapping: !settings.isGridSnapping })}
                       className={cn(
-                          "w-11 h-6 rounded-full transition-colors relative cursor-pointer",
+                          "w-11 h-6 rounded-full transition-colors relative cursor-pointer active:scale-95",
                           settings.isGridSnapping ? "bg-amber-500" : "bg-zinc-800"
                       )}
                   >
@@ -444,7 +444,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           )}
 
           {activeTab === "room" && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in-up">
                 <div className="p-3 bg-zinc-900/50 rounded-2xl border border-zinc-800/60 space-y-2">
                   <label className="text-xs font-bold text-zinc-300 flex items-center gap-2">
                     <MousePointer className="w-3.5 h-3.5 text-amber-400" />
@@ -461,7 +461,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                             type="button"
                             onClick={() => handleChange({ inputMode: mode.id })}
                             className={cn(
-                                "py-2 px-1 rounded-xl border text-center transition-all cursor-pointer text-xs font-bold",
+                                "py-2 px-1 rounded-xl border text-center transition-all cursor-pointer text-xs font-bold active:scale-95",
                                 settings.inputMode === mode.id
                                     ? "bg-amber-500/15 border-amber-500/80 text-amber-300 shadow-sm"
                                     : "bg-zinc-950/80 border-zinc-800/80 text-zinc-400 hover:bg-zinc-900"
@@ -515,7 +515,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           )}
 
           {activeTab === "camera" && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in-up">
                 <div className="p-3 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl space-y-2 text-xs">
                   <div className="flex justify-between items-center pb-1.5 border-b border-zinc-800/60">
                     <span className="text-zinc-400">بزرگ‌نمایی کنونی (Zoom):</span>
@@ -532,7 +532,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                       variant="outline"
                       size="sm"
                       onClick={resetView}
-                      className="py-2.5 text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800"
+                      className="py-2.5 text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
                     <span>مرکز نقشه</span>
@@ -542,7 +542,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
                       variant="amber"
                       size="sm"
                       onClick={handleSyncView}
-                      className="py-2.5 text-xs font-black cursor-pointer flex items-center justify-center gap-1.5 rounded-xl shadow-md"
+                      className="py-2.5 text-xs font-black cursor-pointer flex items-center justify-center gap-1.5 rounded-xl shadow-md active:scale-95"
                   >
                     <Share2 className="w-3.5 h-3.5" />
                     <span>همگام با همه</span>
@@ -556,7 +556,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
           <Button
               size="sm"
               variant="ghost"
-              className="text-xs font-bold text-rose-400 hover:text-rose-300 px-2.5 py-2 rounded-xl cursor-pointer"
+              className="text-xs font-bold text-rose-400 hover:text-rose-300 px-2.5 py-2 rounded-xl cursor-pointer active:scale-95"
               disabled={isSaving}
               onClick={handleResetToDefault}
           >
@@ -568,7 +568,7 @@ export const SettingsMenu = memo(({ isGM = false }) => {
               size="sm"
               variant={saveSuccess ? "outline" : "amber"}
               className={cn(
-                  "text-xs font-black px-4 py-2 rounded-xl cursor-pointer shadow-md transition-all duration-200",
+                  "text-xs font-black px-4 py-2 rounded-xl cursor-pointer shadow-md transition-all duration-200 active:scale-95",
                   saveSuccess ? "border-emerald-500/80 text-emerald-400 bg-emerald-500/10" : ""
               )}
               isLoading={isSaving}
@@ -592,3 +592,4 @@ export const SettingsMenu = memo(({ isGM = false }) => {
 });
 
 SettingsMenu.displayName = "SettingsMenu";
+export default SettingsMenu;
