@@ -30,6 +30,7 @@ import { AssetMenu } from "../../components/room/AssetMenu.jsx";
 import { TokenEditorModal } from "../../components/room/TokenEditorModal.jsx";
 import { Modal } from "../../components/ui/Modal.jsx";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
+import { uiAudio } from "../../utils/uiAudio";
 
 class CanvasErrorBoundary extends Component {
     constructor(props) {
@@ -116,6 +117,7 @@ export const RoomPage = () => {
             const data = event.data !== undefined ? event.data : event;
 
             if (action === "ROOM_CLOSED") {
+                uiAudio.playRoomAlert(); // پخش صدای ناقوس هشدار بستن اتاق
                 wsService.disconnect();
                 toast.warning(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.", "پایان نشست اتاق");
                 navigate("/dashboard");
@@ -123,6 +125,7 @@ export const RoomPage = () => {
             }
 
             if (action === "ROOM_DELETED") {
+                uiAudio.playRoomAlert(); // پخش صدای هشدار حذف اتاق
                 wsService.disconnect();
                 toast.error(data || "اتاق توسط سازنده برای همیشه حذف شد.", "اتاق حذف شد");
                 navigate("/dashboard");
@@ -136,6 +139,7 @@ export const RoomPage = () => {
                 const targetUname = String(data?.username || "").toLowerCase().trim();
 
                 if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                    uiAudio.playRoomAlert();
                     wsService.disconnect();
                     toast.error("شما توسط دانجن‌مستر از اتاق اخراج شدید.", "اخراج از اتاق");
                     navigate("/dashboard");
@@ -150,6 +154,7 @@ export const RoomPage = () => {
                 const targetUname = String(data?.username || "").toLowerCase().trim();
 
                 if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                    uiAudio.playRoomAlert();
                     wsService.disconnect();
                     toast.error("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.", "مسدودسازی حساب");
                     navigate("/dashboard");
@@ -247,6 +252,7 @@ export const RoomPage = () => {
 
         try {
             await roomApi.closeRoom(effectiveRoomId);
+            uiAudio.playRoomAlert();
             toast.info("اتاق با موفقیت بسته شد.", "وضعیت اتاق");
             navigate("/dashboard");
         } catch (err) {
@@ -276,7 +282,6 @@ export const RoomPage = () => {
 
             <SceneBar isGM={isGM} roomId={effectiveRoomId} />
 
-            {/* هدر بالایی اکشن‌ها و وضعیت سینک با ظرافت استرایپ/اپل */}
             <header
                 className="fixed top-2.5 sm:top-4 left-2.5 sm:left-6 z-30 flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto"
                 dir="ltr"
@@ -334,7 +339,6 @@ export const RoomPage = () => {
                 </button>
             </header>
 
-            {/* بوم بازی */}
             <CanvasErrorBoundary>
                 <GameCanvas isGM={isGM} permissions={userPermissions} />
             </CanvasErrorBoundary>
@@ -344,7 +348,6 @@ export const RoomPage = () => {
             <DiceRoller />
             <Dice3DStage />
 
-            {/* لایه شبیه‌ساز فیزیک واقعی تاس (Rapier WASM) */}
             <DiceOverlay />
 
             <SettingsMenu isGM={isGM} />

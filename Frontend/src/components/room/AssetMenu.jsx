@@ -18,6 +18,7 @@ import { MAP_PRESETS } from "../../constants/mapPresets";
 import { TOKEN_PRESETS } from "../../constants/tokenPresets";
 import { Button } from "../ui/Button";
 import { cn } from "../../utils/cn";
+import { uiAudio } from "../../utils/uiAudio";
 
 const SIZE_LIMITS = Object.freeze({
   maps: { bytes: 15 * 1024 * 1024, label: "۱۵ مگابایت", type: "MAP" },
@@ -138,6 +139,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
     };
 
     addToken(newToken);
+    uiAudio.playTokenDrop(); // اجرای افکت لمسی گذاشتن توکن
   };
 
   const handleDirectUpload = async (e) => {
