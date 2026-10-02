@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DiceCanvas } from './DiceCanvas';
 import { useDiceStore } from '../state/dice.store';
 import { DICE_THEMES } from '../engine/textureGenerator';
-import { RotateCcw, X, Trash2, Dices, Zap, User } from 'lucide-react';
+import { diceAudio } from '../engine/diceAudio';
+import { RotateCcw, X, Trash2, Dices, Zap, User, Sparkles } from 'lucide-react';
 
 const DICE_TYPES = [
-    { type: 'd4', label: 'D4' },
-    { type: 'd6', label: 'D6' },
-    { type: 'd8', label: 'D8' },
-    { type: 'd10', label: 'D10' },
-    { type: 'd12', label: 'D12' },
-    { type: 'd20', label: 'D20' },
-    { type: 'd100', label: 'D100' },
+    { type: 'd4', label: 'D4', maxVal: 4 },
+    { type: 'd6', label: 'D6', maxVal: 6 },
+    { type: 'd8', label: 'D8', maxVal: 8 },
+    { type: 'd10', label: 'D10', maxVal: 9 }, // در فرمت تک d10 مقدار 0 تا 9 است
+    { type: 'd12', label: 'D12', maxVal: 12 },
+    { type: 'd20', label: 'D20', maxVal: 20 },
+    { type: 'd100', label: 'D100', maxVal: 100 },
 ];
 
 export function DiceOverlay() {
@@ -33,6 +34,29 @@ export function DiceOverlay() {
     const [mode, setMode] = useState('quick');
     const [poolCounts, setPoolCounts] = useState({});
     const [lastRollTypes, setLastRollTypes] = useState(['d20']);
+    const playedCritAudioRef = useRef(false);
+
+    // بررسی اینکه آیا هر یک از تاس‌ها به حداکثر مقدار ممکن خود (Max / Critical) رسیده‌اند یا خیر
+    const isAnyCritical = React.useMemo(() => {
+        if (results.length === 0 || isRolling) return false;
+        return results.some((r) => {
+            const config = DICE_TYPES.find((d) => d.type === r.type);
+            if (!config) return false;
+            if (r.type === 'd10') return r.value === 0 || r.value === 9;
+            return r.value === config.maxVal;
+        });
+    }, [results, isRolling]);
+
+    // پخش افکت صدای جادویی در صورت وقوع Critical
+    useEffect(() => {
+        if (isAnyCritical && !playedCritAudioRef.current) {
+            diceAudio.playCriticalSuccess();
+            playedCritAudioRef.current = true;
+        }
+        if (isRolling) {
+            playedCritAudioRef.current = false;
+        }
+    }, [isAnyCritical, isRolling]);
 
     if (!isOpen && activeDice.length === 0) return null;
 
@@ -105,7 +129,20 @@ export function DiceOverlay() {
             {/* بنر نتیجه نهایی در بالای صفحه */}
             {results.length > 0 && (
                 <div className="absolute top-14 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex items-center gap-3.5 bg-zinc-950/90 border border-purple-500/40 px-5 py-2.5 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+                    <div
+                        className={`flex items-center gap-3.5 px-5 py-2.5 rounded-2xl backdrop-blur-xl transition-all duration-300 ${
+                            isAnyCritical
+                                ? 'bg-gradient-to-r from-amber-950/90 via-zinc-950/95 to-amber-950/90 border-2 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.55)] scale-105'
+                                : 'bg-zinc-950/90 border border-purple-500/40 shadow-[0_10px_35px_rgba(0,0,0,0.6)]'
+                        }`}
+                    >
+                        {/* بج نشان‌دهنده Critical */}
+                        {isAnyCritical && (
+                            <div className="flex items-center gap-1 text-amber-300 text-xs font-black px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-400/50 animate-pulse">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                                <span>کرییتیکال!</span>
+                            </div>
+                        )}
 
                         {isRemoteRoll && rollerName ? (
                             <div className="flex items-center gap-1.5 pl-3 border-l border-zinc-800 text-purple-300 text-xs font-bold">
@@ -116,19 +153,36 @@ export function DiceOverlay() {
                             <span className="text-zinc-400 text-xs font-medium">مجموع:</span>
                         )}
 
-                        <span className={`text-3xl font-black font-mono tracking-tight ${isRolling ? 'text-zinc-500 animate-pulse' : 'text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]'}`}>
+                        <span
+                            className={`text-3xl font-black font-mono tracking-tight transition-all ${
+                                isRolling
+                                    ? 'text-zinc-500 animate-pulse'
+                                    : isAnyCritical
+                                        ? 'text-amber-300 text-4xl drop-shadow-[0_0_18px_rgba(252,211,77,0.9)] animate-bounce'
+                                        : 'text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]'
+                            }`}
+                        >
                             {totalSum}
                         </span>
 
                         <div className="flex items-center gap-1.5 border-r border-zinc-800 pr-3.5 mr-1">
-                            {results.map((r, i) => (
-                                <span
-                                    key={i}
-                                    className="text-xs bg-purple-950/60 border border-purple-500/30 text-amber-200/90 px-2 py-0.5 rounded-lg font-mono font-bold shadow-inner"
-                                >
-                                    {r.value}
-                                </span>
-                            ))}
+                            {results.map((r, i) => {
+                                const cfg = DICE_TYPES.find((d) => d.type === r.type);
+                                const isCritDie = cfg && (r.value === cfg.maxVal || (r.type === 'd10' && r.value === 0));
+
+                                return (
+                                    <span
+                                        key={i}
+                                        className={`text-xs px-2 py-0.5 rounded-lg font-mono font-bold shadow-inner transition-all ${
+                                            isCritDie
+                                                ? 'bg-amber-400 text-zinc-950 font-black border border-amber-200 shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110'
+                                                : 'bg-purple-950/60 border border-purple-500/30 text-amber-200/90'
+                                        }`}
+                                    >
+                                        {r.value}
+                                    </span>
+                                );
+                            })}
                         </div>
 
                         {!isRemoteRoll && (
@@ -155,7 +209,7 @@ export function DiceOverlay() {
                 </div>
             )}
 
-            {/* داک شناور انتخاب تاس: فقط در صورتی نمایش داده می‌شود که کاربر خودش منو را باز کرده باشد */}
+            {/* داک شناور انتخاب تاس */}
             {isOpen && !isRemoteRoll && (
                 <div className="absolute bottom-6 left-6 pointer-events-auto flex flex-col gap-2">
 

@@ -24,6 +24,52 @@ class DiceAudioEngine {
     }
 
     /**
+     * پخش افکت صوتی حماسی و درخشان کریستالی برای ماکسیمم رول (Critical / Nat 20)
+     */
+    playCriticalSuccess() {
+        if (this.isMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+
+        // آکورد پیروزی جادویی در گام ماژور (C6, E6, G6, B6, C7)
+        const notes = [1046.5, 1318.5, 1567.98, 1975.53, 2093.0];
+
+        notes.forEach((freq, index) => {
+            const delay = index * 0.055;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + delay);
+
+            gain.gain.setValueAtTime(0, now + delay);
+            gain.gain.linearRampToValueAtTime(0.18, now + delay + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.9);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + delay);
+            osc.stop(now + delay + 0.95);
+        });
+
+        // لایه رزونانس بم گرم پیروزی
+        const subOsc = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subOsc.type = 'triangle';
+        subOsc.frequency.setValueAtTime(261.63, now); // C4
+        subGain.gain.setValueAtTime(0.15, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        subOsc.connect(subGain);
+        subGain.connect(this.ctx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 0.75);
+    }
+
+    /**
      * صدای پرتاب اولیه تاس‌ها (صدای برخورد ملایم تاس‌ها با هم هنگام رها شدن)
      */
     playThrow(diceCount = 1) {
@@ -34,7 +80,6 @@ class DiceAudioEngine {
         const count = Math.min(Math.max(diceCount, 1), 6);
         const now = this.ctx.currentTime;
 
-        // کلاستر کلیک‌های خشک رزینی واقعی در دست
         for (let i = 0; i < count + 1; i++) {
             const delay = i * 0.035 + Math.random() * 0.02;
             const clickSize = Math.floor(this.ctx.sampleRate * 0.025);
@@ -68,7 +113,6 @@ class DiceAudioEngine {
 
     /**
      * صدای تقه واقعی برخورد تاس روی میز نمدی/چوبی (Real Resin Dice Clack)
-     * بدون هیچ‌گونه فرکانس بم طبل‌مانند
      */
     playImpact(intensity = 0.5) {
         if (this.isMuted) return;
@@ -77,19 +121,17 @@ class DiceAudioEngine {
 
         const now = this.ctx.currentTime;
 
-        // فاصله زمانی مینیمال برای شبیه‌سازی غلتش‌های ریز و تقه‌های پیوسته
         if (now - this.lastImpactTime < 0.02) return;
         this.lastImpactTime = now;
 
         const clampedIntensity = Math.min(Math.max(intensity, 0.15), 1.0);
 
-        // ۱. ضربه تیز لبه تاس رزینی (Sharp Resin Transient)
+        // ضربه تیز لبه تاس رزینی
         const clickLen = Math.floor(this.ctx.sampleRate * 0.03);
         const clickBuf = this.ctx.createBuffer(1, clickLen, this.ctx.sampleRate);
         const data = clickBuf.getChannelData(0);
 
         for (let i = 0; i < clickLen; i++) {
-            // انحطاط فوق‌العاده سریع جهت ایجاد صدای خشک، شفاف و واقعی
             data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / clickLen, 6);
         }
 
@@ -98,7 +140,6 @@ class DiceAudioEngine {
 
         const clickFilter = this.ctx.createBiquadFilter();
         clickFilter.type = 'bandpass';
-        // فرکانس طبیعی صدای برخورد پلی‌رزین
         const baseFreq = 2600 + (Math.random() - 0.5) * 600;
         clickFilter.frequency.setValueAtTime(baseFreq, now);
         clickFilter.Q.setValueAtTime(4.0, now);
@@ -115,12 +156,12 @@ class DiceAudioEngine {
         clickSource.start(now);
         clickSource.stop(now + 0.03);
 
-        // ۲. تپش کوتاه و چوبی سطح میز (خشک و بدون بم اضافه)
+        // تپش کوتاه و چوبی سطح میز
         const tapOsc = this.ctx.createOscillator();
         const tapGain = this.ctx.createGain();
 
         tapOsc.type = 'triangle';
-        const tapFreq = 320 + (Math.random() - 0.5) * 40; // صدای فرورفتن در نمد/چوب
+        const tapFreq = 320 + (Math.random() - 0.5) * 40;
         tapOsc.frequency.setValueAtTime(tapFreq, now);
         tapOsc.frequency.exponentialRampToValueAtTime(140, now + 0.035);
 
