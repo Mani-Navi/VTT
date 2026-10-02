@@ -65,7 +65,7 @@ export const JoinRoomModal = memo(({ isOpen, onClose }) => {
           titleFa="ورود به اتاق با کد دعوت"
           maxWidth="sm"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 font-fa" dir="rtl">
           <Input
               label="کد ۶ حرفی اتاق بازی"
               placeholder="مثلا: OWL772"
@@ -85,14 +85,14 @@ export const JoinRoomModal = memo(({ isOpen, onClose }) => {
               <input
                   type={showPassword ? "text" : "password"}
                   placeholder="اگر اتاق رمز دارد، وارد کنید"
-                  className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 pl-10 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 transition-colors h-11 sm:h-10"
+                  className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-3.5 py-2.5 pl-10 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/30 transition-all h-10"
                   disabled={isSubmitting}
                   {...register("password")}
               />
               <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer p-1"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-amber-400 active:scale-90 transition-all cursor-pointer p-1"
                   title={showPassword ? "مخفی‌سازی رمز" : "نمایش رمز"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -101,16 +101,16 @@ export const JoinRoomModal = memo(({ isOpen, onClose }) => {
           </div>
 
           {serverError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-center font-medium">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs text-center font-medium animate-shake-subtle">
                 {serverError}
               </div>
           )}
 
           <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-zinc-800">
-            <Button type="button" variant="ghost" onClick={handleClose} className="h-10 text-xs">
+            <Button type="button" variant="ghost" onClick={handleClose} className="h-10 text-xs active:scale-95">
               انصراف
             </Button>
-            <Button type="submit" variant="amber" isLoading={isSubmitting} className="font-bold h-10 text-xs">
+            <Button type="submit" variant="amber" isLoading={isSubmitting} className="font-bold h-10 text-xs active:scale-[0.98] shadow-md shadow-amber-500/10 hover:shadow-amber-500/20">
               <LogIn className="w-4 h-4 ml-1.5" />
               ورود به اتاق
             </Button>

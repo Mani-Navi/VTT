@@ -21,6 +21,7 @@ import {
   Search,
   Crown,
   Swords,
+  Sparkles,
 } from "lucide-react";
 
 export const DashboardPage = () => {
@@ -145,22 +146,28 @@ export const DashboardPage = () => {
           style={{ WebkitOverflowScrolling: "touch" }}
           dir="rtl"
       >
+        {/* نور ملایم محیطی در بالای داشبورد */}
+        <div className="fixed -top-32 left-1/2 -translate-x-1/2 w-96 sm:w-[48rem] h-64 bg-amber-500/8 rounded-full blur-[130px] pointer-events-none" />
+
         {toastError && (
-            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-rose-600/95 backdrop-blur-md text-white px-5 py-2.5 rounded-xl shadow-2xl text-xs font-semibold border border-rose-500/40 flex items-center gap-2 animate-bounce">
-              <AlertCircle className="w-4 h-4" />
-              {toastError}
+            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-rose-600/90 backdrop-blur-xl text-white px-4 py-2.5 rounded-2xl shadow-2xl shadow-rose-950 text-xs font-semibold border border-rose-500/30 flex items-center gap-2 animate-shake-subtle">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{toastError}</span>
             </div>
         )}
 
-        {/* هدر: در موبایل تمیز و بدون دکمه‌های اضافه */}
-        <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+        {/* هدر شیشه‌ای با شفافیت و بلور بالا */}
+        <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.12)] shrink-0 transition-transform duration-200 hover:scale-105">
               <Dices className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-xs sm:text-sm text-zinc-100 tracking-wide truncate">
-                میز بازی Titipool
+              <h1 className="font-black text-xs sm:text-sm text-zinc-100 tracking-wide truncate flex items-center gap-1.5">
+                <span>میز بازی Titipool</span>
+                <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                v1.4
+              </span>
               </h1>
               {user?.username && (
                   <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">
@@ -168,7 +175,7 @@ export const DashboardPage = () => {
                     <button
                         type="button"
                         onClick={() => navigate("/profile")}
-                        className="text-amber-400 font-semibold hover:underline cursor-pointer"
+                        className="text-amber-400 font-semibold hover:text-amber-300 hover:underline transition-colors cursor-pointer"
                     >
                       {user.username}
                     </button>
@@ -178,18 +185,17 @@ export const DashboardPage = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* این دو دکمه فقط در تبلت و دسکتاپ نمایش داده می‌شوند (sm:flex) */}
             <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsJoinOpen(true)}
-                className="hidden sm:flex text-xs gap-1.5"
+                className="hidden sm:flex text-xs gap-1.5 active:scale-[0.97] transition-all duration-150 h-9"
                 title="میانبر: کلید J"
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              ورود با کد
-              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-zinc-800 text-zinc-400 rounded border border-zinc-700">J</kbd>
+              <span>ورود با کد</span>
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[9px] font-mono bg-zinc-800 text-zinc-400 rounded border border-zinc-700">J</kbd>
             </Button>
 
             <Button
@@ -197,12 +203,12 @@ export const DashboardPage = () => {
                 variant="amber"
                 size="sm"
                 onClick={() => setIsCreateOpen(true)}
-                className="hidden sm:flex text-xs font-bold gap-1.5 shadow-lg shadow-amber-500/10"
+                className="hidden sm:flex text-xs font-bold gap-1.5 shadow-md shadow-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.97] transition-all duration-150 h-9"
                 title="میانبر: کلید N"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              ایجاد ماجرا
-              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[10px] bg-amber-600/30 text-amber-200 rounded border border-amber-400/40">N</kbd>
+              <span>ایجاد ماجرا</span>
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 text-[9px] font-mono bg-amber-600/30 text-amber-100 rounded border border-amber-400/40">N</kbd>
             </Button>
 
             <div className="hidden sm:block h-5 w-px bg-zinc-800 mx-1" />
@@ -210,7 +216,7 @@ export const DashboardPage = () => {
             <button
                 type="button"
                 onClick={() => navigate("/profile")}
-                className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 overflow-hidden flex items-center justify-center hover:border-amber-500/60 active:scale-95 transition-all cursor-pointer p-0.5 shrink-0"
+                className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-700/80 overflow-hidden flex items-center justify-center hover:border-amber-500/60 active:scale-90 transition-all duration-150 cursor-pointer p-0.5 shrink-0 hover:shadow-[0_0_12px_rgba(251,191,36,0.2)]"
                 title="مشاهده و ویرایش پروفایل"
             >
               <RpgAvatar avatarId={user?.avatarUrl || "cowboy"} className="w-full h-full" />
@@ -219,7 +225,7 @@ export const DashboardPage = () => {
             <button
                 type="button"
                 onClick={logout}
-                className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-95 transition-colors cursor-pointer"
+                className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl active:scale-90 transition-all duration-150 cursor-pointer"
                 title="خروج از حساب"
             >
               <LogOut className="w-4 h-4" />
@@ -227,44 +233,47 @@ export const DashboardPage = () => {
           </div>
         </header>
 
-        {/* بدنه اصلی با اسکرول روان و پدینگ کافی در انتهای صفحه */}
-        <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 pb-28 sm:pb-8">
+        {/* محتوای اصلی */}
+        <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 pb-28 sm:pb-12 animate-fade-in-up">
           {rooms.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-2xl">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-950/70 border border-zinc-800/80 p-3 rounded-2xl backdrop-blur-md">
                 <div className="relative w-full sm:w-80">
                   <input
                       type="text"
                       placeholder="جستجو در بین تمامی اتاق‌ها..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-3.5 py-2 pl-9 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+                      className="w-full bg-zinc-900/90 border border-zinc-700/70 rounded-xl px-3.5 py-2 pl-9 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all duration-150"
                   />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
                 </div>
 
-                <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-zinc-400 bg-zinc-950/60 sm:bg-transparent p-2 sm:p-0 rounded-xl text-center sm:text-right border border-zinc-800/40 sm:border-none">
+                <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-zinc-400 bg-zinc-900/40 sm:bg-transparent p-2 sm:p-0 rounded-xl text-center sm:text-right border border-zinc-800/50 sm:border-none">
                   <div>
-                    کل اتاق‌ها: <strong className="text-zinc-200">{rooms.length}</strong>
+                    کل اتاق‌ها: <strong className="text-zinc-200 font-mono">{rooms.length}</strong>
                   </div>
-                  <div className="hidden sm:block h-3 w-px bg-zinc-700" />
+                  <div className="hidden sm:block h-3 w-px bg-zinc-800" />
                   <div>
-                    ماجراهای من: <strong className="text-amber-400">{rooms.filter((r) => r.role === "GM").length}</strong>
+                    ماجراهای من: <strong className="text-amber-400 font-mono">{rooms.filter((r) => r.role === "GM").length}</strong>
                   </div>
-                  <div className="hidden sm:block h-3 w-px bg-zinc-700" />
+                  <div className="hidden sm:block h-3 w-px bg-zinc-800" />
                   <div>
-                    ماجراجویی‌ها: <strong className="text-blue-400">{rooms.filter((r) => r.role !== "GM").length}</strong>
+                    ماجراجویی‌ها: <strong className="text-blue-400 font-mono">{rooms.filter((r) => r.role !== "GM").length}</strong>
                   </div>
                 </div>
               </div>
           )}
 
           {error && (
-              <div className="p-3.5 sm:p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400">
-                <span>{error}</span>
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs text-rose-400 animate-shake-subtle">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </span>
                 <button
                     type="button"
                     onClick={fetchRooms}
-                    className="flex items-center gap-1.5 font-bold hover:underline text-rose-300 cursor-pointer"
+                    className="flex items-center gap-1.5 font-bold hover:underline text-rose-300 active:scale-95 transition-transform cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   تلاش مجدد
@@ -277,26 +286,26 @@ export const DashboardPage = () => {
                 {[1, 2, 3].map((n) => (
                     <div
                         key={n}
-                        className="h-44 rounded-2xl bg-zinc-900/60 border border-zinc-800 p-5 animate-pulse flex flex-col justify-between"
+                        className="h-44 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 p-5 animate-pulse flex flex-col justify-between"
                     >
                       <div className="space-y-3">
-                        <div className="h-4 bg-zinc-800 rounded-md w-2/3" />
-                        <div className="h-3 bg-zinc-800 rounded-md w-1/3" />
+                        <div className="h-4 bg-zinc-800/80 rounded-md w-2/3" />
+                        <div className="h-3 bg-zinc-800/60 rounded-md w-1/3" />
                       </div>
-                      <div className="h-4 bg-zinc-800 rounded-md w-full" />
+                      <div className="h-4 bg-zinc-800/50 rounded-md w-full" />
                     </div>
                 ))}
               </div>
           ) : rooms.length === 0 && !isLoading ? (
               <EmptyRooms onCreateClick={() => setIsCreateOpen(true)} />
           ) : (
-              <div className="space-y-6 sm:space-y-8">
+              <div className="space-y-7 sm:space-y-9">
                 {myCreatedAdventures.length > 0 && (
                     <section className="space-y-3.5">
-                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2.5">
                         <Crown className="w-4 h-4 text-amber-400" />
-                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراهای من</h2>
-                        <span className="text-[11px] bg-amber-500/10 text-amber-400 px-2 py-0.2 rounded-full font-bold">
+                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراهای من (میزبان)</h2>
+                        <span className="text-[11px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold border border-amber-500/20 font-mono">
                     {myCreatedAdventures.length}
                   </span>
                       </div>
@@ -315,10 +324,10 @@ export const DashboardPage = () => {
 
                 {myJoinedAdventures.length > 0 && (
                     <section className="space-y-3.5">
-                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                      <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2.5">
                         <Swords className="w-4 h-4 text-blue-400" />
-                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراجویی‌های من</h2>
-                        <span className="text-[11px] bg-blue-500/10 text-blue-400 px-2 py-0.2 rounded-full font-bold">
+                        <h2 className="text-xs sm:text-sm font-bold text-zinc-100">ماجراجویی‌های من (بازیکن)</h2>
+                        <span className="text-[11px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-bold border border-blue-500/20 font-mono">
                     {myJoinedAdventures.length}
                   </span>
                       </div>
@@ -335,12 +344,12 @@ export const DashboardPage = () => {
                 )}
 
                 {filteredRooms.length === 0 && searchQuery.trim() && (
-                    <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 space-y-2">
+                    <div className="p-8 rounded-2xl bg-zinc-950/40 border border-zinc-800/80 text-center text-zinc-400 space-y-2">
                       <p className="text-xs sm:text-sm">اتاقی با عبارت «{searchQuery}» پیدا نشد.</p>
                       <button
                           type="button"
                           onClick={() => setSearchQuery("")}
-                          className="text-xs text-amber-400 hover:underline cursor-pointer"
+                          className="text-xs text-amber-400 hover:text-amber-300 hover:underline transition-colors cursor-pointer font-bold"
                       >
                         پاک کردن جستجو
                       </button>
@@ -350,22 +359,22 @@ export const DashboardPage = () => {
           )}
         </main>
 
-        {/* دکمه‌های شناور موبایل: ورود با کد + ایجاد ماجرا در کنار هم در پایین صفحه */}
+        {/* دکمه‌های شناور موبایل با بازخورد لمسی سریع */}
         <div className="sm:hidden fixed bottom-5 left-4 z-40 flex items-center gap-2">
           <button
               type="button"
               onClick={() => setIsJoinOpen(true)}
-              className="h-12 px-3.5 rounded-2xl bg-zinc-900/95 border border-zinc-700/90 text-amber-400 shadow-2xl backdrop-blur-xl flex items-center gap-1.5 active:scale-90 transition-all cursor-pointer font-bold text-xs"
+              className="h-11 px-3.5 rounded-2xl bg-zinc-900/95 border border-zinc-700/80 text-amber-400 shadow-2xl backdrop-blur-xl flex items-center gap-1.5 active:scale-95 transition-all duration-150 cursor-pointer font-bold text-xs"
               aria-label="ورود با کد دعوت"
           >
-            <KeyRound className="w-4 h-4" />
+            <KeyRound className="w-3.5 h-3.5" />
             <span>ورود با کد</span>
           </button>
 
           <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="h-12 px-4 rounded-2xl bg-amber-500 text-zinc-950 font-black text-xs shadow-2xl shadow-amber-500/30 flex items-center gap-1.5 active:scale-90 transition-all border border-amber-400 cursor-pointer"
+              className="h-11 px-4 rounded-2xl bg-amber-500 text-zinc-950 font-black text-xs shadow-xl shadow-amber-500/25 flex items-center gap-1.5 active:scale-95 transition-all duration-150 border border-amber-400 cursor-pointer"
               aria-label="ایجاد اتاق جدید"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
@@ -402,3 +411,5 @@ export const DashboardPage = () => {
       </div>
   );
 };
+
+export default DashboardPage;

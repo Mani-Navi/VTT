@@ -45,9 +45,9 @@ const emailSchema = z.object({
 
 const checkPasswordCriteria = (pass = "") => [
     { label: "حداقل ۸ کاراکتر", valid: pass.length >= 8 },
-    { label: "حروف بزرگ و کوچک (a-Z)", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
-    { label: "حداقل یک عدد (0-9)", valid: /\d/.test(pass) },
-    { label: "حداقل یک نماد خاص (!@#$%)", valid: /[^A-Za-z0-9]/.test(pass) },
+    { label: "حروف کوچک و بزرگ", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
+    { label: "حداقل یک عدد", valid: /\d/.test(pass) },
+    { label: "نماد خاص (!@#$)", valid: /[^A-Za-z0-9]/.test(pass) },
 ];
 
 export const ProfilePage = () => {
@@ -234,11 +234,11 @@ export const ProfilePage = () => {
             style={{ WebkitOverflowScrolling: "touch" }}
             dir="rtl"
         >
-            <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+            <header className="h-16 shrink-0 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
                 <div className="flex items-center gap-2">
                     <Link
                         to="/dashboard"
-                        className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-amber-400 active:scale-95 transition-all p-2 rounded-xl hover:bg-zinc-800/60"
+                        className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-amber-400 active:scale-95 transition-all p-2 rounded-xl hover:bg-zinc-900"
                     >
                         <ArrowRight className="w-4 h-4" />
                         <span className="hidden sm:inline">بازگشت به داشبورد</span>
@@ -250,7 +250,7 @@ export const ProfilePage = () => {
                     <button
                         type="button"
                         onClick={logout}
-                        className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-xl active:scale-95 transition-all cursor-pointer"
                     >
                         <LogOut className="w-4 h-4" />
                         خروج
@@ -259,43 +259,43 @@ export const ProfilePage = () => {
             </header>
 
             <div className="flex-1 w-full">
-                <main className="max-w-4xl mx-auto px-3.5 sm:px-6 py-5 sm:py-8 space-y-4 sm:space-y-6 pb-20">
+                <main className="max-w-4xl mx-auto px-3.5 sm:px-6 py-5 sm:py-8 space-y-4 sm:space-y-6 pb-20 animate-fade-in-up">
                     {/* کارت مشخصات بالا */}
-                    <div className="relative bg-zinc-950/90 border border-zinc-800/90 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden flex flex-col items-center text-center">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="relative glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl overflow-hidden flex flex-col items-center text-center">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
                         <div className="relative mb-3">
-                            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-amber-600 via-amber-300 to-amber-500 shadow-xl shadow-amber-500/20 flex items-center justify-center">
+                            <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-amber-600 via-amber-300 to-amber-500 shadow-xl shadow-amber-500/20 flex items-center justify-center transition-transform duration-300 hover:scale-105">
                                 <RpgAvatar avatarId={currentAvatarId} className="w-full h-full border-2 border-zinc-950" />
                             </div>
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-zinc-900 border border-amber-500/60 rounded-full px-2.5 py-0.5 shadow-md flex items-center gap-1 text-[10px] text-amber-300 font-bold whitespace-nowrap">
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-zinc-950 border border-amber-500/60 rounded-full px-2.5 py-0.5 shadow-md flex items-center gap-1 text-[10px] text-amber-300 font-bold whitespace-nowrap">
                                 <Crown className="w-3 h-3 text-amber-400" />
                                 <span>{user?.isPremium ? "عضو ویژه" : "Titipool"}</span>
                             </div>
                         </div>
 
                         <h1 className="text-lg sm:text-2xl font-black text-zinc-100">{user?.username}</h1>
-                        <p className="text-xs text-zinc-400 mt-0.5">{user?.email}</p>
+                        <p className="text-xs text-zinc-400 mt-0.5 font-mono">{user?.email}</p>
 
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-lg mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-zinc-800/60">
-                            <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col items-center">
-                                <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 mb-1" />
-                                <span className="text-sm sm:text-base font-black text-zinc-100">{user?.roomsCount ?? 0}</span>
+                            <div className="bg-zinc-900/60 border border-zinc-800/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex flex-col items-center transition-all hover:border-zinc-700">
+                                <Layers className="w-4 h-4 text-amber-400 mb-1" />
+                                <span className="text-sm sm:text-base font-black text-zinc-100 font-mono">{user?.roomsCount ?? 0}</span>
                                 <span className="text-[10px] sm:text-[11px] text-zinc-400">اتاق‌ها</span>
                             </div>
 
-                            <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col items-center">
-                                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 mb-1" />
+                            <div className="bg-zinc-900/60 border border-zinc-800/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex flex-col items-center transition-all hover:border-zinc-700">
+                                <Crown className="w-4 h-4 text-amber-400 mb-1" />
                                 <span className="text-xs sm:text-sm font-black text-zinc-100 truncate max-w-full">
                   {user?.isPremium ? "پرمیوم" : "استاندارد"}
                 </span>
                                 <span className="text-[10px] sm:text-[11px] text-zinc-400">اشتراک</span>
                             </div>
 
-                            <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl sm:rounded-2xl p-2 sm:p-3 flex flex-col items-center">
-                                <CheckCircle2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 mb-1 ${isVerified ? "text-emerald-400" : "text-amber-400"}`} />
+                            <div className="bg-zinc-900/60 border border-zinc-800/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex flex-col items-center transition-all hover:border-zinc-700">
+                                <CheckCircle2 className={`w-4 h-4 mb-1 ${isVerified ? "text-emerald-400" : "text-amber-400"}`} />
                                 <span className="text-xs sm:text-sm font-black text-zinc-100">
-                  {isVerified ? "تایید" : "عدم تایید"}
+                  {isVerified ? "تایید شده" : "تایید نشده"}
                 </span>
                                 <span className="text-[10px] sm:text-[11px] text-zinc-400">ایمیل</span>
                             </div>
@@ -304,10 +304,10 @@ export const ProfilePage = () => {
 
                     {statusMsg.text && (
                         <div
-                            className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl flex items-center gap-2 text-xs font-bold animate-fadeIn ${
+                            className={`p-3 sm:p-3.5 rounded-2xl flex items-center gap-2 text-xs font-bold animate-fade-in-up ${
                                 statusMsg.type === "success"
                                     ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
-                                    : "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                                    : "bg-rose-500/10 border border-rose-500/30 text-rose-400 animate-shake-subtle"
                             }`}
                         >
                             {statusMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
@@ -315,13 +315,13 @@ export const ProfilePage = () => {
                         </div>
                     )}
 
-                    {/* تب‌ها و محتوا */}
-                    <div className="bg-zinc-950/90 border border-zinc-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl space-y-5">
+                    {/* تب‌ها و محتوا به سبک Linear */}
+                    <div className="glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl space-y-5">
                         <div className="flex items-center gap-1.5 border-b border-zinc-800 pb-3 overflow-x-auto no-scrollbar scroll-smooth">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("overview")}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 shrink-0 cursor-pointer active:scale-95 ${
                                     activeTab === "overview"
                                         ? "bg-zinc-100 text-zinc-950 shadow-md"
                                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -334,7 +334,7 @@ export const ProfilePage = () => {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("avatars")}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 shrink-0 cursor-pointer active:scale-95 ${
                                     activeTab === "avatars"
                                         ? "bg-zinc-100 text-zinc-950 shadow-md"
                                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -347,7 +347,7 @@ export const ProfilePage = () => {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("security")}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 shrink-0 cursor-pointer active:scale-95 ${
                                     activeTab === "security"
                                         ? "bg-zinc-100 text-zinc-950 shadow-md"
                                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -360,7 +360,7 @@ export const ProfilePage = () => {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("email")}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 shrink-0 cursor-pointer active:scale-95 ${
                                     activeTab === "email"
                                         ? "bg-zinc-100 text-zinc-950 shadow-md"
                                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
@@ -372,7 +372,7 @@ export const ProfilePage = () => {
                         </div>
 
                         {activeTab === "overview" && (
-                            <div className="space-y-4 max-w-md animate-fadeIn">
+                            <div className="space-y-4 max-w-md animate-fade-in-up">
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100">نام کاربری</h3>
                                     <p className="text-xs text-zinc-400 mt-0.5">نام نمایشی شما در میزها و بازی‌ها</p>
@@ -384,7 +384,7 @@ export const ProfilePage = () => {
                                         value={usernameInput}
                                         onChange={(e) => setUsernameInput(e.target.value)}
                                         placeholder="مثلا: master_of_dungeons"
-                                        className="h-11 sm:h-10 text-sm"
+                                        className="h-10 text-sm"
                                     />
 
                                     <Button
@@ -393,7 +393,7 @@ export const ProfilePage = () => {
                                         size="sm"
                                         isLoading={isUpdatingUsername}
                                         disabled={!usernameInput || usernameInput === user?.username}
-                                        className="font-bold text-xs w-full sm:w-auto h-10"
+                                        className="font-bold text-xs w-full sm:w-auto h-10 active:scale-[0.98] transition-transform"
                                     >
                                         ذخیره تغییرات
                                     </Button>
@@ -402,13 +402,13 @@ export const ProfilePage = () => {
                         )}
 
                         {activeTab === "avatars" && (
-                            <div className="space-y-4 animate-fadeIn">
+                            <div className="space-y-4 animate-fade-in-up">
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100">انتخاب کاراکتر ماجراجو</h3>
                                     <p className="text-xs text-zinc-400 mt-0.5">کاراکتر خود را برای نمایش در میزها انتخاب کنید:</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3.5 pt-1">
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
                                     {AVATAR_LIST.map((avatar) => {
                                         const isSelected = currentAvatarId === avatar.id;
                                         return (
@@ -416,13 +416,13 @@ export const ProfilePage = () => {
                                                 key={avatar.id}
                                                 type="button"
                                                 onClick={() => handleAvatarSelect(avatar.id)}
-                                                className={`p-2.5 sm:p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
+                                                className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all duration-150 cursor-pointer active:scale-95 ${
                                                     isSelected
-                                                        ? "bg-amber-500/15 border-amber-400 shadow-lg shadow-amber-500/20 scale-105"
-                                                        : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900"
+                                                        ? "bg-amber-500/15 border-amber-400 shadow-lg shadow-amber-500/20 scale-102"
+                                                        : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/90"
                                                 }`}
                                             >
-                                                <RpgAvatar avatarId={avatar.id} className="w-14 h-14 sm:w-16 sm:h-16 shadow-md" />
+                                                <RpgAvatar avatarId={avatar.id} className="w-14 h-14 sm:w-16 sm:h-16 shadow-md transition-transform duration-200 group-hover:scale-105" />
                                                 <span className="text-[11px] font-bold text-zinc-300 truncate w-full text-center">
                           {avatar.name}
                         </span>
@@ -439,7 +439,7 @@ export const ProfilePage = () => {
                         )}
 
                         {activeTab === "security" && (
-                            <form onSubmit={handlePassSubmit(onSubmitPassword)} className="space-y-3.5 max-w-md animate-fadeIn">
+                            <form onSubmit={handlePassSubmit(onSubmitPassword)} className="space-y-3.5 max-w-md animate-fade-in-up">
                                 <div>
                                     <h3 className="text-sm font-bold text-zinc-100">تغییر رمز عبور</h3>
                                     <p className="text-xs text-zinc-400 mt-0.5">رمز عبور جدید را وارد کنید</p>
@@ -453,13 +453,13 @@ export const ProfilePage = () => {
                                             placeholder="••••••••"
                                             error={passErrors.newPassword?.message}
                                             disabled={isPassSubmitting}
-                                            className="h-11 sm:h-10 text-sm pl-11"
+                                            className="h-10 text-sm pl-11"
                                             {...registerPass("newPassword")}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowNewPass(!showNewPass)}
-                                            className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
+                                            className="absolute left-2.5 top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-1.5 cursor-pointer rounded-lg active:scale-90 transition-all flex items-center justify-center focus-visible:outline-none"
                                             tabIndex={-1}
                                             aria-label="تغییر وضعیت نمایش رمز"
                                         >
@@ -468,7 +468,7 @@ export const ProfilePage = () => {
                                     </div>
 
                                     {newPasswordValue.length > 0 && (
-                                        <div className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs space-y-2">
+                                        <div className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-[10px] space-y-1.5 animate-fade-in-up">
                                             <div className="flex items-center justify-between text-[11px]">
                                                 <span className="text-zinc-400">قدرت رمز جدید:</span>
                                                 <span
@@ -492,11 +492,11 @@ export const ProfilePage = () => {
                         </span>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
+                                            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                                                 {criteria.map((item, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className={`flex items-center gap-1 ${
+                                                        className={`flex items-center gap-1 transition-colors duration-150 ${
                                                             item.valid ? "text-emerald-400" : "text-zinc-500"
                                                         }`}
                                                     >
@@ -520,13 +520,13 @@ export const ProfilePage = () => {
                                         placeholder="••••••••"
                                         error={passErrors.confirmPassword?.message}
                                         disabled={isPassSubmitting}
-                                        className="h-11 sm:h-10 text-sm pl-11"
+                                        className="h-10 text-sm pl-11"
                                         {...registerPass("confirmPassword")}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirmPass(!showConfirmPass)}
-                                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
+                                        className="absolute left-2.5 top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-1.5 cursor-pointer rounded-lg active:scale-90 transition-all flex items-center justify-center focus-visible:outline-none"
                                         tabIndex={-1}
                                         aria-label="تغییر وضعیت نمایش تکرار رمز"
                                     >
@@ -539,7 +539,7 @@ export const ProfilePage = () => {
                                     variant="amber"
                                     size="sm"
                                     isLoading={isPassSubmitting}
-                                    className="font-bold text-xs w-full sm:w-auto h-10 mt-1"
+                                    className="font-bold text-xs w-full sm:w-auto h-10 mt-1 active:scale-[0.98] transition-transform"
                                 >
                                     ثبت رمز عبور جدید
                                 </Button>
@@ -547,23 +547,23 @@ export const ProfilePage = () => {
                         )}
 
                         {activeTab === "email" && (
-                            <div className="space-y-5 max-w-md animate-fadeIn">
+                            <div className="space-y-5 max-w-md animate-fade-in-up">
                                 <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <span className="text-[11px] text-zinc-400">ایمیل حساب کاربری:</span>
-                                            <div className="text-xs sm:text-sm font-bold text-zinc-200 mt-0.5 truncate max-w-[180px] sm:max-w-none">
+                                            <div className="text-xs sm:text-sm font-bold text-zinc-200 mt-0.5 truncate max-w-[180px] sm:max-w-none font-mono">
                                                 {user?.email}
                                             </div>
                                         </div>
 
                                         {isVerified ? (
-                                            <span className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 sm:px-3.5 py-1 rounded-full shadow-sm">
+                                            <span className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full shadow-sm">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         تایید شده
                       </span>
                                         ) : (
-                                            <span className="text-[11px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 sm:px-3.5 py-1 rounded-full">
+                                            <span className="text-[11px] sm:text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full">
                         تایید نشده
                       </span>
                                         )}
@@ -583,7 +583,7 @@ export const ProfilePage = () => {
                                                     size="sm"
                                                     onClick={handleSendCode}
                                                     isLoading={isSendingCode}
-                                                    className="w-full text-xs font-bold h-10"
+                                                    className="w-full text-xs font-bold h-10 active:scale-[0.98] transition-transform"
                                                 >
                                                     <Send className="w-3.5 h-3.5 ml-1.5" />
                                                     ارسال کد ۶ رقمی به ایمیل
@@ -604,7 +604,7 @@ export const ProfilePage = () => {
                                                             variant="amber"
                                                             size="sm"
                                                             isLoading={isVerifyingCode}
-                                                            className="text-xs font-bold shrink-0 h-10 px-3"
+                                                            className="text-xs font-bold shrink-0 h-10 px-3 active:scale-[0.98]"
                                                         >
                                                             تایید کد
                                                         </Button>
@@ -640,7 +640,7 @@ export const ProfilePage = () => {
                                         placeholder="new@example.com"
                                         error={emailErrors.newEmail?.message}
                                         disabled={isEmailSubmitting}
-                                        className="h-11 sm:h-10 text-sm"
+                                        className="h-10 text-sm"
                                         {...registerEmail("newEmail")}
                                     />
 
@@ -651,13 +651,13 @@ export const ProfilePage = () => {
                                             placeholder="••••••••"
                                             error={emailErrors.password?.message}
                                             disabled={isEmailSubmitting}
-                                            className="h-11 sm:h-10 text-sm pl-11"
+                                            className="h-10 text-sm pl-11"
                                             {...registerEmail("password")}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowEmailPass(!showEmailPass)}
-                                            className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
+                                            className="absolute left-2.5 top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-1.5 cursor-pointer rounded-lg active:scale-90 transition-all flex items-center justify-center focus-visible:outline-none"
                                             tabIndex={-1}
                                             aria-label="تغییر وضعیت نمایش رمز"
                                         >
@@ -670,7 +670,7 @@ export const ProfilePage = () => {
                                         variant="amber"
                                         size="sm"
                                         isLoading={isEmailSubmitting}
-                                        className="font-bold text-xs w-full sm:w-auto h-10"
+                                        className="font-bold text-xs w-full sm:w-auto h-10 active:scale-[0.98] transition-transform"
                                     >
                                         ثبت و تغییر ایمیل
                                     </Button>
@@ -683,3 +683,5 @@ export const ProfilePage = () => {
         </div>
     );
 };
+
+export default ProfilePage;

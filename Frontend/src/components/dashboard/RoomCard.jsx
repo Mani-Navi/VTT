@@ -43,7 +43,6 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
   const isOptimistic = !!room.isOptimistic;
   const isGM = room.role === "GM";
 
-  // استخراج داینامیک عنوان میزبان یا بازیکن با اولویت داده سرور > لوکال‌استوریج > مقدار پیش‌فرض "میزبان"
   const resolvedHostTitle =
       room.hostRoleTitle ||
       room.host_role_title ||
@@ -70,12 +69,12 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
 
   return (
       <div
-          className={`group relative bg-gradient-to-b from-zinc-900/95 via-zinc-900/80 to-zinc-950/90 border border-zinc-800/90 hover:border-amber-500/50 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-amber-500/10 backdrop-blur-sm ${
+          className={`group relative bg-gradient-to-b from-zinc-900/90 via-zinc-900/60 to-zinc-950/90 border border-zinc-800/80 hover:border-amber-500/40 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-500/5 backdrop-blur-sm ${
               isOptimistic ? "opacity-60 pointer-events-none" : ""
           }`}
           dir="rtl"
       >
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
         {isOptimistic && (
             <div className="absolute inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center rounded-2xl z-20">
@@ -91,32 +90,32 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1">
                 <h3
-                    className="text-base font-bold text-zinc-100 group-hover:text-amber-400 transition-colors truncate"
+                    className="text-sm sm:text-base font-bold text-zinc-100 group-hover:text-amber-300 transition-colors duration-150 truncate"
                     title={room.name}
                 >
                   {room.name}
                 </h3>
                 {room.isProtected && (
                     <span
-                        className="p-1 rounded-md bg-amber-500/10 text-amber-400 shrink-0"
+                        className="p-1 rounded-md bg-amber-500/10 text-amber-400 shrink-0 border border-amber-500/20"
                         title="اتاق دارای رمز عبور است"
                     >
-                  <Lock className="w-3.5 h-3.5" />
+                  <Lock className="w-3 h-3" />
                 </span>
                 )}
                 {room.type === "OFFICIAL" && (
                     <span
-                        className="p-1 rounded-md bg-amber-500/10 text-amber-500 shrink-0"
+                        className="p-1 rounded-md bg-amber-500/10 text-amber-500 shrink-0 border border-amber-500/20"
                         title="قالب و سناریوی آماده Titipool"
                     >
-                  <Scroll className="w-3.5 h-3.5" />
+                  <Scroll className="w-3 h-3" />
                 </span>
                 )}
               </div>
 
               {room.description ? (
                   <p
-                      className="text-xs text-zinc-400 leading-relaxed line-clamp-2 group-hover:text-zinc-300 transition-colors"
+                      className="text-xs text-zinc-400 leading-relaxed line-clamp-2 group-hover:text-zinc-300 transition-colors duration-150"
                       title={room.description}
                   >
                     {room.description}
@@ -126,11 +125,11 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
               )}
             </div>
 
-            <Badge variant={isGM ? "gm" : "player"} className="shrink-0 font-semibold gap-1">
+            <Badge variant={isGM ? "gm" : "player"} className="shrink-0 font-semibold gap-1 text-[10px]">
               {isGM ? (
-                  <Crown className="w-3.5 h-3.5 text-amber-400" />
+                  <Crown className="w-3 h-3 text-amber-400" />
               ) : (
-                  <Swords className="w-3.5 h-3.5 text-blue-400" />
+                  <Swords className="w-3 h-3 text-blue-400" />
               )}
               <span>{displayRoleTitle}</span>
             </Badge>
@@ -140,39 +139,39 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
             <button
                 type="button"
                 onClick={() => copy(room.code)}
-                className="group/code text-xs font-mono bg-zinc-950/80 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400 px-2.5 py-1.5 rounded-xl border border-zinc-700/60 hover:border-amber-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-inner"
+                className="group/code text-xs font-mono bg-zinc-950/90 hover:bg-zinc-800 text-zinc-300 hover:text-amber-300 px-2.5 py-1.5 rounded-xl border border-zinc-700/60 hover:border-amber-500/40 active:scale-95 transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-inner"
                 title="کلیک برای کپی کد ۶ حرفی"
             >
               <span className="tracking-widest font-bold">{room.code}</span>
               {copied ? (
-                  <span className="flex items-center gap-1 text-emerald-400 text-[11px] font-fa font-bold">
-                <Check className="w-3.5 h-3.5" /> کپی شد
+                  <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-fa font-bold">
+                <Check className="w-3 h-3" /> کپی شد
               </span>
               ) : (
-                  <Copy className="w-3.5 h-3.5 text-zinc-500 group-hover/code:text-amber-400" />
+                  <Copy className="w-3.5 h-3.5 text-zinc-500 group-hover/code:text-amber-400 transition-colors" />
               )}
             </button>
 
             <button
                 type="button"
                 onClick={handleCopyLink}
-                className="p-1.5 rounded-xl bg-zinc-950/80 hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 border border-zinc-700/60 transition-all cursor-pointer flex items-center gap-1 text-xs"
+                className="p-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-800 text-zinc-400 hover:text-amber-300 border border-zinc-700/60 active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1 text-xs"
                 title="کپی لینک مستقیم دعوت"
             >
               {linkCopied ? (
-                  <span className="text-emerald-400 text-[11px] font-fa flex items-center gap-1 px-1">
-                <Check className="w-3.5 h-3.5" /> لینک کپی شد
+                  <span className="text-emerald-400 text-[10px] font-fa flex items-center gap-1 px-1">
+                <Check className="w-3 h-3" /> کپی شد
               </span>
               ) : (
                   <Link2 className="w-3.5 h-3.5" />
               )}
             </button>
 
-            <span className="flex items-center gap-1.5 text-xs text-zinc-400 mr-auto bg-zinc-900/60 px-2 py-1 rounded-lg border border-zinc-800">
+            <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 mr-auto bg-zinc-950/60 px-2 py-1 rounded-lg border border-zinc-800/80">
             <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-1.5 h-1.5 rounded-full ${
                     room.is_active || room.isActive
-                        ? "bg-emerald-500 shadow-sm shadow-emerald-500/80 animate-pulse"
+                        ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
                         : "bg-zinc-600"
                 }`}
             />
@@ -183,35 +182,35 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
 
         <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-zinc-400 font-medium">
+          <span className="flex items-center gap-1 text-zinc-400 text-[11px]">
             <Users className="w-3.5 h-3.5 text-zinc-500" />
             {room.player_count || room.playerCount || 1} بازیکن
           </span>
 
-            <span className="flex items-center gap-1 text-zinc-400 font-medium">
+            <span className="flex items-center gap-1 text-zinc-400 text-[11px]">
             <Clock className="w-3.5 h-3.5 text-zinc-500" />
               {`${daysLeft} روز`}
           </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {isGM && (
                 <>
                   <button
                       type="button"
                       onClick={() => onRequestEdit(room)}
-                      className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-xl transition-all cursor-pointer"
+                      className="p-1.5 text-zinc-500 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg active:scale-90 transition-all duration-150 cursor-pointer"
                       title="ویرایش مشخصات اتاق"
                   >
-                    <Settings2 className="w-4 h-4" />
+                    <Settings2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                       type="button"
                       onClick={() => onRequestDelete(room)}
-                      className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                      className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition-all duration-150 cursor-pointer"
                       title="حذف اتاق"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
             )}
@@ -220,10 +219,10 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
                 <button
                     type="button"
                     onClick={() => onRequestLeave(room)}
-                    className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                    className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition-all duration-150 cursor-pointer"
                     title="خروج از این ماجراجویی"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
             )}
 
@@ -231,10 +230,10 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
                 size="sm"
                 variant="amber"
                 onClick={() => navigate(`/room/${room.id}`)}
-                className="px-3 py-1.5 text-xs gap-1.5 font-bold shadow-md shadow-amber-500/10 hover:shadow-amber-500/20"
+                className="px-3 py-1.5 text-xs gap-1 font-bold shadow-sm shadow-amber-500/10 hover:shadow-md hover:shadow-amber-500/20 active:scale-[0.97] transition-all duration-150 h-8 mr-1"
             >
-              ورود
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>ورود</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform duration-150 group-hover:-translate-x-0.5" />
             </Button>
           </div>
         </div>

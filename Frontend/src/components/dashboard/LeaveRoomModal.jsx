@@ -15,7 +15,7 @@ export const LeaveRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoadin
             maxWidth="sm"
         >
             <div className="space-y-4 text-right font-fa" dir="rtl">
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 animate-fade-in-up">
                     <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
                         <LogOut className="w-5 h-5" />
                     </div>
@@ -29,7 +29,7 @@ export const LeaveRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoadin
                 </div>
 
                 <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-zinc-800">
-                    <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading} className="h-10 text-xs active:scale-95">
                         انصراف
                     </Button>
                     <Button
@@ -37,7 +37,7 @@ export const LeaveRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoadin
                         variant="secondary"
                         onClick={onConfirm}
                         isLoading={isLoading}
-                        className="hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/40 font-bold"
+                        className="hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/40 font-bold h-10 text-xs active:scale-[0.98]"
                     >
                         <LogOut className="w-4 h-4 ml-1.5" />
                         خروج از ماجراجویی
