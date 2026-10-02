@@ -26,9 +26,9 @@ const registerSchema = z
 
 const checkPasswordCriteria = (pass = "") => [
     { label: "حداقل ۸ کاراکتر", valid: pass.length >= 8 },
-    { label: "حروف بزرگ و کوچک (a-Z)", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
-    { label: "حداقل یک عدد (0-9)", valid: /\d/.test(pass) },
-    { label: "حداقل یک نماد خاص (!@#$%)", valid: /[^A-Za-z0-9]/.test(pass) },
+    { label: "حروف کوچک و بزرگ", valid: /[a-z]/.test(pass) && /[A-Z]/.test(pass) },
+    { label: "حداقل یک عدد", valid: /\d/.test(pass) },
+    { label: "نماد خاص (!@#$)", valid: /[^A-Za-z0-9]/.test(pass) },
 ];
 
 export const RegisterForm = ({ onSuccess }) => {
@@ -131,23 +131,23 @@ export const RegisterForm = ({ onSuccess }) => {
     };
 
     return (
-        <div className="space-y-3.5 text-right w-full" dir="rtl">
-            {/* دکمه گوگل */}
-            <div className="flex justify-center w-full min-h-[44px] overflow-hidden transition-all duration-200">
+        <div className="space-y-2.5 text-right w-full" dir="rtl">
+            {/* دکمه ورود سریع گوگل */}
+            <div className="flex justify-center w-full min-h-[42px] overflow-hidden">
                 <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
 
-            <div className="relative flex items-center justify-center my-2.5">
+            <div className="relative flex items-center justify-center my-1.5">
                 <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent w-full" />
-                <span className="bg-zinc-950 px-3.5 text-[11px] text-zinc-500 font-medium shrink-0">
+                <span className="bg-zinc-950 px-3 text-[10px] text-zinc-500 font-medium shrink-0">
           یا تکمیل فرم زیر
         </span>
                 <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent w-full" />
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5">
                 {serverError && (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-shake-subtle">
+                    <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-shake-subtle">
                         <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                         <span>{serverError}</span>
                     </div>
@@ -158,7 +158,7 @@ export const RegisterForm = ({ onSuccess }) => {
                     placeholder="مثلا: dungeon_master"
                     error={errors.username?.message}
                     disabled={isSubmitting}
-                    className="h-11 sm:h-10 text-sm transition-colors duration-150"
+                    className="h-9 sm:h-9.5 text-xs sm:text-sm"
                     {...register("username")}
                 />
 
@@ -168,11 +168,11 @@ export const RegisterForm = ({ onSuccess }) => {
                     placeholder="name@example.com"
                     error={errors.email?.message}
                     disabled={isSubmitting}
-                    className="h-11 sm:h-10 text-sm transition-colors duration-150"
+                    className="h-9 sm:h-9.5 text-xs sm:text-sm"
                     {...register("email")}
                 />
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                     <div className="relative">
                         <Input
                             label="رمز عبور"
@@ -180,29 +180,25 @@ export const RegisterForm = ({ onSuccess }) => {
                             placeholder="••••••••"
                             error={errors.password?.message}
                             disabled={isSubmitting}
-                            className="h-11 sm:h-10 text-sm pl-11 transition-colors duration-150"
+                            className="h-9 sm:h-9.5 text-xs sm:text-sm pl-10"
                             {...register("password")}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-2 cursor-pointer rounded-lg active:scale-90 transition-all duration-150 flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                            className="absolute left-2 top-[34px] sm:top-[33px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-1.5 cursor-pointer rounded-lg active:scale-90 transition-all duration-150 flex items-center justify-center focus-visible:outline-none"
                             tabIndex={-1}
                             aria-label="تغییر وضعیت نمایش رمز"
                         >
-                            {showPassword ? (
-                                <EyeOff className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
-                            ) : (
-                                <Eye className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
-                            )}
+                            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                     </div>
 
-                    {/* باکس وضعیت امنیت رمز عبور با انیمیشن روان */}
+                    {/* باکس وضعیت امنیت رمز عبور - بهینه‌شده، فوق‌العاده کم‌جا و بدون سرریز */}
                     {passwordValue.length > 0 && (
-                        <div className="p-3 rounded-xl bg-zinc-900/95 border border-zinc-800/90 text-xs space-y-2 mt-1.5 animate-fade-in-up">
-                            <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-zinc-400">میزان امنیت رمز:</span>
+                        <div className="p-2 rounded-lg bg-zinc-900/90 border border-zinc-800 text-[10px] space-y-1.5 animate-fade-in-up">
+                            <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-zinc-400">امنیت رمز:</span>
                                 <span
                                     className={`font-bold transition-colors duration-200 ${
                                         passedCriteriaCount <= 1
@@ -218,25 +214,25 @@ export const RegisterForm = ({ onSuccess }) => {
                 </span>
                             </div>
 
-                            <div className="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+                            <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full transition-all duration-300 ease-out ${strengthInfo.color}`}
                                     style={{ width: strengthInfo.width }}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2 pt-1 text-[10px]">
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-0.5">
                                 {criteria.map((item, idx) => (
                                     <div
                                         key={idx}
-                                        className={`flex items-center gap-1.5 transition-colors duration-200 ${
+                                        className={`flex items-center gap-1 transition-colors duration-200 ${
                                             item.valid ? "text-emerald-400" : "text-zinc-500"
                                         }`}
                                     >
                                         {item.valid ? (
-                                            <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400 transition-transform duration-150 scale-110" />
+                                            <Check className="w-3 h-3 shrink-0 text-emerald-400" />
                                         ) : (
-                                            <X className="w-3.5 h-3.5 shrink-0 text-zinc-600" />
+                                            <X className="w-3 h-3 shrink-0 text-zinc-600" />
                                         )}
                                         <span className="truncate">{item.label}</span>
                                     </div>
@@ -253,31 +249,27 @@ export const RegisterForm = ({ onSuccess }) => {
                         placeholder="••••••••"
                         error={errors.confirmPassword?.message}
                         disabled={isSubmitting}
-                        className="h-11 sm:h-10 text-sm pl-11 transition-colors duration-150"
+                        className="h-9 sm:h-9.5 text-xs sm:text-sm pl-10"
                         {...register("confirmPassword")}
                     />
                     <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-2 cursor-pointer rounded-lg active:scale-90 transition-all duration-150 flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                        className="absolute left-2 top-[34px] sm:top-[33px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-1.5 cursor-pointer rounded-lg active:scale-90 transition-all duration-150 flex items-center justify-center focus-visible:outline-none"
                         tabIndex={-1}
                         aria-label="تغییر وضعیت نمایش تکرار رمز"
                     >
-                        {showConfirmPassword ? (
-                            <EyeOff className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
-                        ) : (
-                            <Eye className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
-                        )}
+                        {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                 </div>
 
                 <Button
                     type="submit"
                     variant="amber"
-                    className="w-full mt-2 font-bold shadow-md shadow-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.98] transition-all duration-150 h-11 sm:h-11 text-xs sm:text-sm flex items-center justify-center"
+                    className="w-full !mt-3 font-bold shadow-md shadow-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.98] transition-all duration-150 h-10 sm:h-10 text-xs sm:text-sm flex items-center justify-center"
                     isLoading={isSubmitting}
                 >
-                    <UserPlus className="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-0.5" />
+                    <UserPlus className="w-4 h-4 ml-1.5" />
                     ساخت حساب و شروع بازی
                 </Button>
             </form>
