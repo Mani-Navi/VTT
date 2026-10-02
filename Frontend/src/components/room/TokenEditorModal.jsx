@@ -26,6 +26,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { getAssetUrl, assetApi } from "../../api/asset.api";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
+import { uiAudio } from "../../utils/uiAudio";
 
 const PRESET_TOKEN_ICONS = Object.freeze([
   { id: "knight", label: "شوالیه / جنگجو", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
@@ -224,6 +225,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
 
       if (uploadedUrl) {
         setAvatarUrl(uploadedUrl);
+        uiAudio.playTokenDrop();
       }
     } catch (err) {
       if (import.meta.env.DEV) {
@@ -269,6 +271,8 @@ export const TokenEditorModal = memo(({ roomData }) => {
     };
 
     updateToken(token.id, updated);
+    uiAudio.playTokenDrop();
+
     wsService.send(WS_EVENTS.TOKEN_MOVED || "TOKEN_MOVE", {
       tokenId: String(token.id),
       id: String(token.id),
@@ -289,6 +293,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
     if (isNaN(amount) || amount <= 0) return;
     setHp((prev) => Math.max(0, prev - amount));
     setCalcInput("");
+    uiAudio.playTokenDrop();
   };
 
   const handleApplyHeal = () => {
@@ -296,6 +301,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
     if (isNaN(amount) || amount <= 0) return;
     setHp((prev) => Math.min(maxHp, prev + amount));
     setCalcInput("");
+    uiAudio.playTokenDrop();
   };
 
   const handleToggleSelectCondition = (condId) => {
@@ -308,6 +314,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
       }
       setSelectedConditions([...selectedConditions, condId]);
     }
+    uiAudio.playTokenDrop();
   };
 
   const handleAddConditionToPool = (condId) => {
@@ -431,6 +438,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                             onClick={() => {
                               setAvatarUrl(preset.url);
                               setShowPresetPicker(false);
+                              uiAudio.playTokenDrop();
                             }}
                             className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                                 avatarUrl === preset.url
