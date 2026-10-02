@@ -20,20 +20,25 @@ export function DiceCanvas() {
                 pointerEvents: activeDice.length > 0 ? 'auto' : 'none',
             }}
         >
-            <ambientLight intensity={0.7} color="#fed7aa" />
+            <ambientLight intensity={0.85} color="#ffffff" />
 
+            {/* نورپردازی عمودی تمیز برای جلوگیری از کشیده شدن سایه به دیواره‌ها و گوشه‌ها */}
             <directionalLight
-                position={[6, 18, 8]}
-                intensity={1.9}
+                position={[2, 22, 3]}
+                intensity={1.8}
                 castShadow
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
                 shadow-camera-near={0.5}
-                shadow-camera-far={35}
-                shadow-bias={-0.0001}
+                shadow-camera-far={40}
+                shadow-camera-left={-25}
+                shadow-camera-right={25}
+                shadow-camera-top={25}
+                shadow-camera-bottom={-25}
+                shadow-bias={-0.00015}
             />
 
-            <pointLight position={[-6, 10, -6]} intensity={0.5} color="#c084fc" />
+            <pointLight position={[-8, 12, -8]} intensity={0.4} color="#e0e7ff" />
 
             <Suspense fallback={null}>
                 <Physics gravity={[0, -32, 0]} timeStep={1 / 60}>

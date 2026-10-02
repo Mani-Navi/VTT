@@ -7,7 +7,6 @@ class DiceAudioEngine {
         this.lastImpactTime = 0;
     }
 
-    // مقداردهی اولیه به محض اولین تعامل کاربر (حل محدودیت Autoplay مرورگرها)
     init() {
         if (!this.ctx) {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -25,7 +24,7 @@ class DiceAudioEngine {
     }
 
     /**
-     * صدای پرتاب اولیه تاس‌ها (صدای غلتش و سایش نرم رزین در دست و رها شدن)
+     * صدای پرتاب اولیه تاس‌ها (صدای برخورد ملایم تاس‌ها با هم هنگام رها شدن)
      */
     playThrow(diceCount = 1) {
         if (this.isMuted) return;
@@ -35,61 +34,41 @@ class DiceAudioEngine {
         const count = Math.min(Math.max(diceCount, 1), 6);
         const now = this.ctx.currentTime;
 
-        // ۱. نویز سایش نمدی/پوستی در هنگام پرتاب
-        const bufferSize = Math.floor(this.ctx.sampleRate * 0.28);
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
+        // کلاستر کلیک‌های خشک رزینی واقعی در دست
+        for (let i = 0; i < count + 1; i++) {
+            const delay = i * 0.035 + Math.random() * 0.02;
+            const clickSize = Math.floor(this.ctx.sampleRate * 0.025);
+            const clickBuffer = this.ctx.createBuffer(1, clickSize, this.ctx.sampleRate);
+            const clickData = clickBuffer.getChannelData(0);
 
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
-        }
+            for (let j = 0; j < clickSize; j++) {
+                clickData[j] = (Math.random() * 2 - 1) * Math.exp(-j / (clickSize * 0.15));
+            }
 
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+            const clickSrc = this.ctx.createBufferSource();
+            clickSrc.buffer = clickBuffer;
 
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1100, now);
-        filter.frequency.exponentialRampToValueAtTime(1600, now + 0.22);
-        filter.Q.setValueAtTime(2.2, now);
+            const bandpass = this.ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(2800 + Math.random() * 1200, now + delay);
+            bandpass.Q.setValueAtTime(3.5, now + delay);
 
-        const gain = this.ctx.createGain();
-        const baseVol = Math.min(0.18 + count * 0.05, 0.42);
-        gain.gain.setValueAtTime(0.01, now);
-        gain.gain.linearRampToValueAtTime(baseVol, now + 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.27);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.18, now + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.024);
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
+            clickSrc.connect(bandpass);
+            bandpass.connect(gain);
+            gain.connect(this.ctx.destination);
 
-        noise.start(now);
-        noise.stop(now + 0.28);
-
-        // ۲. تله‌کلیک‌های ریز اولیه به هم خوردن تاس‌ها در لحظه رهاسازی (Micro-rattles)
-        const rattleCount = Math.min(count * 2, 5);
-        for (let r = 0; r < rattleCount; r++) {
-            const delay = 0.02 + Math.random() * 0.12;
-            const rattleOsc = this.ctx.createOscillator();
-            const rattleGain = this.ctx.createGain();
-
-            rattleOsc.type = 'sine';
-            rattleOsc.frequency.setValueAtTime(1800 + Math.random() * 800, now + delay);
-
-            rattleGain.gain.setValueAtTime(0.08 * (0.5 + Math.random() * 0.5), now + delay);
-            rattleGain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.025);
-
-            rattleOsc.connect(rattleGain);
-            rattleGain.connect(this.ctx.destination);
-
-            rattleOsc.start(now + delay);
-            rattleOsc.stop(now + delay + 0.03);
+            clickSrc.start(now + delay);
+            clickSrc.stop(now + delay + 0.026);
         }
     }
 
     /**
-     * صدای برخورد ASMR چندلایه‌ای سنگین رزین با نمد و چوب صیقلی
-     * شدت صدا متناسب با سرعت فیزیکی است
+     * صدای تقه واقعی برخورد تاس روی میز نمدی/چوبی (Real Resin Dice Clack)
+     * بدون هیچ‌گونه فرکانس بم طبل‌مانند
      */
     playImpact(intensity = 0.5) {
         if (this.isMuted) return;
@@ -98,78 +77,62 @@ class DiceAudioEngine {
 
         const now = this.ctx.currentTime;
 
-        // جلوگیری از تداخل بیش از حد صدا در برخوردهای فوق سریع
-        if (now - this.lastImpactTime < 0.025) return;
+        // فاصله زمانی مینیمال برای شبیه‌سازی غلتش‌های ریز و تقه‌های پیوسته
+        if (now - this.lastImpactTime < 0.02) return;
         this.lastImpactTime = now;
 
         const clampedIntensity = Math.min(Math.max(intensity, 0.15), 1.0);
 
-        // لایه ۱: کوبش بم و مخملی میز چوبی/سینی نمدی (Heavy Velvet Sub-Thud)
-        const subOsc = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        const subFreq = 95 + (Math.random() - 0.5) * 20;
+        // ۱. ضربه تیز لبه تاس رزینی (Sharp Resin Transient)
+        const clickLen = Math.floor(this.ctx.sampleRate * 0.03);
+        const clickBuf = this.ctx.createBuffer(1, clickLen, this.ctx.sampleRate);
+        const data = clickBuf.getChannelData(0);
 
-        subOsc.type = 'sine';
-        subOsc.frequency.setValueAtTime(subFreq, now);
-        subOsc.frequency.exponentialRampToValueAtTime(38, now + 0.075);
-
-        const subVol = clampedIntensity * 0.48;
-        subGain.gain.setValueAtTime(subVol, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
-        subOsc.connect(subGain);
-        subGain.connect(this.ctx.destination);
-        subOsc.start(now);
-        subOsc.stop(now + 0.085);
-
-        // لایه ۲: صدای بدنه متراکم رزین سنگ مرمر (Dense Resin Body Resonance)
-        const bodyOsc = this.ctx.createOscillator();
-        const bodyGain = this.ctx.createGain();
-        const bodyFreq = 380 + (Math.random() - 0.5) * 70;
-
-        bodyOsc.type = 'triangle';
-        bodyOsc.frequency.setValueAtTime(bodyFreq, now);
-        bodyOsc.frequency.exponentialRampToValueAtTime(bodyFreq * 0.55, now + 0.05);
-
-        const bodyVol = clampedIntensity * 0.32;
-        bodyGain.gain.setValueAtTime(bodyVol, now);
-        bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
-
-        bodyOsc.connect(bodyGain);
-        bodyGain.connect(this.ctx.destination);
-        bodyOsc.start(now);
-        bodyOsc.stop(now + 0.06);
-
-        // لایه ۳: تقه کریستالی شفاف و گوش‌نواز (Crisp ASMR Ceramic Snap)
-        const snapSize = Math.floor(this.ctx.sampleRate * 0.035);
-        const snapBuffer = this.ctx.createBuffer(1, snapSize, this.ctx.sampleRate);
-        const snapData = snapBuffer.getChannelData(0);
-
-        for (let i = 0; i < snapSize; i++) {
-            // میرایی بسیار سریع برای ترنزینت فوق‌العاده تیز و تمیز
-            snapData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / snapSize, 4.5);
+        for (let i = 0; i < clickLen; i++) {
+            // انحطاط فوق‌العاده سریع جهت ایجاد صدای خشک، شفاف و واقعی
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / clickLen, 6);
         }
 
-        const snapSource = this.ctx.createBufferSource();
-        snapSource.buffer = snapBuffer;
+        const clickSource = this.ctx.createBufferSource();
+        clickSource.buffer = clickBuf;
 
-        const snapFilter = this.ctx.createBiquadFilter();
-        snapFilter.type = 'bandpass';
-        const snapCenterFreq = 3100 + (Math.random() - 0.5) * 500;
-        snapFilter.frequency.setValueAtTime(snapCenterFreq, now);
-        snapFilter.Q.setValueAtTime(4.5, now);
+        const clickFilter = this.ctx.createBiquadFilter();
+        clickFilter.type = 'bandpass';
+        // فرکانس طبیعی صدای برخورد پلی‌رزین
+        const baseFreq = 2600 + (Math.random() - 0.5) * 600;
+        clickFilter.frequency.setValueAtTime(baseFreq, now);
+        clickFilter.Q.setValueAtTime(4.0, now);
 
-        const snapGain = this.ctx.createGain();
-        const snapVol = clampedIntensity * 0.38;
-        snapGain.gain.setValueAtTime(snapVol, now);
-        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+        const clickGain = this.ctx.createGain();
+        const clickVol = clampedIntensity * 0.55;
+        clickGain.gain.setValueAtTime(clickVol, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
 
-        snapSource.connect(snapFilter);
-        snapFilter.connect(snapGain);
-        snapGain.connect(this.ctx.destination);
+        clickSource.connect(clickFilter);
+        clickFilter.connect(clickGain);
+        clickGain.connect(this.ctx.destination);
 
-        snapSource.start(now);
-        snapSource.stop(now + 0.038);
+        clickSource.start(now);
+        clickSource.stop(now + 0.03);
+
+        // ۲. تپش کوتاه و چوبی سطح میز (خشک و بدون بم اضافه)
+        const tapOsc = this.ctx.createOscillator();
+        const tapGain = this.ctx.createGain();
+
+        tapOsc.type = 'triangle';
+        const tapFreq = 320 + (Math.random() - 0.5) * 40; // صدای فرورفتن در نمد/چوب
+        tapOsc.frequency.setValueAtTime(tapFreq, now);
+        tapOsc.frequency.exponentialRampToValueAtTime(140, now + 0.035);
+
+        const tapVol = clampedIntensity * 0.28;
+        tapGain.gain.setValueAtTime(tapVol, now);
+        tapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+        tapOsc.connect(tapGain);
+        tapGain.connect(this.ctx.destination);
+
+        tapOsc.start(now);
+        tapOsc.stop(now + 0.038);
     }
 }
 
