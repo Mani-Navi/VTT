@@ -276,20 +276,20 @@ export const RoomPage = () => {
 
             <SceneBar isGM={isGM} roomId={effectiveRoomId} />
 
-            {/* هدر اکشن‌ها: در گوشی بسیار فشرده و مرتب در گوشه چپ */}
+            {/* هدر بالایی اکشن‌ها و وضعیت سینک با ظرافت استرایپ/اپل */}
             <header
                 className="fixed top-2.5 sm:top-4 left-2.5 sm:left-6 z-30 flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto"
                 dir="ltr"
             >
-                <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-zinc-900/90 border border-zinc-800/80 rounded-xl shadow-xl backdrop-blur-xl text-[11px]">
+                <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-zinc-950/85 border border-zinc-800/80 rounded-xl shadow-lg backdrop-blur-xl text-[11px]">
           <span
               className={`w-2 h-2 rounded-full ${
                   isConnected
-                      ? "bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse"
-                      : "bg-amber-500"
+                      ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                      : "bg-amber-400 animate-pulse"
               }`}
           />
-                    <span className="hidden sm:inline text-zinc-300 font-mono text-[10px]">
+                    <span className="hidden sm:inline text-zinc-300 font-mono text-[10px] font-medium">
             {isConnected ? "Live Sync" : "Connecting..."}
           </span>
                 </div>
@@ -297,7 +297,7 @@ export const RoomPage = () => {
                 <button
                     type="button"
                     onClick={() => setIsHelpOpen(true)}
-                    className="hidden sm:flex w-9 h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="hidden sm:flex w-9 h-9 rounded-xl bg-zinc-950/85 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 items-center justify-center shadow-lg backdrop-blur-xl active:scale-90 transition-all duration-150 cursor-pointer"
                     title="راهنمای کلیدها"
                 >
                     <HelpCircle className="w-4 h-4" />
@@ -306,7 +306,7 @@ export const RoomPage = () => {
                 <button
                     type="button"
                     onClick={toggleFullscreen}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-950/85 border border-zinc-800/80 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 flex items-center justify-center shadow-lg backdrop-blur-xl active:scale-90 transition-all duration-150 cursor-pointer"
                     title="تمام صفحه"
                 >
                     {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
@@ -316,10 +316,10 @@ export const RoomPage = () => {
                     <button
                         type="button"
                         onClick={handleCloseRoom}
-                        className="px-2 sm:px-2.5 h-8 sm:h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 flex items-center gap-1 shadow-xl backdrop-blur-xl transition-all cursor-pointer font-bold text-xs"
+                        className="px-2 sm:px-2.5 h-8 sm:h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 flex items-center gap-1.5 shadow-lg backdrop-blur-xl active:scale-95 transition-all duration-150 cursor-pointer font-bold text-xs"
                         title="بستن و غیرفعال‌سازی اتاق"
                     >
-                        <PowerOff className="w-3.5 h-3.5" />
+                        <PowerOff className="w-3.5 h-3.5 text-amber-400" />
                         <span className="hidden sm:inline">بستن اتاق</span>
                     </button>
                 )}
@@ -327,7 +327,7 @@ export const RoomPage = () => {
                 <button
                     type="button"
                     onClick={() => navigate("/dashboard")}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-900/90 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-colors cursor-pointer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-zinc-950/85 border border-zinc-800/80 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center shadow-lg backdrop-blur-xl active:scale-90 transition-all duration-150 cursor-pointer"
                     title="خروج از اتاق"
                 >
                     <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -360,55 +360,55 @@ export const RoomPage = () => {
             >
                 <div className="space-y-3 text-xs text-zinc-300 font-fa" dir="rtl">
                     <div className="grid grid-cols-2 gap-2">
-                        <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
+                        <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
                             <span className="font-bold text-amber-400 block">ابزارها:</span>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>انتخاب:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">V</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">V</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>جابجایی نقشه:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">H</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">H</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>نقاشی و خطوط:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">D</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">D</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>نوشت‌افزار:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">T</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">T</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>خط‌کش:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">R</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">R</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>تاس سه‌بعدی:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">B</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">B</kbd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>مه جنگ (GM):</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">F</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">F</kbd>
                             </div>
                         </div>
 
-                        <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-2">
+                        <div className="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
                             <span className="font-bold text-amber-400 block">اکشن‌ها:</span>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>زوم:</span>
-                                <span className="text-zinc-400">اسکرول ماوس</span>
+                                <span className="text-zinc-400 text-[11px]">اسکرول ماوس</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>پینگ رادار:</span>
-                                <span className="text-zinc-400">دوبار کلیک روی مپ</span>
+                                <span className="text-zinc-400 text-[11px]">دوبار کلیک روی مپ</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>ویرایش توکن:</span>
-                                <span className="text-zinc-400">راست کلیک روی توکن</span>
+                                <span className="text-zinc-400 text-[11px]">راست کلیک روی توکن</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <span>وصل/قطع میکروفون:</span>
-                                <kbd className="font-mono bg-zinc-800 px-1.5 rounded text-amber-400">Space</kbd>
+                                <kbd className="font-mono bg-zinc-900 border border-zinc-700/80 px-1.5 py-0.5 rounded text-amber-400 text-[10px]">Space</kbd>
                             </div>
                         </div>
                     </div>
@@ -417,3 +417,5 @@ export const RoomPage = () => {
         </div>
     );
 };
+
+export default RoomPage;
