@@ -11,6 +11,7 @@ import {
 import { useSceneStore } from "../../store/scene.store";
 import { sceneApi } from "../../api/scene.api";
 import { wsService } from "../../services/websocket.service";
+import { confirmModal } from "../../store/confirm.store";
 import { cn } from "../../utils/cn";
 
 export const SceneBar = memo(({ isGM = false, roomId = null }) => {
@@ -61,7 +62,17 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
     const handleDeleteScene = async (sceneId, e) => {
         e.stopPropagation();
-        if (!confirm("آیا از حذف این صحنه و تمام محتویات آن اطمینان دارید؟")) return;
+
+        // استفاده از مودال حرفه‌ای به جای confirm زشت مرورگر
+        const isConfirmed = await confirmModal({
+            title: "تأیید حذف صحنه بازی",
+            message: "آیا از حذف این صحنه و تمام توکن‌ها، نقشه‌ها و ترسیمات آن اطمینان دارید؟ این عملیات قابل بازگشت نیست.",
+            confirmText: "حذف قطعی صحنه",
+            cancelText: "انصراف",
+            variant: "danger",
+        });
+
+        if (!isConfirmed) return;
 
         try {
             await sceneApi.deleteScene(sceneId);
@@ -105,7 +116,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
 
     return (
         <>
-            {/* حالت موبایل: دراپ‌دان کم‌جا در بالا */}
+            {/* حالت موبایل */}
             <div className="sm:hidden fixed top-3 left-[54%] -translate-x-1/2 z-30 font-fa select-none" dir="rtl">
                 <div className="relative">
                     <button
@@ -150,7 +161,7 @@ export const SceneBar = memo(({ isGM = false, roomId = null }) => {
                 </div>
             </div>
 
-            {/* نسخه دسکتاپ و تبلت: نوار افقی معلق به سبک Linear */}
+            {/* نسخه دسکتاپ و تبلت */}
             <div
                 className="hidden sm:flex fixed top-4 left-1/2 -translate-x-1/2 z-30 items-center gap-2.5 px-3 py-1.5 bg-zinc-950/85 border border-zinc-800/80 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-2xl font-fa select-none pointer-events-auto animate-fade-in-up"
                 dir="rtl"
