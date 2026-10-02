@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
 import { useAuth } from "../../hooks/useAuth";
@@ -102,28 +102,29 @@ export const LoginForm = ({ onSuccess }) => {
     };
 
     return (
-        <div className="space-y-3.5 text-right w-full" dir="rtl">
-            {/* دکمه رسمی و هماهنگ گوگل - بهینه‌شده برای عرض‌های کوچک */}
-            <div className="flex justify-center w-full min-h-[44px] overflow-hidden">
+        <div className="space-y-4 text-right w-full" dir="rtl">
+            {/* دکمه گوگل هماهنگ با انیمیشن روان */}
+            <div className="flex justify-center w-full min-h-[44px] overflow-hidden transition-all duration-200">
                 <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
 
-            <div className="relative flex items-center justify-center my-2.5">
-                <div className="border-t border-zinc-800 w-full" />
-                <span className="bg-zinc-950 px-3 text-[11px] text-zinc-500 font-medium shrink-0">
+            {/* جداکننده ظریف گرادیانی */}
+            <div className="relative flex items-center justify-center my-3">
+                <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent w-full" />
+                <span className="bg-zinc-950 px-3.5 text-[11px] text-zinc-500 font-medium shrink-0">
           یا ورود با ایمیل
         </span>
-                <div className="border-t border-zinc-800 w-full" />
+                <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent w-full" />
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <Input
                     label="ایمیل حساب کاربری"
                     type="email"
                     placeholder="name@example.com"
                     error={errors.email?.message}
                     disabled={isSubmitting}
-                    className="h-11 sm:h-10 text-sm"
+                    className="h-11 sm:h-10 text-sm transition-colors duration-150"
                     {...register("email")}
                 />
 
@@ -134,33 +135,38 @@ export const LoginForm = ({ onSuccess }) => {
                         placeholder="••••••••"
                         error={errors.password?.message}
                         disabled={isSubmitting}
-                        className="h-11 sm:h-10 text-sm pl-11"
+                        className="h-11 sm:h-10 text-sm pl-11 transition-colors duration-150"
                         {...register("password")}
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-2 cursor-pointer rounded-lg active:scale-95 transition-all flex items-center justify-center"
+                        className="absolute left-2.5 top-[39px] sm:top-[38px] -translate-y-1/2 text-zinc-400 hover:text-zinc-200 active:text-amber-400 p-2 cursor-pointer rounded-lg active:scale-90 transition-all duration-150 flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
                         tabIndex={-1}
                         aria-label="تغییر وضعیت نمایش رمز"
                     >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? (
+                            <EyeOff className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
+                        ) : (
+                            <Eye className="w-4 h-4 transition-transform duration-200 rotate-0 scale-100" />
+                        )}
                     </button>
                 </div>
 
                 {serverError && (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-fadeIn">
-                        {serverError}
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-shake-subtle">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                        <span>{serverError}</span>
                     </div>
                 )}
 
                 <Button
                     type="submit"
                     variant="amber"
-                    className="w-full mt-2 font-bold shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25 active:scale-[0.98] transition-all h-11 sm:h-11 text-xs sm:text-sm"
+                    className="w-full mt-2 font-bold shadow-md shadow-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.98] transition-all duration-150 h-11 sm:h-11 text-xs sm:text-sm flex items-center justify-center"
                     isLoading={isSubmitting}
                 >
-                    <LogIn className="w-4 h-4 ml-2" />
+                    <LogIn className="w-4 h-4 ml-2 transition-transform duration-200 group-hover:translate-x-0.5" />
                     ورود به حساب کاربری
                 </Button>
             </form>

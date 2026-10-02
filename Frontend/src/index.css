@@ -11,8 +11,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image:
-            radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.06) 0%, transparent 60%),
-            radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+            radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.07) 0%, transparent 55%),
+            radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 0% 100%, rgba(217, 119, 6, 0.04) 0%, transparent 45%);
+    background-attachment: fixed;
   }
 
   ::-webkit-scrollbar {
@@ -25,8 +27,62 @@
   ::-webkit-scrollbar-thumb {
     background: #27272a;
     border-radius: 9999px;
+    transition: background-color 0.2s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #f59e0b;
+  }
+}
+
+/* انیمیشن‌ها و ترنزیشن‌های استاندارد و بهینه */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shakeSubtle {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0px) rotate(var(--tw-rotate, 0deg)); }
+  50% { transform: translateY(-4px) rotate(var(--tw-rotate, 0deg)); }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-shake-subtle {
+    animation: shakeSubtle 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+
+  .animate-float-card {
+    animation: floatGentle 5s ease-in-out infinite;
+  }
+
+  .glass-card {
+    background: linear-gradient(135deg, rgba(24, 24, 27, 0.8) 0%, rgba(9, 10, 15, 0.95) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+/* سازگاری با ترجیحات کاربر برای حذف موشن */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
