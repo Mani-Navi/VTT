@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import {
     Eye,
     EyeOff,
@@ -78,6 +78,23 @@ export const FogSubToolbar = memo(() => {
 
     const [isFitMenuOpen, setIsFitMenuOpen] = useState(false);
     const [selectedFitOptionKey, setSelectedFitOptionKey] = useState("fit");
+    const fitMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            if (fitMenuRef.current && !fitMenuRef.current.contains(e.target)) {
+                setIsFitMenuOpen(false);
+            }
+        };
+        if (isFitMenuOpen) {
+            document.addEventListener("mousedown", handleOutsideClick);
+            document.addEventListener("touchstart", handleOutsideClick);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleOutsideClick);
+            document.removeEventListener("touchstart", handleOutsideClick);
+        };
+    }, [isFitMenuOpen]);
 
     if (activeTool !== TOOLS.FOG) return null;
 
@@ -96,7 +113,6 @@ export const FogSubToolbar = memo(() => {
         });
     };
 
-    // ۳. پر کردن کل نقشه با مه (Fill Fog)
     const handleToggleFillFog = () => {
         if (!currentScene) return;
 
@@ -119,7 +135,6 @@ export const FogSubToolbar = memo(() => {
         }
     };
 
-    // ۴. پاک کردن کامل تمام مه (Clear Fog)
     const handleClearAll = () => {
         if (!currentScene) return;
         clearFog();
@@ -136,7 +151,6 @@ export const FogSubToolbar = memo(() => {
         wsService.send(WS_EVENTS.FOG_UPDATED || "FOG_UPDATE", payload);
     };
 
-    // ۵. منوی پیشرفته Fit Fog (شامل Fit, Trim, Join, Overlay)
     const handleFitOptionSelect = (optionKey) => {
         setSelectedFitOptionKey(optionKey);
         setIsFitMenuOpen(false);
@@ -265,7 +279,7 @@ export const FogSubToolbar = memo(() => {
 
     return (
         <div
-            className="relative flex items-center gap-2 px-3.5 py-2 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200 text-zinc-100"
+            className="relative flex items-center gap-2 px-3 py-1.5 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl shadow-2xl backdrop-blur-2xl text-zinc-100 overflow-visible"
             dir="rtl"
         >
             <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800/80">
@@ -281,9 +295,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={handleToggleGlobalReveal}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none active:scale-95",
                             isFogRevealedGlobally
-                                ? "bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/25 ring-1 ring-amber-400/50"
+                                ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/25 ring-1 ring-amber-400/50"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
                         )}
                     >
@@ -297,9 +311,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogAction(FOG_ACTIONS.HIDE)}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none active:scale-95",
                             fogAction === FOG_ACTIONS.HIDE
-                                ? "bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/25 ring-1 ring-rose-400/50"
+                                ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 ring-1 ring-rose-400/50"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
                         )}
                     >
@@ -313,9 +327,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogAction(FOG_ACTIONS.SLICE)}
                         className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none active:scale-95",
                             fogAction === FOG_ACTIONS.SLICE
-                                ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/25 ring-1 ring-purple-400/50"
+                                ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400/50"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
                         )}
                     >
@@ -333,9 +347,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogBrushShape(FOG_BRUSH_SHAPES.CIRCLE)}
                         className={cn(
-                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                            "w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95",
                             fogBrushShape === FOG_BRUSH_SHAPES.CIRCLE
-                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md"
+                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md font-bold"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                         )}
                     >
@@ -348,9 +362,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogBrushShape(FOG_BRUSH_SHAPES.RECTANGLE)}
                         className={cn(
-                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                            "w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95",
                             fogBrushShape === FOG_BRUSH_SHAPES.RECTANGLE
-                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md"
+                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md font-bold"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                         )}
                     >
@@ -363,9 +377,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogBrushShape(FOG_BRUSH_SHAPES.TRIANGLE)}
                         className={cn(
-                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                            "w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95",
                             fogBrushShape === FOG_BRUSH_SHAPES.TRIANGLE
-                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md"
+                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md font-bold"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                         )}
                     >
@@ -378,9 +392,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogBrushShape(FOG_BRUSH_SHAPES.HEXAGON)}
                         className={cn(
-                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                            "w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95",
                             fogBrushShape === FOG_BRUSH_SHAPES.HEXAGON
-                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md"
+                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md font-bold"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                         )}
                     >
@@ -393,9 +407,9 @@ export const FogSubToolbar = memo(() => {
                         type="button"
                         onClick={() => setFogBrushShape(FOG_BRUSH_SHAPES.POLYGON)}
                         className={cn(
-                            "w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                            "w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95",
                             fogBrushShape === FOG_BRUSH_SHAPES.POLYGON
-                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md"
+                                ? "bg-zinc-800 text-amber-400 border border-amber-500/50 shadow-md font-bold"
                                 : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                         )}
                     >
@@ -414,7 +428,7 @@ export const FogSubToolbar = memo(() => {
                     type="button"
                     onClick={handleToggleFillFog}
                     className={cn(
-                        "flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer active:scale-95",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer active:scale-95",
                         isFogFilled
                             ? "bg-rose-600 text-white shadow-rose-600/30 border border-rose-400/40"
                             : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80"
@@ -425,11 +439,17 @@ export const FogSubToolbar = memo(() => {
                 </button>
             </Tooltip>
 
-            <div className="relative">
+            {/* منوی انتخابی Fit Fog - باز شدن بدون بریده شدن (overflow-visible) */}
+            <div className="relative" ref={fitMenuRef}>
                 <button
                     type="button"
                     onClick={() => setIsFitMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-2 px-3.5 py-2 bg-zinc-900/90 border border-amber-500/40 hover:border-amber-500 text-amber-400 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm hover:bg-zinc-850"
+                    className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm active:scale-95 border",
+                        isFitMenuOpen
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500"
+                            : "bg-zinc-900/90 border-amber-500/40 hover:border-amber-500 text-amber-400 hover:bg-zinc-850"
+                    )}
                 >
                     <CurrentOptionIcon className={cn("w-4 h-4 stroke-[2.2]", currentOption.colorClass)} />
                     <span>{currentOption.shortLabel} Fog</span>
@@ -442,7 +462,7 @@ export const FogSubToolbar = memo(() => {
                 </button>
 
                 {isFitMenuOpen && (
-                    <div className="absolute bottom-full mb-2.5 right-0 w-64 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl p-1.5 shadow-2xl backdrop-blur-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute bottom-full mb-3 right-0 w-64 bg-zinc-950/98 border border-zinc-800/90 rounded-2xl p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-[100] flex flex-col gap-1 animate-fade-in-up">
                         {FIT_OPTIONS.map((opt) => {
                             const OptionIcon = opt.icon;
                             const isSelected = selectedFitOptionKey === opt.key;
@@ -452,7 +472,7 @@ export const FogSubToolbar = memo(() => {
                                     type="button"
                                     onClick={() => handleFitOptionSelect(opt.key)}
                                     className={cn(
-                                        "flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                                        "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-[0.98]",
                                         isSelected
                                             ? "bg-zinc-900 text-zinc-100 border border-zinc-700/60 shadow-sm"
                                             : "hover:bg-zinc-900/70 text-zinc-400 hover:text-zinc-200"
@@ -460,7 +480,7 @@ export const FogSubToolbar = memo(() => {
                                 >
                                     <div className="flex items-center gap-2.5">
                                         <div className={cn("p-1.5 rounded-lg border", opt.bgClass)}>
-                                            <OptionIcon className={cn("w-4 h-4", opt.colorClass)} />
+                                            <OptionIcon className={cn("w-3.5 h-3.5", opt.colorClass)} />
                                         </div>
                                         <span>{opt.label}</span>
                                     </div>
@@ -478,7 +498,7 @@ export const FogSubToolbar = memo(() => {
                 <button
                     type="button"
                     onClick={handleClearAll}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
+                    className="w-8.5 h-8.5 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 active:scale-90 transition-all cursor-pointer"
                 >
                     <Trash2 className="w-4 h-4 stroke-[2]" />
                 </button>
@@ -488,3 +508,4 @@ export const FogSubToolbar = memo(() => {
 });
 
 FogSubToolbar.displayName = "FogSubToolbar";
+export default FogSubToolbar;

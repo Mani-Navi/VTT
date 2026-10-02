@@ -249,16 +249,18 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
 
   return (
       <>
-        <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 pointer-events-auto max-w-[96vw]">
+        <div className="fixed bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 pointer-events-auto max-w-[98vw] overflow-visible">
+          {/* کانتینر زیرمنوها: با overflow-visible جهت باز شدن آزادانه پاپ‌آپ‌ها به سمت بالا */}
           {hasActiveMap && (
-              <div className="max-w-full overflow-x-auto no-scrollbar animate-fade-in-up">
+              <div className="w-full flex justify-center overflow-visible z-50 animate-fade-in-up">
                 <DrawSubToolbar />
                 <TextSubToolbar />
                 <FogSubToolbar />
               </div>
           )}
 
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-zinc-950/85 border border-zinc-800/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur-2xl text-zinc-200 max-w-full overflow-x-auto no-scrollbar transition-all">
+          {/* داک ابزار اصلی: بدون اسکرول‌بار ناخواسته و کاملاً تمیز */}
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.7)] backdrop-blur-2xl text-zinc-200 transition-all overflow-visible">
             <div className="flex items-center gap-0.5 sm:gap-1">
               {primaryTools.map((t) => {
                 if (!t.allowed) return null;
@@ -293,7 +295,6 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
               })}
             </div>
 
-            {/* دکمه تاس سه‌بعدی */}
             <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" />
             <Tooltip content="3D Dice" subContent="پرتاب تاس سه‌بعدی فیزیکی" shortcut="B">
               <button
@@ -372,7 +373,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
           </div>
         </div>
 
-        {/* ابزارک زوم با بازخورد لمسی سریع */}
+        {/* ابزارک زوم */}
         <div className="fixed bottom-18 sm:bottom-6 right-3 sm:right-6 z-30 flex items-center gap-1 p-1 sm:p-1.5 bg-zinc-950/85 border border-zinc-800/80 rounded-xl shadow-[0_8px_25px_rgba(0,0,0,0.5)] backdrop-blur-xl text-xs text-zinc-300">
           <button
               type="button"
