@@ -49,3 +49,4 @@ export const DeleteRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoadi
 });
 
 DeleteRoomModal.displayName = "DeleteRoomModal";
+export default DeleteRoomModal;

@@ -159,3 +159,4 @@ export const EditRoomModal = memo(({ isOpen, onClose, onUpdate, room }) => {
 });
 
 EditRoomModal.displayName = "EditRoomModal";
+export default EditRoomModal;

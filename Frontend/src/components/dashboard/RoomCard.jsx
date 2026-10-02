@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../ui/Badge.jsx";
 import { Button } from "../ui/Button.jsx";
+import LeaveRoomModal from "@/components/dashboard/LeaveRoomModal.jsx";
 
 export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestLeave }) => {
   const navigate = useNavigate();
@@ -242,3 +243,4 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
 });
 
 RoomCard.displayName = "RoomCard";
+export default LeaveRoomModal;

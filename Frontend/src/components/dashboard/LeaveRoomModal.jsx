@@ -49,3 +49,4 @@ export const LeaveRoomModal = memo(({ isOpen, onClose, onConfirm, room, isLoadin
 });
 
 LeaveRoomModal.displayName = "LeaveRoomModal";
+export default LeaveRoomModal;

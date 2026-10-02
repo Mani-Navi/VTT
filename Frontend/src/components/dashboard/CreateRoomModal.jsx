@@ -336,3 +336,4 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
 };
 
 CreateRoomModal.displayName = "CreateRoomModal";
+export default CreateRoomModal;

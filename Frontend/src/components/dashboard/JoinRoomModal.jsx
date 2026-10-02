@@ -121,3 +121,4 @@ export const JoinRoomModal = memo(({ isOpen, onClose }) => {
 });
 
 JoinRoomModal.displayName = "JoinRoomModal";
+export default JoinRoomModal;
