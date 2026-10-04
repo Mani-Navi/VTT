@@ -21,7 +21,6 @@ import { confirmModal } from "../../stores/confirm.store";
 import { GameCanvas } from "../../components/canvas/GameCanvas.jsx";
 import { Toolbar } from "../../components/room/Toolbar.jsx";
 import { SceneBar } from "../../components/room/SceneBar.jsx";
-import { Dice3DStage } from "../../components/dice3d/Dice3DStage.jsx";
 import { DiceOverlay } from "../../features/dice/components/DiceOverlay.jsx";
 import { PlayerMenu } from "../../components/room/PlayerMenu.jsx";
 import { SettingsMenu } from "../../components/room/SettingsMenu.jsx";
@@ -346,7 +345,6 @@ export const RoomPage = () => {
 
             <Toolbar isGM={isGM} permissions={userPermissions} />
 
-            <Dice3DStage />
             <DiceOverlay />
 
             <SettingsMenu isGM={isGM} />
