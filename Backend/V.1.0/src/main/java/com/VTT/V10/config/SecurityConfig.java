@@ -40,6 +40,21 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // ساخت رشته کامل و استاندارد CSP که تمام ایرادات OWASP ZAP را برطرف می‌کند
+        String cspPolicy = String.join("; ",
+                "default-src 'self'",
+                "script-src 'self'",
+                "style-src 'self' 'unsafe-inline'",
+                "img-src 'self' data: blob:",
+                "font-src 'self' data:",
+                "media-src 'self' blob: data:",
+                "connect-src 'self' " + livekitUrl,
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "frame-ancestors 'none'"
+        );
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
@@ -56,12 +71,19 @@ public class SecurityConfig {
                                 "Permissions-Policy",
                                 "camera=(), microphone=(self), geolocation=()"
                         ))
-                        .contentSecurityPolicy(csp -> csp
-                                .policyDirectives(String.format(
-                                        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' %s; frame-ancestors 'none'; form-action 'self';",
-                                        livekitUrl
-                                ))
-                        )
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Cache-Control",
+                                "no-cache, no-store, max-age=0, must-revalidate"
+                        ))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Pragma",
+                                "no-cache"
+                        ))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Expires",
+                                "0"
+                        ))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(cspPolicy))
                 )
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
