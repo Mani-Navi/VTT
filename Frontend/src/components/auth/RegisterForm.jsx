@@ -103,13 +103,18 @@ export const RegisterForm = ({ onSuccess }) => {
         if (window.google?.accounts?.id) {
             renderGoogleButton();
         } else {
-            const script = document.createElement("script");
-            script.id = "google-gsi-script";
-            script.src = "https://accounts.google.com/gsi/client";
-            script.async = true;
-            script.defer = true;
-            script.onload = renderGoogleButton;
-            document.body.appendChild(script);
+            const existingScript = document.getElementById("google-gsi-script");
+            if (!existingScript) {
+                const script = document.createElement("script");
+                script.id = "google-gsi-script";
+                script.src = "https://accounts.google.com/gsi/client";
+                script.async = true;
+                script.defer = true;
+                script.onload = renderGoogleButton;
+                document.body.appendChild(script);
+            } else {
+                existingScript.addEventListener("load", renderGoogleButton);
+            }
         }
     }, [loginWithGoogle, onSuccess]);
 
@@ -132,7 +137,6 @@ export const RegisterForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-2.5 text-right w-full" dir="rtl">
-            {/* دکمه ورود سریع گوگل */}
             <div className="flex justify-center w-full min-h-[42px] overflow-hidden">
                 <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
@@ -194,7 +198,6 @@ export const RegisterForm = ({ onSuccess }) => {
                         </button>
                     </div>
 
-                    {/* باکس وضعیت امنیت رمز عبور - بهینه‌شده، فوق‌العاده کم‌جا و بدون سرریز */}
                     {passwordValue.length > 0 && (
                         <div className="p-2 rounded-lg bg-zinc-900/90 border border-zinc-800 text-[10px] space-y-1.5 animate-fade-in-up">
                             <div className="flex items-center justify-between text-[10px]">

@@ -1,9 +1,9 @@
 // src/hooks/useWebSocket.js
 import { useEffect, useRef, useCallback } from "react";
 import { wsService } from "../services/websocket.service";
-import { useSceneStore } from "../store/scene.store";
-import { useCanvasStore } from "../store/canvas.store";
-import { useWebSocketStore } from "../store/websocket.store";
+import { useSceneStore } from "../stores/scene.store";
+import { useCanvasStore } from "../stores/canvas.store";
+import { useWebSocketStore } from "../stores/websocket.store";
 import { useDiceStore } from "../features/dice/state/dice.store";
 import { WS_EVENTS } from "../constants/wsEvents.js";
 
@@ -286,7 +286,7 @@ export function useWebSocket(roomId, onMessage = null) {
       if (onMessageRef.current) onMessageRef.current(data);
     });
 
-    // ۶.۱. دریافت نتایج معتبر به همراه موقعیت و دوران دقیق سه‌بعدی تمام تاس‌ها
+    // دریافت نتایج معتبر به همراه موقعیت و دوران سه‌بعدی تاس‌ها
     const unsubDiceSettled = wsService.on("DICE_SETTLED", (payload) => {
       if (!payload) return;
       const data = payload.data !== undefined ? payload.data : payload;

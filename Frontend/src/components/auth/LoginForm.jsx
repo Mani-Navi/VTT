@@ -29,7 +29,6 @@ export const LoginForm = ({ onSuccess }) => {
 
     useEffect(() => {
         if (!ENV.GOOGLE_CLIENT_ID) {
-            console.warn("[GOOGLE AUTH] Google Client ID is not set.");
             return;
         }
 
@@ -74,13 +73,18 @@ export const LoginForm = ({ onSuccess }) => {
         if (window.google?.accounts?.id) {
             renderGoogleButton();
         } else {
-            const script = document.createElement("script");
-            script.id = "google-gsi-script";
-            script.src = "https://accounts.google.com/gsi/client";
-            script.async = true;
-            script.defer = true;
-            script.onload = renderGoogleButton;
-            document.body.appendChild(script);
+            const existingScript = document.getElementById("google-gsi-script");
+            if (!existingScript) {
+                const script = document.createElement("script");
+                script.id = "google-gsi-script";
+                script.src = "https://accounts.google.com/gsi/client";
+                script.async = true;
+                script.defer = true;
+                script.onload = renderGoogleButton;
+                document.body.appendChild(script);
+            } else {
+                existingScript.addEventListener("load", renderGoogleButton);
+            }
         }
     }, [loginWithGoogle, onSuccess]);
 
@@ -103,12 +107,10 @@ export const LoginForm = ({ onSuccess }) => {
 
     return (
         <div className="space-y-4 text-right w-full" dir="rtl">
-            {/* دکمه گوگل هماهنگ با انیمیشن روان */}
             <div className="flex justify-center w-full min-h-[44px] overflow-hidden transition-all duration-200">
                 <div ref={googleButtonRef} className="w-full flex justify-center max-w-[340px]" />
             </div>
 
-            {/* جداکننده ظریف گرادیانی */}
             <div className="relative flex items-center justify-center my-3">
                 <div className="h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent w-full" />
                 <span className="bg-zinc-950 px-3.5 text-[11px] text-zinc-500 font-medium shrink-0">

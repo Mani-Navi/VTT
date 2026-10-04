@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
-import { useAuthStore } from "../store/auth.store";
-import { useRoomStore } from "../store/room.store";
+import { useAuthStore } from "../stores/auth.store";
+import { useRoomStore } from "../stores/room.store";
 import { ROLES } from "../constants/roles.js";
 
 export function usePermissions(roomData) {
@@ -18,19 +18,43 @@ export function usePermissions(roomData) {
     );
   }, [roomData, storeRoom, roomsList]);
 
-  const currentUserId = useMemo(() => String(user?.id || user?.userId || "").toLowerCase(), [user]);
-  const currentUsername = useMemo(() => String(user?.username || "").toLowerCase(), [user]);
-  const currentUserEmail = useMemo(() => String(user?.email || "").toLowerCase(), [user]);
+  const currentUserId = useMemo(() => {
+    const id = user?.id || user?.userId;
+    return id ? String(id).trim().toLowerCase() : "";
+  }, [user]);
 
+  const currentUsername = useMemo(() => {
+    const uname = user?.username;
+    return uname ? String(uname).trim().toLowerCase() : "";
+  }, [user]);
+
+  const currentUserEmail = useMemo(() => {
+    const email = user?.email;
+    return email ? String(email).trim().toLowerCase() : "";
+  }, [user]);
+
+  // رفع آسیب‌پذیری: جلوگیری از برابر شدن رشته‌های خالی ("" === "") در زمان لود نشدن اطلاعات کاربر
   const isOwnerByRoom = useMemo(() => {
     if (!currentRoom) return false;
-    return Boolean(
-        currentRoom.is_owner === true ||
-        currentRoom.isOwner === true ||
-        (currentRoom.ownerUsername && String(currentRoom.ownerUsername).toLowerCase() === currentUsername) ||
-        (currentRoom.ownerId && String(currentRoom.ownerId).toLowerCase() === currentUserId) ||
-        (currentRoom.creatorId && String(currentRoom.creatorId).toLowerCase() === currentUserId)
+
+    const hasExplicitOwnership = currentRoom.is_owner === true || currentRoom.isOwner === true;
+    const hasUsernameMatch = Boolean(
+        currentUsername &&
+        currentRoom.ownerUsername &&
+        String(currentRoom.ownerUsername).trim().toLowerCase() === currentUsername
     );
+    const hasIdMatch = Boolean(
+        currentUserId &&
+        currentRoom.ownerId &&
+        String(currentRoom.ownerId).trim().toLowerCase() === currentUserId
+    );
+    const hasCreatorMatch = Boolean(
+        currentUserId &&
+        currentRoom.creatorId &&
+        String(currentRoom.creatorId).trim().toLowerCase() === currentUserId
+    );
+
+    return Boolean(hasExplicitOwnership || hasUsernameMatch || hasIdMatch || hasCreatorMatch);
   }, [currentRoom, currentUsername, currentUserId]);
 
   const isRoleGM = useMemo(() => {
@@ -41,11 +65,15 @@ export function usePermissions(roomData) {
   }, [currentRoom?.role, user?.role]);
 
   const isMemberGM = useMemo(() => {
-    if (!currentRoom?.members) return false;
+    if (!currentRoom?.members || (!currentUserId && !currentUsername)) return false;
     return currentRoom.members.some((m) => {
-      const mUid = String(m.user?.id || m.userId || m.id || "").toLowerCase();
-      const mUname = String(m.user?.username || m.username || "").toLowerCase();
-      const isMe = (mUid && mUid === currentUserId) || (mUname && mUname === currentUsername);
+      const mUid = String(m.user?.id || m.userId || m.id || "").trim().toLowerCase();
+      const mUname = String(m.user?.username || m.username || "").trim().toLowerCase();
+
+      const isMe =
+          Boolean(currentUserId && mUid && mUid === currentUserId) ||
+          Boolean(currentUsername && mUname && mUname === currentUsername);
+
       return isMe && (m.role === "ADMIN" || m.role === "GM");
     });
   }, [currentRoom?.members, currentUserId, currentUsername]);
@@ -80,8 +108,14 @@ export function usePermissions(roomData) {
       (controlledBy) => {
         if (isGM) return true;
         if (!user || !controlledBy) return false;
-        const cb = String(controlledBy).toLowerCase();
-        return cb === currentUserId || cb === currentUsername || cb === currentUserEmail;
+        const cb = String(controlledBy).trim().toLowerCase();
+        if (!cb) return false;
+
+        return (
+            (currentUserId && cb === currentUserId) ||
+            (currentUsername && cb === currentUsername) ||
+            (currentUserEmail && cb === currentUserEmail)
+        );
       },
       [isGM, user, currentUserId, currentUsername, currentUserEmail]
   );

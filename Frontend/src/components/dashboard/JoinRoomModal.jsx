@@ -73,7 +73,10 @@ export const JoinRoomModal = memo(({ isOpen, onClose }) => {
               disabled={isSubmitting}
               className="uppercase font-mono text-center tracking-widest text-base font-bold h-11"
               {...register("code", {
-                onChange: (e) => setValue("code", e.target.value.toUpperCase()),
+                onChange: (e) => {
+                  const cleaned = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+                  setValue("code", cleaned);
+                },
               })}
           />
 

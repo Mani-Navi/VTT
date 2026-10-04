@@ -10,10 +10,11 @@ import {
   Link as LinkIcon,
   Trash2,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
-import { assetApi, getAssetUrl } from "../../api/asset.api";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
+import { assetApi } from "../../api/asset.api";
+import { getFullAssetUrl } from "../../utils/assetUrl.js";
 import { MAP_PRESETS } from "../../constants/mapPresets";
 import { TOKEN_PRESETS } from "../../constants/tokenPresets";
 import { Button } from "../ui/Button";
@@ -106,7 +107,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const handleSelectMap = async (rawMapUrl, assetId = null) => {
     if (!canUploadMap) return;
 
-    const fullMapUrl = getAssetUrl(rawMapUrl);
+    const fullMapUrl = getFullAssetUrl(rawMapUrl);
     const validAssetId = isValidUUID(assetId) ? assetId : null;
 
     toggleMenu("asset");
@@ -116,7 +117,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const handleAddToken = (rawTokenUrl, tokenName, extraData = {}) => {
     if (!hasActiveMap) return;
 
-    const fullUrl = getAssetUrl(rawTokenUrl);
+    const fullUrl = getFullAssetUrl(rawTokenUrl);
     const validAssetId = isValidUUID(extraData.id) ? extraData.id : null;
     const ownerId = currentUser?.id ? String(currentUser.id) : null;
 
@@ -139,12 +140,19 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
     };
 
     addToken(newToken);
-    uiAudio.playTokenDrop(); // اجرای افکت لمسی گذاشتن توکن
+    uiAudio.playTokenDrop();
   };
 
   const handleDirectUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // مسدودسازی صریح فایل‌های SVG طبق بند ۵ ممیزی
+    if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+      setUploadError("فرمت SVG به دلایل امنیتی مجاز نیست. لطفاً PNG، JPG یا WEBP آپلود کنید.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
     const currentLimit = SIZE_LIMITS[activeTab];
     if (file.size > currentLimit.bytes) {
@@ -303,7 +311,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
               type="file"
               ref={fileInputRef}
               onChange={handleDirectUpload}
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif"
               className="hidden"
           />
 
@@ -383,7 +391,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getAssetUrl(map.url || map.thumbnailUrl)}
+                            src={getFullAssetUrl(map.url || map.thumbnailUrl)}
                             alt={map.name}
                             className="w-full h-24 object-cover group-hover:brightness-105 transition-all"
                             loading="lazy"
@@ -418,7 +426,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getAssetUrl(token.avatarUrl || token.url)}
+                            src={getFullAssetUrl(token.avatarUrl || token.url)}
                             alt={token.name}
                             className="w-12 h-12 rounded-full object-cover border border-amber-500/30"
                             loading="lazy"
@@ -456,7 +464,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getAssetUrl(asset.fileUrl)}
+                            src={getFullAssetUrl(asset.fileUrl)}
                             alt={asset.name}
                             className="w-10 h-10 object-cover rounded-lg"
                             loading="lazy"

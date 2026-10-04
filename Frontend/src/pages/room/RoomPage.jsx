@@ -8,21 +8,19 @@ import {
     PowerOff,
     RefreshCw,
 } from "lucide-react";
-import { useSceneStore } from "../../store/scene.store.js";
-import { useCanvasStore } from "../../store/canvas.store.js";
-import { useAuthStore } from "../../store/auth.store";
-import { useRoomStore } from "../../store/room.store";
+import { useSceneStore } from "../../stores/scene.store.js";
+import { useCanvasStore } from "../../stores/canvas.store.js";
+import { useAuthStore } from "../../stores/auth.store";
+import { useRoomStore } from "../../stores/room.store";
 import { useWebSocket } from "../../hooks/useWebSocket.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { roomApi } from "../../api/room.api";
-import { toast } from "../../store/toast.store";
-import { confirmModal } from "../../store/confirm.store";
+import { toast } from "../../stores/toast.store";
+import { confirmModal } from "../../stores/confirm.store";
 import { GameCanvas } from "../../components/canvas/GameCanvas.jsx";
 import { Toolbar } from "../../components/room/Toolbar.jsx";
 import { SceneBar } from "../../components/room/SceneBar.jsx";
-import { DiceRoller } from "../../components/room/DiceRoller.jsx";
-import { Dice3DStage } from "../../components/dice3d/Dice3DStage.jsx";
 import { DiceOverlay } from "../../features/dice/components/DiceOverlay.jsx";
 import { PlayerMenu } from "../../components/room/PlayerMenu.jsx";
 import { SettingsMenu } from "../../components/room/SettingsMenu.jsx";
@@ -117,7 +115,7 @@ export const RoomPage = () => {
             const data = event.data !== undefined ? event.data : event;
 
             if (action === "ROOM_CLOSED") {
-                uiAudio.playRoomAlert(); // پخش صدای ناقوس هشدار بستن اتاق
+                uiAudio.playRoomAlert();
                 wsService.disconnect();
                 toast.warning(data || "اتاق توسط دانجن‌مستر (GM) غیرفعال شد.", "پایان نشست اتاق");
                 navigate("/dashboard");
@@ -125,7 +123,7 @@ export const RoomPage = () => {
             }
 
             if (action === "ROOM_DELETED") {
-                uiAudio.playRoomAlert(); // پخش صدای هشدار حذف اتاق
+                uiAudio.playRoomAlert();
                 wsService.disconnect();
                 toast.error(data || "اتاق توسط سازنده برای همیشه حذف شد.", "اتاق حذف شد");
                 navigate("/dashboard");
@@ -138,7 +136,7 @@ export const RoomPage = () => {
                 const currentUname = String(user?.username || "").toLowerCase().trim();
                 const targetUname = String(data?.username || "").toLowerCase().trim();
 
-                if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                if ((currentUid && targetUid && currentUid === targetUid) || (currentUname && targetUname && currentUname === targetUname)) {
                     uiAudio.playRoomAlert();
                     wsService.disconnect();
                     toast.error("شما توسط دانجن‌مستر از اتاق اخراج شدید.", "اخراج از اتاق");
@@ -153,7 +151,7 @@ export const RoomPage = () => {
                 const currentUname = String(user?.username || "").toLowerCase().trim();
                 const targetUname = String(data?.username || "").toLowerCase().trim();
 
-                if ((currentUid && currentUid === targetUid) || (currentUname && currentUname === targetUname)) {
+                if ((currentUid && targetUid && currentUid === targetUid) || (currentUname && targetUname && currentUname === targetUname)) {
                     uiAudio.playRoomAlert();
                     wsService.disconnect();
                     toast.error("شما توسط دانجن‌مستر از اتاق مسدود (Ban) شدید.", "مسدودسازی حساب");
@@ -180,16 +178,18 @@ export const RoomPage = () => {
                 const currentUname = String(user?.username || "").toLowerCase().trim();
                 const incomingUname = String(data.username || "").toLowerCase().trim();
                 const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
+                const targetUid = String(data.userId || "").toLowerCase().trim();
                 const incomingMemberId = String(data.memberId || "").toLowerCase().trim();
 
                 const isTargetMe =
-                    (currentUname && currentUname === incomingUname) ||
-                    (data.userId && String(data.userId).toLowerCase().trim() === currentUid) ||
-                    (incomingMemberId &&
+                    (Boolean(currentUname) && Boolean(incomingUname) && currentUname === incomingUname) ||
+                    (Boolean(currentUid) && Boolean(targetUid) && currentUid === targetUid) ||
+                    (Boolean(incomingMemberId) &&
                         onlineMembers.some(
                             (m) =>
-                                String(m.id || m.memberId).toLowerCase() === incomingMemberId &&
-                                (String(m.userId).toLowerCase() === currentUid || String(m.username).toLowerCase() === currentUname)
+                                String(m.id || m.memberId || "").toLowerCase().trim() === incomingMemberId &&
+                                ((currentUid && String(m.userId || "").toLowerCase().trim() === currentUid) ||
+                                    (currentUname && String(m.username || "").toLowerCase().trim() === currentUname))
                         ));
 
                 if (isTargetMe) {
@@ -344,9 +344,6 @@ export const RoomPage = () => {
             </CanvasErrorBoundary>
 
             <Toolbar isGM={isGM} permissions={userPermissions} />
-
-            <DiceRoller />
-            <Dice3DStage />
 
             <DiceOverlay />
 

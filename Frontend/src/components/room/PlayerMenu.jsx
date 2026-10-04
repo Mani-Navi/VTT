@@ -20,12 +20,12 @@ import {
     MicOff,
     X,
 } from "lucide-react";
-import { useAuthStore } from "../../store/auth.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useVoice } from "../../hooks/useVoice";
 import { roomApi } from "../../api/room.api";
 import { wsService } from "../../services/websocket.service";
-import { confirmModal } from "../../store/confirm.store";
+import { confirmModal } from "../../stores/confirm.store";
 import { Badge } from "../ui/Badge";
 import { cn } from "../../utils/cn";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
@@ -631,7 +631,6 @@ export const PlayerMenu = memo(
 
         return (
             <>
-                {/* دکمه شمارنده آنلاین در گوشه بالا راست */}
                 <div className="fixed top-3 right-3 sm:top-4 sm:right-6 z-30 font-fa select-none pointer-events-auto" dir="rtl">
                     <button
                         type="button"
@@ -645,7 +644,6 @@ export const PlayerMenu = memo(
                     </button>
                 </div>
 
-                {/* منو در دسکتاپ: دراپ‌دان شیشه‌ای */}
                 {isOpen && (
                     <div
                         className="hidden sm:block fixed top-16 right-6 z-50 w-96 max-w-[95vw] glass-card border border-zinc-800 rounded-3xl shadow-2xl p-3.5 pt-3 space-y-3 animate-fade-in-up font-fa"
@@ -765,7 +763,6 @@ export const PlayerMenu = memo(
                     </div>
                 )}
 
-                {/* منو در موبایل: باتم‌شیت با انیمیشن روان */}
                 {isOpen && (
                     <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end pointer-events-auto font-fa" dir="rtl">
                         <div

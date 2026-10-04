@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { Stage, Layer } from "react-konva";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { TOOLS, DRAW_MODES, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../../constants/tools";
 import { MapLayer } from "./MapLayer.jsx";
 import { GridLayer } from "./GridLayer.jsx";
@@ -141,7 +141,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
 
   const myIdentifier = String(user?.id || user?.userId || user?.username || "player-1");
 
-  // حذف خودکار خط‌کش به محض تغییر ابزار فعال
   useEffect(() => {
     if (activeTool !== TOOLS.RULER) {
       if (useCanvasStore.getState().measurement) {
@@ -232,8 +231,30 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     }
 
     if (selectedTokenIds && selectedTokenIds.length > 0) {
+      const currentUid = String(user?.id || user?.userId || "").toLowerCase().trim();
+      const currentUname = String(user?.username || "").toLowerCase().trim();
+      const currentUserEmail = String(user?.email || "").toLowerCase().trim();
+
       for (const tId of selectedTokenIds) {
         const strId = String(tId);
+        const targetToken = (currentScene?.tokens || []).find(
+            (t) => String(t.id).toLowerCase() === strId.toLowerCase()
+        );
+
+        // اعتبارسنجی پرمیشن حذف: کاربر فقط توکن خودش را می‌تواند حذف کند مگر اینکه GM باشد
+        if (targetToken && !isGM) {
+          const owner = String(targetToken.controlledBy || "").toLowerCase().trim();
+          const isTokenOwner = Boolean(
+              (currentUid && owner === currentUid) ||
+              (currentUname && owner === currentUname) ||
+              (currentUserEmail && owner === currentUserEmail)
+          );
+
+          if (!isTokenOwner) {
+            continue;
+          }
+        }
+
         removeToken(strId);
         wsService.send(WS_EVENTS.TOKEN_MOVED, {
           tokenId: strId,
@@ -254,7 +275,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
       return;
     }
 
-    if (selectedFogId) {
+    if (selectedFogId && canUseFog) {
       const fogIdStr = String(selectedFogId);
       const sceneId = currentScene?.id;
 
@@ -293,6 +314,10 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
     removeFogShape,
     clearSelection,
     currentScene?.id,
+    currentScene?.tokens,
+    isGM,
+    canUseFog,
+    user,
   ]);
 
   const selectionInfo = useMemo(() => {
@@ -594,7 +619,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
         }
 
         if (activeTool === TOOLS.RULER) {
-          // در صورتی که کاربر کلیک راست کرده باشد، یا در موبایل دوباره روی همان نقطه بزند
           if (e.evt.button === 2) {
             endMeasurement();
             wsService.send("RULER_CLEAR", { userId: myIdentifier });
@@ -618,7 +642,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                 rulerType: rulerType,
               });
             } else {
-              // اگر در موبایل دوباره روی همان نقطه بدون جابجایی ضربه زد، لغو کند
               const curMeas = useCanvasStore.getState().measurement;
               if (curMeas && Math.hypot(pos.x - curMeas.startX, pos.y - curMeas.startY) < 15 && curMeas.waypoints.length === 0) {
                 endMeasurement();
@@ -1318,7 +1341,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             }}
         />
 
-        {/* پنل حذف آیتم انتخاب‌شده در ابزار Select */}
         {selectionInfo && (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && (
             <div
                 className="absolute z-40 pointer-events-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-950/95 border border-zinc-700/80 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
@@ -1351,7 +1373,6 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
             </div>
         )}
 
-        {/* دکمه شناور بستن خط‌کش مخصوص گوشی و دسکتاپ با یک لمس */}
         {measurement && (
             <div
                 className="absolute z-40 pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950/95 border border-zinc-700/80 rounded-xl shadow-2xl backdrop-blur-xl text-xs text-zinc-300 cursor-pointer hover:border-rose-500/80 hover:text-rose-400 active:scale-95 animate-in fade-in duration-100"

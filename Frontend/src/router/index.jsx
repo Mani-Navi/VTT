@@ -4,7 +4,8 @@ import { LoginPage } from "../pages/auth/LoginPage.jsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.jsx";
 import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { useAuthStore } from "../store/auth.store";
+import { useAuthStore } from "../stores/auth.store";
+import { isTokenExpired } from "../utils/jwt";
 
 // لود تنبل صفحه پروفایل برای رفع باگ دو نقطه در مسیر قبلی
 const ProfilePage = lazy(() =>
@@ -30,7 +31,10 @@ const LoadingFallback = () => (
 
 const RootRedirect = () => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+    const token = useAuthStore((state) => state.token);
+    const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
+
+    return <Navigate to={isSessionValid ? "/dashboard" : "/login"} replace />;
 };
 
 export const router = createBrowserRouter([

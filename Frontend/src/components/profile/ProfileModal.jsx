@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, memo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuthStore } from "../../store/auth.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { userApi } from "../../api/user.api";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -95,7 +95,6 @@ const checkPasswordCriteria = (pass = "") => {
 };
 
 export const ProfileModal = memo(({ isOpen, onClose }) => {
-    // تفکیک دقیق سلکتورهای استور بر اساس قانون شماره ۲
     const user = useAuthStore((state) => state.user);
     const updateUser = useAuthStore((state) => state.updateUser);
     const logout = useAuthStore((state) => state.logout);
@@ -167,12 +166,19 @@ export const ProfileModal = memo(({ isOpen, onClose }) => {
 
     const handleUpdateUsername = async (e) => {
         e.preventDefault();
-        if (!usernameInput || usernameInput === user?.username) return;
+        const cleanUsername = String(usernameInput || "").trim();
+
+        if (!cleanUsername || cleanUsername === user?.username) return;
+        if (cleanUsername.length < 3) {
+            showFeedback("error", "نام کاربری باید حداقل ۳ کاراکتر باشد.");
+            return;
+        }
 
         try {
             setIsUpdatingUsername(true);
-            const updated = await userApi.updateProfile({ username: usernameInput });
+            const updated = await userApi.updateProfile({ username: cleanUsername });
             updateUser(updated);
+            setUsernameInput(cleanUsername);
             showFeedback("success", "نام کاربری با موفقیت به‌روزرسانی شد.");
         } catch (err) {
             showFeedback("error", err.response?.data?.message || "خطا در تغییر نام کاربری.");
@@ -645,3 +651,4 @@ export const ProfileModal = memo(({ isOpen, onClose }) => {
 });
 
 ProfileModal.displayName = "ProfileModal";
+export default ProfileModal;

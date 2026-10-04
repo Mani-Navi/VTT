@@ -19,9 +19,12 @@ export function decodeToken(token) {
     }
 }
 
-export function isTokenExpired(token) {
+/**
+ * بررسی انقضای توکن با ۳۰ ثانیه حاشیه امنیتی جهت جبران تاخیر شبکه و اختلاف ساعت کلاینت/سرور
+ */
+export function isTokenExpired(token, leewaySeconds = 30) {
     const decoded = decodeToken(token);
     if (!decoded || !decoded.exp) return true;
     const currentTime = Math.floor(Date.now() / 1000);
-    return decoded.exp < currentTime;
+    return decoded.exp - leewaySeconds < currentTime;
 }

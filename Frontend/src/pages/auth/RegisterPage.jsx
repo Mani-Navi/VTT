@@ -1,20 +1,24 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { RegisterForm } from "../../components/auth/RegisterForm.jsx";
-import { useAuthStore } from "../../store/auth.store";
+import { useAuthStore } from "../../stores/auth.store";
+import { isTokenExpired } from "../../utils/jwt";
 import { Dices, Sparkles, Wand2 } from "lucide-react";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+
+  const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isSessionValid) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isSessionValid, navigate]);
 
-  if (isAuthenticated) return null;
+  if (isSessionValid) return null;
 
   return (
       <div

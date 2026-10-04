@@ -16,8 +16,8 @@ import {
     Check,
     PenTool,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
 import { TOOLS, FOG_ACTIONS, FOG_BRUSH_SHAPES } from "../../constants/tools";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../../utils/cn";
@@ -439,7 +439,6 @@ export const FogSubToolbar = memo(() => {
                 </button>
             </Tooltip>
 
-            {/* منوی انتخابی Fit Fog - باز شدن بدون بریده شدن (overflow-visible) */}
             <div className="relative" ref={fitMenuRef}>
                 <button
                     type="button"

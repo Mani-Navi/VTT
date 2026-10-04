@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuthStore } from "../../store/auth.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { userApi } from "../../api/user.api";
 import { RpgAvatar, AVATAR_LIST } from "../../components/profile/RpgAvatar";
 import { Button } from "../../components/ui/Button";
@@ -151,12 +151,19 @@ export const ProfilePage = () => {
 
     const handleUpdateUsername = async (e) => {
         e.preventDefault();
-        if (!usernameInput || usernameInput === user?.username) return;
+        const cleanUsername = String(usernameInput || "").trim();
+
+        if (!cleanUsername || cleanUsername === user?.username) return;
+        if (cleanUsername.length < 3) {
+            showFeedback("error", "نام کاربری باید حداقل ۳ کاراکتر باشد.");
+            return;
+        }
 
         try {
             setIsUpdatingUsername(true);
-            const updated = await userApi.updateProfile({ username: usernameInput });
+            const updated = await userApi.updateProfile({ username: cleanUsername });
             updateUser(updated);
+            setUsernameInput(cleanUsername);
             showFeedback("success", "نام کاربری به‌روزرسانی شد.");
         } catch (err) {
             showFeedback("error", err.response?.data?.message || "این نام کاربری قبلاً انتخاب شده است.");

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { Badge } from "../ui/Badge.jsx";
 import { Button } from "../ui/Button.jsx";
-import LeaveRoomModal from "@/components/dashboard/LeaveRoomModal.jsx";
 
 export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestLeave }) => {
   const navigate = useNavigate();
@@ -60,12 +59,18 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
 
   const handleCopyLink = () => {
     const inviteUrl = `${window.location.origin}/dashboard?join=${room.code}`;
-    navigator.clipboard.writeText(inviteUrl);
-    setLinkCopied(true);
-    if (linkTimerRef.current) {
-      clearTimeout(linkTimerRef.current);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard
+          .writeText(inviteUrl)
+          .then(() => {
+            setLinkCopied(true);
+            if (linkTimerRef.current) {
+              clearTimeout(linkTimerRef.current);
+            }
+            linkTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
+          })
+          .catch(() => {});
     }
-    linkTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
   };
 
   return (
@@ -243,4 +248,4 @@ export const RoomCard = memo(({ room, onRequestDelete, onRequestEdit, onRequestL
 });
 
 RoomCard.displayName = "RoomCard";
-export default LeaveRoomModal;
+export default RoomCard;

@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { Group, Circle, Text, Rect, Image as KonvaImage } from "react-konva";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
 import { CONDITION_MAP } from "../../constants/statusConditions.js";
-import { getAssetUrl } from "../../api/asset.api";
-import { useAuthStore } from "../../store/auth.store";
-import { useRoomStore } from "../../store/room.store";
+import { getFullAssetUrl } from "../../utils/assetUrl.js";
+import { useAuthStore } from "../../stores/auth.store";
+import { useRoomStore } from "../../stores/room.store";
 import { snapToGrid } from "../../utils/grid";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
 
@@ -65,7 +65,7 @@ const SingleToken = memo(
                 return;
             }
 
-            const fullUrl = getAssetUrl(rawUrl);
+            const fullUrl = getFullAssetUrl(rawUrl);
 
             if (tokenImageCache.has(fullUrl)) {
                 setImageObj(tokenImageCache.get(fullUrl));
@@ -588,7 +588,7 @@ export const TokenLayer = memo(({ gridSize = 60, isGM: propIsGM }) => {
 
     return (
         <Group id="tokens-layer-group" listening={isSelectMode}>
-            {userTokens.map((token, index) => {
+            {userTokens.map((token) => {
                 const tokenOwner = token.controlledBy ? String(token.controlledBy).toLowerCase().trim() : "";
                 const userId = currentUser?.id ? String(currentUser.id).toLowerCase().trim() : "";
                 const userAltId = currentUser?.userId ? String(currentUser.userId).toLowerCase().trim() : "";
@@ -596,17 +596,17 @@ export const TokenLayer = memo(({ gridSize = 60, isGM: propIsGM }) => {
                 const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase().trim() : "";
                 const tokenLabel = String(token.label || token.name || "").toLowerCase().trim();
 
+                // رفع آسیب‌پذیری: حذف شرط ناامن index === 0 و الزام به تطابق معتبر شناسه
                 const isOwner = Boolean(
                     !isGM
-                        ? (tokenOwner &&
-                            (tokenOwner === userId ||
-                                (userAltId && tokenOwner === userAltId) ||
-                                (userName && tokenOwner === userName) ||
-                                (userEmail && tokenOwner === userEmail))) ||
-                        (userName && tokenLabel === userName) ||
-                        (userEmail && tokenLabel === userEmail) ||
-                        (!token.isProp && userTokens.filter((t) => !t.isProp).length === 1) ||
-                        index === 0
+                        ? Boolean(
+                            (tokenOwner && userId && tokenOwner === userId) ||
+                            (tokenOwner && userAltId && tokenOwner === userAltId) ||
+                            (tokenOwner && userName && tokenOwner === userName) ||
+                            (tokenOwner && userEmail && tokenOwner === userEmail) ||
+                            (tokenLabel && userName && tokenLabel === userName) ||
+                            (tokenLabel && userEmail && tokenLabel === userEmail)
+                        )
                         : true
                 );
 

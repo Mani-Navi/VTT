@@ -17,7 +17,6 @@ import { Modal } from "../ui/Modal.jsx";
 import { Button } from "../ui/Button.jsx";
 import { Input } from "../ui/Input.jsx";
 import { roomApi } from "../../api/room.api";
-import {EditRoomModal} from "@/components/dashboard/EditRoomModal.jsx";
 
 const createRoomSchema = z.object({
   name: z
@@ -133,7 +132,6 @@ export const CreateRoomModal = ({ isOpen, onClose, onCreate }) => {
           maxWidth="lg"
       >
         <div className="space-y-4 text-right font-fa" dir="rtl">
-          {/* کلید تب شیشه‌ای */}
           <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800/80">
             <button
                 type="button"

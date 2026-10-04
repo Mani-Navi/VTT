@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { AlertTriangle, ShieldAlert, X } from "lucide-react";
-import { useConfirmStore } from "../../store/confirm.store";
+import { useConfirmStore } from "../../stores/confirm.store";
 import { uiAudio } from "../../utils/uiAudio";
 
 export const ConfirmModal = () => {

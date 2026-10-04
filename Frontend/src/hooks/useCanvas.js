@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { useCanvasStore } from "../store/canvas.store";
+import { useCanvasStore } from "../stores/canvas.store";
 import { TOOLS } from "../constants/tools.js";
 import { MIN_ZOOM, MAX_ZOOM } from "../constants/canvas.js";
 

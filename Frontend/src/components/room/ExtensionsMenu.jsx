@@ -1,8 +1,8 @@
 import React, { useState, memo } from "react";
 import { ListOrdered, X, SkipForward, Plus, Trash2, Send } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Button } from "../ui/Button";
 import { wsService } from "../../services/websocket.service";
@@ -196,3 +196,4 @@ export const ExtensionsMenu = memo(() => {
 });
 
 ExtensionsMenu.displayName = "ExtensionsMenu";
+export default ExtensionsMenu;

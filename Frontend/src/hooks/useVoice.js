@@ -15,6 +15,18 @@ export function useVoice(roomId, isMutedByGM = false) {
     const isMicEnabledRef = useRef(false);
     const isConnectingRef = useRef(false);
     const isMountedRef = useRef(true);
+    const attachedElementsRef = useRef(new Set());
+
+    const cleanupAudioElements = useCallback(() => {
+        attachedElementsRef.current.forEach((el) => {
+            try {
+                if (el && el.parentElement) {
+                    el.parentElement.removeChild(el);
+                }
+            } catch (ignored) {}
+        });
+        attachedElementsRef.current.clear();
+    }, []);
 
     const refreshParticipants = useCallback((room) => {
         if (!room || !isMountedRef.current) return;
@@ -49,6 +61,7 @@ export function useVoice(roomId, isMutedByGM = false) {
             }
             livekitRoom.current = null;
         }
+        cleanupAudioElements();
         isConnectingRef.current = false;
         isMicEnabledRef.current = false;
 
@@ -58,7 +71,7 @@ export function useVoice(roomId, isMutedByGM = false) {
             setIsMicEnabled(false);
             setParticipants([]);
         }
-    }, []);
+    }, [cleanupAudioElements]);
 
     const connect = useCallback(async () => {
         if (!roomId) return;
@@ -80,8 +93,12 @@ export function useVoice(roomId, isMutedByGM = false) {
             const { token, url } = await getVoiceToken(roomId);
             if (!isMountedRef.current) return;
 
-            // استفاده از آدرس پروداکشن در صورت خالی یا لوکال بودن
-            const targetLiveKitUrl = (url && !url.includes("localhost")) ? url : ENV.LIVEKIT_URL;
+            let targetLiveKitUrl = (url && !url.includes("localhost")) ? url : ENV.LIVEKIT_URL;
+
+            // در صورتی که برنامه روی HTTPS باشد، اتصال لایوکیت باید از پروتکل امن wss استفاده کند
+            if (typeof window !== "undefined" && window.location.protocol === "https:") {
+                targetLiveKitUrl = targetLiveKitUrl.replace(/^ws:\/\//i, "wss://").replace(/^http:\/\//i, "wss://");
+            }
 
             const room = new Room({
                 adaptiveStream: true,
@@ -98,15 +115,21 @@ export function useVoice(roomId, isMutedByGM = false) {
             room.on(RoomEvent.TrackSubscribed, (track) => {
                 if (track.kind === Track.Kind.Audio) {
                     const el = track.attach();
-                    if (el && !el.parentElement) {
-                        document.body.appendChild(el);
+                    if (el) {
+                        attachedElementsRef.current.add(el);
+                        if (!el.parentElement) {
+                            document.body.appendChild(el);
+                        }
                     }
                 }
                 refreshParticipants(room);
             });
 
             room.on(RoomEvent.TrackUnsubscribed, (track) => {
-                track.detach().forEach((element) => element.remove());
+                track.detach().forEach((element) => {
+                    attachedElementsRef.current.delete(element);
+                    element.remove();
+                });
                 refreshParticipants(room);
             });
 
@@ -135,6 +158,7 @@ export function useVoice(roomId, isMutedByGM = false) {
             });
 
             room.on(RoomEvent.Disconnected, () => {
+                cleanupAudioElements();
                 if (isMountedRef.current) {
                     setIsConnected(false);
                     setIsConnecting(false);
@@ -148,6 +172,7 @@ export function useVoice(roomId, isMutedByGM = false) {
             await room.connect(targetLiveKitUrl, token);
             if (!isMountedRef.current) {
                 room.disconnect();
+                cleanupAudioElements();
                 return;
             }
 
@@ -176,7 +201,7 @@ export function useVoice(roomId, isMutedByGM = false) {
                 setIsConnecting(false);
             }
         }
-    }, [roomId, refreshParticipants]);
+    }, [roomId, refreshParticipants, cleanupAudioElements]);
 
     useEffect(() => {
         isMountedRef.current = true;
