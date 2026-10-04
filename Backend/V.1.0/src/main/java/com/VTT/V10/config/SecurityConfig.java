@@ -83,7 +83,8 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/actuator/health",
                                 "/actuator/health/**",
-                                "/ws/**"
+                                "/ws/**",
+                                "/uploads/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
