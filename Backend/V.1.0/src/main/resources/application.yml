@@ -36,7 +36,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    validate-on-migrate: true
+    validate-on-migrate: false
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
