@@ -32,7 +32,9 @@ public class WebSocketEventListener {
             if (roomIdStr != null && sessionId != null) {
                 try {
                     UUID roomId = UUID.fromString(roomIdStr);
-                    roomService.handleUserJoinPresence(roomId, sessionId, userEmail);
+                    if (roomService.isMember(roomId, userEmail)) {
+                        roomService.handleUserJoinPresence(roomId, sessionId, userEmail);
+                    }
                 } catch (IllegalArgumentException ignored) {
                     // Ignore malformed UUID
                 }
@@ -50,7 +52,9 @@ public class WebSocketEventListener {
                 String[] parts = destination.split("/");
                 if (parts.length >= 4) {
                     UUID roomId = UUID.fromString(parts[3]);
-                    sessionManager.broadcastOnlineMembers(roomId);
+                    if (accessor.getUser() != null && roomService.isMember(roomId, accessor.getUser().getName())) {
+                        sessionManager.broadcastOnlineMembers(roomId);
+                    }
                 }
             } catch (Exception ignored) {
             }

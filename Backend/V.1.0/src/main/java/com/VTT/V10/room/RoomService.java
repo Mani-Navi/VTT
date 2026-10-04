@@ -93,6 +93,15 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isMember(UUID roomId, String email) {
+        if (roomId == null || email == null) return false;
+        return memberRepository.findByRoomIdAndUserEmail(roomId, email).isPresent() ||
+                roomRepository.findById(roomId)
+                        .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
+                        .isPresent();
+    }
+
+    @Transactional(readOnly = true)
     public boolean isHostOrAdmin(UUID roomId, String email) {
         try {
             if (roomId == null || email == null) return false;
@@ -233,7 +242,7 @@ public class RoomService {
         RoomMember member = memberRepository.findByRoomIdAndUserId(roomId, user.getId())
                 .orElse(null);
 
-        boolean isGM = room.getOwner().getId().equals(user.getId()) ||
+        boolean isGM = (room.getOwner() != null && room.getOwner().getId().equals(user.getId())) ||
                 (member != null && (member.getRole() == RoomMember.Role.ADMIN || member.getRole() == RoomMember.Role.GM));
 
         if (member == null && !isGM) {
@@ -499,7 +508,7 @@ public class RoomService {
 
                     String roleTitle = m.getRoleTitle();
                     if (roleTitle == null || roleTitle.isBlank()) {
-                        roleTitle = m.getRole() == RoomMember.Role.ADMIN
+                        roleTitle = (m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                                 ? (room.getHostRoleTitle() != null ? room.getHostRoleTitle() : "میزبان")
                                 : (room.getPlayerRoleTitle() != null ? room.getPlayerRoleTitle() : "بازیکن");
                     }
@@ -509,7 +518,7 @@ public class RoomService {
                             .userId(uId)
                             .username(m.getUser().getUsername())
                             .email(m.getUser().getEmail())
-                            .role(m.getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
+                            .role((m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM) ? "GM" : "Player")
                             .roleTitle(roleTitle)
                             .isOwner(isOwner)
                             .isMuted(Boolean.TRUE.equals(m.getIsMuted()))
@@ -539,7 +548,7 @@ public class RoomService {
 
                     String roleTitle = m.getRoleTitle();
                     if (roleTitle == null || roleTitle.isBlank()) {
-                        roleTitle = m.getRole() == RoomMember.Role.ADMIN
+                        roleTitle = (m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                                 ? (room.getHostRoleTitle() != null ? room.getHostRoleTitle() : "میزبان")
                                 : (room.getPlayerRoleTitle() != null ? room.getPlayerRoleTitle() : "بازیکن");
                     }
@@ -549,7 +558,7 @@ public class RoomService {
                             .userId(m.getUser().getId())
                             .username(m.getUser().getUsername())
                             .email(m.getUser().getEmail())
-                            .role(m.getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
+                            .role((m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM) ? "GM" : "Player")
                             .roleTitle(roleTitle)
                             .isOwner(isOwner)
                             .isMuted(Boolean.TRUE.equals(m.getIsMuted()))
@@ -680,7 +689,7 @@ public class RoomService {
                 .id(target.getId())
                 .userId(target.getUser().getId())
                 .username(target.getUser().getUsername())
-                .role(target.getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
+                .role((target.getRole() == RoomMember.Role.ADMIN || target.getRole() == RoomMember.Role.GM) ? "GM" : "Player")
                 .roleTitle(target.getRoleTitle())
                 .isMuted(target.getIsMuted())
                 .isBanned(target.getIsBanned())
@@ -710,7 +719,7 @@ public class RoomService {
                 .id(target.getId())
                 .userId(target.getUser().getId())
                 .username(target.getUser().getUsername())
-                .role(role == RoomMember.Role.ADMIN ? "GM" : "Player")
+                .role((role == RoomMember.Role.ADMIN || role == RoomMember.Role.GM) ? "GM" : "Player")
                 .roleTitle(target.getRoleTitle())
                 .build();
 
@@ -747,7 +756,6 @@ public class RoomService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها سازنده اتاق اجازه حذف آن را دارد");
         }
 
-        // ۱. ارسال رویداد بلادرنگ حذف اتاق به تمام بازیکنان متصل
         messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId,
                 SocketEvent.<String>builder()
                         .roomId(roomId)

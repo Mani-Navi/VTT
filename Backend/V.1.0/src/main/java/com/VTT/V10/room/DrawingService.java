@@ -24,6 +24,9 @@ public class DrawingService {
 
     private final DrawingRepository drawingRepository;
     private final SceneRepository sceneRepository;
+    private final RoomMemberRepository roomMemberRepository;
+    private final RoomRepository roomRepository;
+    private final PlayerPermissionRepository permissionRepository;
     private final ObjectMapper objectMapper;
 
     @Async
@@ -103,7 +106,6 @@ public class DrawingService {
         String finalStroke = event.getStroke() != null ? event.getStroke() : event.getColor();
         Double finalStrokeWidth = event.getStrokeWidth() != null ? event.getStrokeWidth() : event.getLineWidth();
 
-        // تبدیل ایمن Object points به JsonNode
         JsonNode pointsNode = null;
         if (event.getPoints() != null) {
             if (event.getPoints() instanceof JsonNode jn) {
@@ -117,7 +119,6 @@ public class DrawingService {
             }
         }
 
-        // اگر متن یا شکلی points نداشت، با آرایه خالی [] مقداردهی کن تا قید NOT NULL نقض نشود
         if (pointsNode == null) {
             pointsNode = objectMapper.createArrayNode();
         }
@@ -187,6 +188,18 @@ public class DrawingService {
     }
 
     @Transactional
+    public void deleteDrawingWithAuth(UUID sceneId, String drawingIdStr, String userEmail) {
+        if (sceneId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "شناسه صحنه الزامی است");
+        }
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateDrawingPermission(scene.getRoom().getId(), userEmail);
+        deleteDrawing(sceneId, drawingIdStr);
+    }
+
+    @Transactional
     public void deleteDrawing(UUID sceneId, String drawingIdStr) {
         if (drawingIdStr == null || drawingIdStr.isBlank()) return;
         String cleanId = drawingIdStr.trim();
@@ -215,10 +228,60 @@ public class DrawingService {
     }
 
     @Transactional(readOnly = true)
+    public List<DrawingResponse> getBySceneWithAuth(UUID sceneId, String userEmail) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        UUID roomId = scene.getRoom().getId();
+        validateRoomMembership(roomId, userEmail);
+
+        boolean isGM = isUserGM(roomId, userEmail);
+
+        return drawingRepository.findBySceneId(sceneId).stream()
+                .filter(d -> isGM || !Boolean.TRUE.equals(d.getIsGMLayer()))
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<DrawingResponse> getByScene(UUID sceneId) {
         return drawingRepository.findBySceneId(sceneId).stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void validateRoomMembership(UUID roomId, String email) {
+        boolean isMember = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email).isPresent() ||
+                roomRepository.findById(roomId).filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email)).isPresent();
+
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید");
+        }
+    }
+
+    private boolean isUserGM(UUID roomId, String email) {
+        boolean isOwner = roomRepository.findById(roomId)
+                .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
+                .isPresent();
+
+        boolean isGM = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email)
+                .filter(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
+                .isPresent();
+
+        return isOwner || isGM;
+    }
+
+    private void validateDrawingPermission(UUID roomId, String email) {
+        if (isUserGM(roomId, email)) return;
+
+        var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
+        boolean hasPerm = memberOpt.flatMap(m -> permissionRepository.findByMemberId(m.getId()))
+                .map(p -> Boolean.TRUE.equals(p.getCanDrawing()) || Boolean.TRUE.equals(p.getCanText()))
+                .orElse(false);
+
+        if (!hasPerm) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی لازم برای ویرایش یا حذف نقاشی را ندارید");
+        }
     }
 
     private DrawingResponse convertToResponse(Drawing d) {

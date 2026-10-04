@@ -24,18 +24,18 @@ public class DrawingController {
             Authentication authentication
     ) {
         validateAuth(authentication);
-        List<DrawingResponse> responses = drawingService.getByScene(sceneId);
+        List<DrawingResponse> responses = drawingService.getBySceneWithAuth(sceneId, authentication.getName());
         return ResponseEntity.ok(responses);
     }
 
     @DeleteMapping("/{drawingId}")
     public ResponseEntity<Void> deleteDrawing(
             @PathVariable String drawingId,
-            @RequestParam(required = false) UUID sceneId,
+            @RequestParam UUID sceneId,
             Authentication authentication
     ) {
         validateAuth(authentication);
-        drawingService.deleteDrawing(sceneId, drawingId);
+        drawingService.deleteDrawingWithAuth(sceneId, drawingId, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 

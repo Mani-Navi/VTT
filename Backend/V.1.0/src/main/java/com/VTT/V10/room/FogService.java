@@ -1,6 +1,7 @@
 package com.VTT.V10.room;
 
 import com.VTT.V10.room.dto.FogResponse;
+import com.VTT.V10.websocket.WsConstants;
 import com.VTT.V10.websocket.dto.FogEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +25,9 @@ public class FogService {
 
     private final FogRegionRepository fogRepository;
     private final SceneRepository sceneRepository;
+    private final RoomMemberRepository roomMemberRepository;
+    private final RoomRepository roomRepository;
+    private final PlayerPermissionRepository permissionRepository;
     private final ObjectMapper objectMapper;
 
     @Async
@@ -58,7 +62,18 @@ public class FogService {
         }
     }
 
-    // متد اختصاصی حذف قطعی یک تکه مه از پایگاه‌داده
+    @Transactional
+    public void deleteFogRegionWithAuth(UUID sceneId, String targetId, String userEmail) {
+        if (sceneId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "شناسه صحنه الزامی است");
+        }
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateFogPermission(scene.getRoom().getId(), userEmail);
+        deleteFogRegion(sceneId, targetId);
+    }
+
     @Transactional
     public void deleteFogRegion(UUID sceneId, String targetId) {
         if (targetId == null || targetId.isBlank()) return;
@@ -84,7 +99,6 @@ public class FogService {
             }
         }
 
-        // در صورت عدم تطابق با Points، اگر شناسه UUID بود مستقیماً پاک شود
         try {
             UUID uuid = UUID.fromString(targetId);
             fogRepository.deleteById(uuid);
@@ -94,7 +108,7 @@ public class FogService {
 
     @Transactional
     public void handleFogUpdate(FogEvent event) {
-        if (event == null || event.getType() == null) return;
+        if (event == null || event.getType() == null || event.getSceneId() == null) return;
 
         Scene scene = sceneRepository.findById(event.getSceneId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
@@ -131,7 +145,6 @@ public class FogService {
             incomingId = pointsNode.get("id").asText();
         }
 
-        // پردازش رویداد حذف شکل مه
         if ("DELETE".equalsIgnoreCase(eventType) || "REMOVE".equalsIgnoreCase(eventType) || "FOG_DELETE".equalsIgnoreCase(eventType)) {
             deleteFogRegion(event.getSceneId(), incomingId);
             return;
@@ -184,6 +197,15 @@ public class FogService {
     }
 
     @Transactional(readOnly = true)
+    public List<FogResponse> getFogBySceneWithAuth(UUID sceneId, String userEmail) {
+        Scene scene = sceneRepository.findById(sceneId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
+
+        validateRoomMembership(scene.getRoom().getId(), userEmail);
+        return getFogByScene(sceneId);
+    }
+
+    @Transactional(readOnly = true)
     public List<FogResponse> getFogByScene(UUID sceneId) {
         return fogRepository.findBySceneId(sceneId).stream()
                 .map(region -> FogResponse.builder()
@@ -192,5 +214,31 @@ public class FogService {
                         .points(region.getPoints())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    private void validateRoomMembership(UUID roomId, String email) {
+        boolean isMember = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email).isPresent() ||
+                roomRepository.findById(roomId).filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email)).isPresent();
+
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو این اتاق نیستید");
+        }
+    }
+
+    private void validateFogPermission(UUID roomId, String email) {
+        boolean isOwner = roomRepository.findById(roomId)
+                .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
+                .isPresent();
+
+        var memberOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, email);
+        boolean isGM = memberOpt.filter(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM).isPresent();
+
+        boolean hasPerm = memberOpt.flatMap(m -> permissionRepository.findByMemberId(m.getId()))
+                .map(p -> Boolean.TRUE.equals(p.getCanFog()))
+                .orElse(false);
+
+        if (!isOwner && !isGM && !hasPerm) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی مدیریت مه جنگی را ندارید");
+        }
     }
 }

@@ -102,6 +102,12 @@ public class UserService {
     public void sendVerificationCode(String userEmail) {
         User user = getByEmail(userEmail);
 
+        // اعتبارسنجی محدودیت زمانی: جلوگیری از درخواست مجدد قبل از سپری شدن ۶۰ ثانیه
+        if (user.getVerificationExpiry() != null &&
+                LocalDateTime.now().isBefore(user.getVerificationExpiry().minusSeconds(60))) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "لطفاً پیش از درخواست مجدد یک دقیقه صبر کنید");
+        }
+
         int randomInt = SECURE_RANDOM.nextInt(1_000_000);
         String code = String.format("%06d", randomInt);
 

@@ -18,10 +18,12 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -43,8 +45,9 @@ public class AssetService {
     private static final long MAX_PROP_SIZE = 4 * 1024 * 1024;   // 4 MB
     private static final long DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 
+    // حذف SVG برای مهار حملات قطعی XSS
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml",
+            "image/jpeg", "image/png", "image/webp", "image/gif",
             "audio/mpeg", "audio/ogg", "audio/wav"
     );
 
@@ -70,9 +73,12 @@ public class AssetService {
         }
 
         String contentType = file.getContentType();
-        if (contentType != null && !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
-            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "نوع فایل مجاز نیست");
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "فرمت فایل مجاز نیست");
         }
+
+        // اعتبارسنجی باینری بایت‌های جادویی (Magic Bytes)
+        validateFileMagicBytes(file);
 
         Asset.AssetType assetType = parseAssetType(type);
         validateFileSize(file.getSize(), assetType);
@@ -85,24 +91,26 @@ public class AssetService {
             Files.createDirectories(uploadPath);
         }
 
-        String rawOriginalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "asset";
-        String cleanOriginalFilename = rawOriginalFilename.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
-        String uniqueFileName = UUID.randomUUID() + "_" + cleanOriginalFilename;
+        // پاک‌سازی کامل و ایجاد نام تصادفی UUID خالص برای جلوگیری از Directory Traversal
+        String extension = getSafeExtension(file.getOriginalFilename());
+        String uniqueFileName = UUID.randomUUID() + extension;
 
         Path targetLocation = uploadPath.resolve(uniqueFileName).normalize();
         if (!targetLocation.startsWith(uploadPath)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "نام فایل نامعتبر است");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "مسیر فایل نامعتبر است");
         }
 
-        // ۱. ذخیره ایمن فایل اصلی روی دیسک با کپی مستقیم استریم
-        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        // ذخیره ایمن فایل اصلی روی دیسک با کپی مستقیم استریم
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        }
 
         Integer width = null;
         Integer height = null;
         long finalFileSize = Files.size(targetLocation);
 
-        // ۲. بهینه‌سازی و استخراج متادیتا به روش ایمن (بدون خطر قطع فرآیند)
-        if (contentType != null && contentType.startsWith("image/") && !contentType.contains("svg") && !contentType.contains("gif")) {
+        // بهینه‌سازی و استخراج متادیتا به روش ایمن
+        if (contentType.startsWith("image/") && !contentType.contains("gif")) {
             try {
                 File savedFile = targetLocation.toFile();
                 BufferedImage bimg = ImageIO.read(savedFile);
@@ -110,7 +118,6 @@ public class AssetService {
                     width = bimg.getWidth();
                     height = bimg.getHeight();
 
-                    // بهینه‌سازی نقشه در صورت بیش از حد بزرگ بودن
                     if (assetType == Asset.AssetType.MAP) {
                         int maxDim = 3840;
                         if (width > maxDim || height > maxDim) {
@@ -136,11 +143,14 @@ public class AssetService {
             }
         }
 
-        String finalName = (name != null && !name.isBlank()) ? name : cleanOriginalFilename;
+        String safeDisplayName = (name != null && !name.isBlank())
+                ? name.replaceAll("[^a-zA-Z0-9_\\-\\s\u0600-\u06FF]", "")
+                : "asset_" + System.currentTimeMillis();
+
         String publicFileUrl = "/uploads/" + uniqueFileName;
 
         Asset asset = Asset.builder()
-                .name(finalName)
+                .name(safeDisplayName)
                 .type(assetType)
                 .fileUrl(publicFileUrl)
                 .fileSize(finalFileSize)
@@ -163,6 +173,40 @@ public class AssetService {
         assetRepository.save(asset);
 
         return mapToResponse(asset);
+    }
+
+    private void validateFileMagicBytes(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[8];
+            int read = is.read(header);
+            if (read < 4) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "محتوای فایل ارسالی مخدوش است");
+            }
+
+            boolean isJpg = (header[0] == (byte) 0xFF && header[1] == (byte) 0xD8 && header[2] == (byte) 0xFF);
+            boolean isPng = (header[0] == (byte) 0x89 && header[1] == (byte) 0x50 && header[2] == (byte) 0x4E && header[3] == (byte) 0x47);
+            boolean isGif = (header[0] == 'G' && header[1] == 'I' && header[2] == 'F');
+            boolean isWebp = (read >= 8 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F');
+            boolean isAudio = (header[0] == (byte) 0xFF && (header[1] & (byte) 0xE0) == (byte) 0xE0) // MP3
+                    || (header[0] == 'O' && header[1] == 'g' && header[2] == 'g' && header[3] == 'S') // OGG
+                    || (read >= 8 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'); // WAV
+
+            if (!isJpg && !isPng && !isGif && !isWebp && !isAudio) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "بایت‌های باینری فایل با پسوند آن همخوانی ندارد");
+            }
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "خطا در پردازش بایت‌های فایل");
+        }
+    }
+
+    private String getSafeExtension(String originalFilename) {
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            if (List.of(".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp3", ".ogg", ".wav").contains(ext)) {
+                return ext;
+            }
+        }
+        return ".bin";
     }
 
     @Transactional
@@ -265,7 +309,6 @@ public class AssetService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "دسترسی غیرمجاز");
         }
 
-        // ۱. پاک‌سازی ارجاعات خارجی با کوئری امن
         entityManager.createNativeQuery("UPDATE tokens SET asset_id = NULL WHERE asset_id = :assetId")
                 .setParameter("assetId", assetId)
                 .executeUpdate();
@@ -274,7 +317,6 @@ public class AssetService {
                 .setParameter("assetId", assetId)
                 .executeUpdate();
 
-        // ۲. حذف فیزیکی امن
         try {
             if (asset.getFileUrl() != null && asset.getFileUrl().startsWith("/uploads/")) {
                 String subPath = asset.getFileUrl().substring("/uploads/".length());
@@ -289,7 +331,6 @@ public class AssetService {
             log.warn("Could not delete physical file for asset {}: {}", assetId, e.getMessage());
         }
 
-        // ۳. حذف رکورد از دیتابیس
         assetRepository.delete(asset);
     }
 

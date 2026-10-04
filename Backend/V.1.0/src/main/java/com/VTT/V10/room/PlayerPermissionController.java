@@ -25,7 +25,7 @@ public class PlayerPermissionController {
             Authentication authentication
     ) {
         validateAuth(authentication);
-        return ResponseEntity.ok(permissionService.getMemberPermissions(memberId));
+        return ResponseEntity.ok(permissionService.getMemberPermissionsWithAuthCheck(memberId, authentication.getName()));
     }
 
     @PutMapping

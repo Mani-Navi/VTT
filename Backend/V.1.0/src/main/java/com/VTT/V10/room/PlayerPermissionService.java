@@ -67,7 +67,7 @@ public class PlayerPermissionService {
         }
 
         Optional<RoomMember> requesterOpt = roomMemberRepository.findByRoomIdAndUserEmail(roomId, userEmail);
-        boolean isAdmin = requesterOpt.isPresent() && requesterOpt.get().getRole() == RoomMember.Role.ADMIN;
+        boolean isAdmin = requesterOpt.isPresent() && (requesterOpt.get().getRole() == RoomMember.Role.ADMIN || requesterOpt.get().getRole() == RoomMember.Role.GM);
 
         if (!isOwner && !isAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها GM اتاق اجازه تغییر دسترسی بازیکنان را دارد");
@@ -123,6 +123,22 @@ public class PlayerPermissionService {
     }
 
     @Transactional(readOnly = true)
+    public PermissionResponse getMemberPermissionsWithAuthCheck(UUID memberId, String requesterEmail) {
+        RoomMember targetMember = roomMemberRepository.findById(memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "عضو یافت نشد"));
+
+        UUID roomId = targetMember.getRoom().getId();
+        boolean isMember = roomMemberRepository.findByRoomIdAndUserEmail(roomId, requesterEmail).isPresent() ||
+                roomRepository.findById(roomId).filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(requesterEmail)).isPresent();
+
+        if (!isMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "شما عضو اتاقی که این کاربر در آن حضور دارد نیستید");
+        }
+
+        return getMemberPermissions(memberId);
+    }
+
+    @Transactional(readOnly = true)
     public PermissionResponse getMemberPermissions(UUID memberId) {
         PlayerPermission perm = permissionRepository.findByMemberId(memberId).orElseGet(() -> {
             RoomMember member = roomMemberRepository.findById(memberId)
@@ -148,7 +164,7 @@ public class PlayerPermissionService {
         return PermissionResponse.builder()
                 .memberId(p.getMember().getId())
                 .username(p.getMember().getUser() != null ? p.getMember().getUser().getUsername() : "")
-                .role(p.getMember().getRole() == RoomMember.Role.ADMIN ? "GM" : "Player")
+                .role(p.getMember().getRole() == RoomMember.Role.ADMIN || p.getMember().getRole() == RoomMember.Role.GM ? "GM" : "Player")
                 .canAssets(Boolean.TRUE.equals(p.getCanAssets()))
                 .canDrawing(Boolean.TRUE.equals(p.getCanDrawing()))
                 .canFog(Boolean.TRUE.equals(p.getCanFog()))

@@ -1,6 +1,7 @@
 package com.VTT.V10.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -56,6 +57,8 @@ public class GlobalExceptionHandler {
         body.put("error", errorMessage);
         body.put("status", statusCode);
         body.put("timestamp", Instant.now().toString());
-        return ResponseEntity.status(statusCode).body(body);
+        return ResponseEntity.status(statusCode)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(body);
     }
 }
