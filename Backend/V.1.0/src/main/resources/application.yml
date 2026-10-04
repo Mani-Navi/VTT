@@ -26,7 +26,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: false
@@ -36,7 +36,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    validate-on-migrate: false      # غیرفعال کردن بررسی چکسام برای عبور از خطا
+    validate-on-migrate: true
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
@@ -62,7 +62,7 @@ google:
 # Stateless JWT Security
 jwt:
   secret: ${JWT_SECRET:vtt-persian-platform-super-secret-key-must-be-32-chars-minimum!}
-  expiration: ${JWT_EXPIRATION:86400000}
+  expiration: ${JWT_EXPIRATION:900000} # تغییر به ۱۵ دقیقه مطابق با الزامات امنیتی سشن‌های توکن کوتاه
 
 # LiveKit SFU Voice Server
 livekit:
@@ -71,16 +71,15 @@ livekit:
   api-secret: ${LIVEKIT_API_SECRET:secret}
 
 # Monitoring & Production Health Endpoint
-# Monitoring & Production Health Endpoint
 management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: "health,info"
   endpoint:
     health:
-      show-details: always
-      show-components: always
+      show-details: when_authorized
+      show-components: when_authorized
       probes:
         enabled: true
   health:

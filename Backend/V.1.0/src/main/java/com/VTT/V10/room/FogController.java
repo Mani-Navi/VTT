@@ -23,10 +23,8 @@ public class FogController {
             @PathVariable UUID sceneId,
             Authentication authentication
     ) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
-        }
-        return ResponseEntity.ok(fogService.getFogByScene(sceneId));
+        validateAuth(authentication);
+        return ResponseEntity.ok(fogService.getFogBySceneWithAuth(sceneId, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
@@ -35,10 +33,14 @@ public class FogController {
             @RequestParam(required = false) UUID sceneId,
             Authentication authentication
     ) {
+        validateAuth(authentication);
+        fogService.deleteFogRegionWithAuth(sceneId, id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    private void validateAuth(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "دسترسی غیرمجاز");
         }
-        fogService.deleteFogRegion(sceneId, id);
-        return ResponseEntity.noContent().build();
     }
 }

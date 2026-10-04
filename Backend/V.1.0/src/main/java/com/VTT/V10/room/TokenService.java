@@ -98,8 +98,6 @@ public class TokenService {
             }
         }
 
-        boolean defaultPlayerAccess = isGM || hasEditTokenPerm || !Boolean.TRUE.equals(request.getIsProp());
-
         try {
             Token token = Token.builder()
                     .scene(scene)
@@ -115,7 +113,7 @@ public class TokenService {
                     .ac(request.getAc() != null ? request.getAc() : 12)
                     .controlledBy(finalControlledBy)
                     .gmNotes(isGM ? request.getGmNotes() : null)
-                    .isProp(Boolean.TRUE.equals(request.getIsProp()))
+                    .isProp(isGM ? Boolean.TRUE.equals(request.getIsProp()) : false)
                     .goldValue(isGM && request.getGoldValue() != null ? request.getGoldValue() : 0)
                     .xpValue(isGM && request.getXpValue() != null ? request.getXpValue() : 0)
                     .isLooted(false)
@@ -123,16 +121,16 @@ public class TokenService {
                     .showName(request.getShowName() != null ? request.getShowName() : true)
                     .showAc(request.getShowAc() != null ? request.getShowAc() : true)
                     .showConditions(request.getShowConditions() != null ? request.getShowConditions() : true)
-                    .showNotes(request.getShowNotes() != null ? request.getShowNotes() : false)
-                    .allowPlayerHp(request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : defaultPlayerAccess)
-                    .allowPlayerConditions(request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : defaultPlayerAccess)
-                    .allowPlayerAc(request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : defaultPlayerAccess)
-                    .allowPlayerSize(request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : defaultPlayerAccess)
+                    .showNotes(isGM && Boolean.TRUE.equals(request.getShowNotes()))
+                    .allowPlayerHp(isGM ? (request.getAllowPlayerHp() != null ? request.getAllowPlayerHp() : true) : true)
+                    .allowPlayerConditions(isGM ? (request.getAllowPlayerConditions() != null ? request.getAllowPlayerConditions() : true) : true)
+                    .allowPlayerAc(isGM ? (request.getAllowPlayerAc() != null ? request.getAllowPlayerAc() : true) : true)
+                    .allowPlayerSize(isGM ? (request.getAllowPlayerSize() != null ? request.getAllowPlayerSize() : true) : true)
                     .conditions(request.getConditions() != null ? request.getConditions() : new ArrayList<>())
                     .build();
 
             tokenRepository.save(token);
-            return convertToResponse(token);
+            return convertToResponse(token, isGM);
         } catch (Exception e) {
             log.error("Fatal error saving token to database: ", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "خطا در ذخیره‌سازی توکن در پایگاه داده");
@@ -172,10 +170,10 @@ public class TokenService {
 
                     isOwner = token.getControlledBy() == null ||
                             token.getControlledBy().isBlank() ||
-                            (uid.length() > 0 && token.getControlledBy().equalsIgnoreCase(uid)) ||
-                            (uName.length() > 0 && token.getControlledBy().equalsIgnoreCase(uName)) ||
+                            (!uid.isEmpty() && token.getControlledBy().equalsIgnoreCase(uid)) ||
+                            (!uName.isEmpty() && token.getControlledBy().equalsIgnoreCase(uName)) ||
                             token.getControlledBy().equalsIgnoreCase(userEmail) ||
-                            (token.getLabel() != null && uName.length() > 0 && token.getLabel().equalsIgnoreCase(uName));
+                            (token.getLabel() != null && !uName.isEmpty() && token.getLabel().equalsIgnoreCase(uName));
 
                     if (!isGM) {
                         var permOpt = playerPermissionRepository.findByMemberId(member.getId());
@@ -251,9 +249,6 @@ public class TokenService {
             }
 
             tokenRepository.saveAndFlush(token);
-            if (log.isDebugEnabled()) {
-                log.debug("Token {} updated and flushed successfully in DB", tokenId);
-            }
         } catch (Exception e) {
             log.warn("Token event update error: {}", e.getMessage());
         }
@@ -262,11 +257,15 @@ public class TokenService {
     @Transactional(readOnly = true)
     public List<TokenResponse> getTokensByScene(UUID sceneId) {
         return tokenRepository.findBySceneId(sceneId).stream()
-                .map(this::convertToResponse)
+                .map(t -> convertToResponse(t, false))
                 .collect(Collectors.toList());
     }
 
     public TokenResponse convertToResponse(Token token) {
+        return convertToResponse(token, false);
+    }
+
+    public TokenResponse convertToResponse(Token token, boolean isGM) {
         String finalUrl = token.getAvatarUrl();
         if ((finalUrl == null || finalUrl.isBlank()) && token.getAsset() != null) {
             finalUrl = token.getAsset().getFileUrl();
@@ -287,10 +286,10 @@ public class TokenService {
                 .isHidden(token.getIsHidden())
                 .isLocked(token.getIsLocked())
                 .controlledBy(token.getControlledBy())
-                .gmNotes(token.getGmNotes())
+                .gmNotes(isGM ? token.getGmNotes() : null) // فیلتر کردن اطلاعات محرمانه
                 .isProp(token.getIsProp())
-                .goldValue(token.getGoldValue())
-                .xpValue(token.getXpValue())
+                .goldValue(isGM ? token.getGoldValue() : 0)
+                .xpValue(isGM ? token.getXpValue() : 0)
                 .isLooted(token.getIsLooted())
                 .showHp(token.getShowHp() != null ? token.getShowHp() : true)
                 .showName(token.getShowName() != null ? token.getShowName() : true)

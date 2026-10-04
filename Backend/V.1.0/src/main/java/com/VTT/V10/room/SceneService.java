@@ -5,6 +5,7 @@ import com.VTT.V10.asset.AssetRepository;
 import com.VTT.V10.room.dto.CreateSceneRequest;
 import com.VTT.V10.room.dto.SceneResponse;
 import com.VTT.V10.room.dto.SceneStateResponse;
+import com.VTT.V10.room.dto.TokenResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -164,11 +165,18 @@ public class SceneService {
         Scene scene = sceneRepository.findById(sceneId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "صحنه یافت نشد"));
 
-        validateMembership(scene.getRoom().getId(), userEmail);
+        UUID roomId = scene.getRoom().getId();
+        validateMembership(roomId, userEmail);
+
+        boolean isGM = isUserGM(roomId, userEmail);
+
+        List<TokenResponse> tokenResponses = tokenRepository.findBySceneId(sceneId).stream()
+                .map(t -> tokenService.convertToResponse(t, isGM))
+                .collect(Collectors.toList());
 
         return SceneStateResponse.builder()
                 .scene(convertToResponse(scene))
-                .tokens(tokenService.getTokensByScene(sceneId))
+                .tokens(tokenResponses)
                 .drawings(drawingService.getByScene(sceneId))
                 .fogRegions(fogService.getFogByScene(sceneId))
                 .build();
@@ -226,7 +234,7 @@ public class SceneService {
         }
     }
 
-    private void validateGMRole(UUID roomId, String email) {
+    private boolean isUserGM(UUID roomId, String email) {
         boolean isOwner = roomRepository.findById(roomId)
                 .filter(r -> r.getOwner() != null && r.getOwner().getEmail().equalsIgnoreCase(email))
                 .isPresent();
@@ -235,7 +243,11 @@ public class SceneService {
                 .filter(m -> m.getRole() == RoomMember.Role.ADMIN || m.getRole() == RoomMember.Role.GM)
                 .isPresent();
 
-        if (!isOwner && !isGM) {
+        return isOwner || isGM;
+    }
+
+    private void validateGMRole(UUID roomId, String email) {
+        if (!isUserGM(roomId, email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "تنها دانجن‌مستر (GM) اجازه این عملیات را دارد");
         }
     }

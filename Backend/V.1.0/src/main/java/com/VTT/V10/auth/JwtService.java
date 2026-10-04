@@ -21,10 +21,13 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
+    private static final String ISSUER = "vtt-api";
+    private static final String AUDIENCE = "vtt-client";
+
     @Value("${jwt.secret}")
     private String secretKey;
 
-    @Value("${jwt.expiration:86400000}")
+    @Value("${jwt.expiration:900000}") // پیش‌فرض استاندارد ۱۵ دقیقه
     private long jwtExpirationMs;
 
     private SecretKey cachedSignInKey;
@@ -54,12 +57,15 @@ public class JwtService {
 
         long now = System.currentTimeMillis();
         return Jwts.builder()
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
                 .subject(user.getEmail())
                 .claim("userId", userIdStr)
                 .claim("username", user.getUsername())
                 .claim("email", user.getEmail())
                 .claim("avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "")
                 .issuedAt(new Date(now))
+                .notBefore(new Date(now - 1000)) // کلیم nbf برای دفاع در برابر عدم همگام‌سازی ساعت کلاینت/سرور
                 .expiration(new Date(now + jwtExpirationMs))
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
@@ -76,8 +82,16 @@ public class JwtService {
 
     public boolean isTokenValid(String token, String userEmail) {
         try {
-            final String email = extractEmail(token);
-            return (email != null && email.equalsIgnoreCase(userEmail) && !isTokenExpired(token));
+            final Claims claims = extractAllClaims(token);
+            final String email = claims.getSubject();
+            boolean isAudienceValid = claims.getAudience() != null && claims.getAudience().contains(AUDIENCE);
+            boolean isIssuerValid = ISSUER.equals(claims.getIssuer());
+
+            return (email != null
+                    && email.equalsIgnoreCase(userEmail)
+                    && !isTokenExpired(token)
+                    && isAudienceValid
+                    && isIssuerValid);
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
@@ -87,6 +101,8 @@ public class JwtService {
         try {
             Jwts.parser()
                     .verifyWith(getSignInKey())
+                    .requireIssuer(ISSUER)
+                    .requireAudience(AUDIENCE)
                     .build()
                     .parseSignedClaims(token);
             return true;
@@ -110,6 +126,8 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSignInKey())
+                .requireIssuer(ISSUER)
+                .requireAudience(AUDIENCE)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

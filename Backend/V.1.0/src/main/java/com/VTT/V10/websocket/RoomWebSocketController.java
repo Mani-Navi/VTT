@@ -36,6 +36,10 @@ public class RoomWebSocketController {
             Principal principal
     ) {
         if (principal == null || sessionId == null) return;
+        if (!roomService.isMember(roomId, principal.getName())) {
+            log.warn("Unauthorized join attempt by {} for room {}", principal.getName(), roomId);
+            return;
+        }
         roomService.handleUserJoinPresence(roomId, sessionId, principal.getName());
     }
 
@@ -56,6 +60,13 @@ public class RoomWebSocketController {
     ) {
         if (event == null || event.getData() == null || principal == null) return;
 
+        // اعتبارسنجی اولیه: کاربر باید حتماً عضو رسمی اتاق باشد
+        if (!roomService.isMember(roomId, principal.getName())) {
+            log.warn("Blocked unprivileged token event from {} in room {}", principal.getName(), roomId);
+            return;
+        }
+
+        // انتشار پیام به تاپیک اتاق و ذخیره‌سازی
         messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
         tokenService.asyncUpdateTokenFromEvent(event.getData(), principal.getName(), roomId);
     }
@@ -71,6 +82,8 @@ public class RoomWebSocketController {
         if (roomService.isHostOrAdmin(roomId, principal.getName())) {
             roomService.updateSceneConditions(roomId, event.getData().getAvailableConditions());
             messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
+        } else {
+            log.warn("Unauthorized condition pool update attempt by {}", principal.getName());
         }
     }
 
@@ -82,8 +95,10 @@ public class RoomWebSocketController {
     ) {
         if (event == null || principal == null || event.getData() == null) return;
 
-        roomService.updateRoleTitle(roomId, principal.getName(), event.getData());
-        messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
+        if (roomService.isHostOrAdmin(roomId, principal.getName())) {
+            roomService.updateRoleTitle(roomId, principal.getName(), event.getData());
+            messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
+        }
     }
 
     @MessageMapping("/room/{roomId}/event")
@@ -92,10 +107,13 @@ public class RoomWebSocketController {
             @Payload SocketEvent<Object> event,
             Principal principal
     ) {
-        if (event == null) return;
-        if (principal != null) {
-            roomService.updateLastActive(roomId, principal.getName());
+        if (event == null || principal == null) return;
+
+        if (!roomService.isMember(roomId, principal.getName())) {
+            return;
         }
+
+        roomService.updateLastActive(roomId, principal.getName());
         messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
     }
 
@@ -115,6 +133,8 @@ public class RoomWebSocketController {
                 (isText && roomService.hasPermission(roomId, principal.getName(), WsConstants.PERM_DRAWING))) {
             messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
             drawingService.asyncSaveOrUpdateDrawing(roomId, data);
+        } else {
+            log.warn("User {} lack permission {} for drawing in room {}", principal.getName(), requiredPerm, roomId);
         }
     }
 
@@ -157,10 +177,13 @@ public class RoomWebSocketController {
             @Payload SocketEvent<DiceRollEvent> event,
             Principal principal
     ) {
-        if (event == null) return;
-        if (principal != null) {
-            roomService.updateLastActive(roomId, principal.getName());
+        if (event == null || principal == null) return;
+
+        if (!roomService.isMember(roomId, principal.getName())) {
+            return;
         }
+
+        roomService.updateLastActive(roomId, principal.getName());
         messagingTemplate.convertAndSend(WsConstants.TOPIC_ROOM_PREFIX + roomId, event);
     }
 
