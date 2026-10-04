@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, memo } from "react";
 import { Group, Line, Circle, Rect, Text } from "react-konva";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { calculateTotalDistance } from "../../utils/distance.js";
 
 const RULER_DASH_PATTERN = Object.freeze([8, 5]);

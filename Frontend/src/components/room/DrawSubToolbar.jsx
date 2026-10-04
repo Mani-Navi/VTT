@@ -10,7 +10,7 @@ import {
     Hexagon as HexagonIcon,
     Eraser,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
+import { useCanvasStore } from "../../stores/canvas.store";
 import { DRAW_MODES, TOOLS } from "../../constants/tools";
 import { cn } from "../../utils/cn";
 import { Tooltip } from "../ui/Tooltip";
@@ -140,3 +140,4 @@ export const DrawSubToolbar = memo(() => {
 });
 
 DrawSubToolbar.displayName = "DrawSubToolbar";
+export default DrawSubToolbar;

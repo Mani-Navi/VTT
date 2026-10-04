@@ -1,6 +1,6 @@
 // src/services/websocket.service.js
 import { Client } from "@stomp/stompjs";
-import { useWebSocketStore } from "../store/websocket.store.js";
+import { useWebSocketStore } from "../stores/websocket.store.js";
 import { WS_EVENTS } from "../constants/wsEvents.js";
 import { ENV } from "../config/validateEnv";
 
@@ -19,10 +19,23 @@ class WebSocketService {
         }
     }
 
+    // تولید آدرس امن وب‌سوکت با لحاظ کردن اجباری بودن wss در بستر HTTPS
+    resolveBrokerUrl() {
+        const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+        const rawUrl = ENV.WS_URL || `${isHttps ? "wss:" : "ws:"}//${window.location.hostname}:8080/ws`;
+
+        if (isHttps) {
+            // در صورتی که صفحه با HTTPS باز شده باشد، اتصال ناامن ws قطعاً مسدود می‌شود
+            return rawUrl.replace(/^ws:\/\//i, "wss://").replace(/^http:\/\//i, "wss://").replace(/^https:\/\//i, "wss://");
+        }
+        return rawUrl.startsWith("ws") ? rawUrl : `ws://${rawUrl.replace(/^https?:\/\//, "")}`;
+    }
+
     connect(roomId, token) {
         if (!roomId) return;
+        const cleanRoomId = String(roomId).trim();
 
-        if (this.isConnected && this.currentRoomId === roomId) {
+        if (this.isConnected && this.currentRoomId === cleanRoomId) {
             return;
         }
 
@@ -34,15 +47,14 @@ class WebSocketService {
             this.client = null;
         }
 
-        this.currentRoomId = roomId;
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = ENV.WS_URL || `${protocol}//${window.location.hostname}:8080/ws`;
+        this.currentRoomId = cleanRoomId;
+        const brokerURL = this.resolveBrokerUrl();
 
         try {
             this.clearSubscriptions();
 
             this.client = new Client({
-                brokerURL: host.startsWith("ws") ? host : `${protocol}//${host.replace(/^https?:\/\//, "")}`,
+                brokerURL: brokerURL,
                 reconnectDelay: 2000,
                 heartbeatIncoming: 20000,
                 heartbeatOutgoing: 20000,
@@ -63,7 +75,7 @@ class WebSocketService {
                 useWebSocketStore.getState().setStatus("CONNECTED");
 
                 try {
-                    const subRoom = this.client.subscribe(`/topic/room/${roomId}`, (message) => {
+                    const subRoom = this.client.subscribe(`/topic/room/${cleanRoomId}`, (message) => {
                         try {
                             const payload = JSON.parse(message.body);
                             this.handleIncomingMessage(payload);
@@ -72,7 +84,7 @@ class WebSocketService {
                         }
                     });
 
-                    const subUsers = this.client.subscribe(`/topic/room/${roomId}/users`, (message) => {
+                    const subUsers = this.client.subscribe(`/topic/room/${cleanRoomId}/users`, (message) => {
                         try {
                             const onlineMembers = JSON.parse(message.body);
                             this.trigger("USERS_UPDATE", onlineMembers);
@@ -81,7 +93,7 @@ class WebSocketService {
                         }
                     });
 
-                    const subSettings = this.client.subscribe(`/topic/room/${roomId}/settings`, (message) => {
+                    const subSettings = this.client.subscribe(`/topic/room/${cleanRoomId}/settings`, (message) => {
                         try {
                             const payload = JSON.parse(message.body);
                             const settingsData = payload?.data !== undefined ? payload.data : payload;
@@ -271,7 +283,7 @@ class WebSocketService {
     }
 
     handleIncomingMessage(payload) {
-        if (!payload) return;
+        if (!payload || typeof payload !== "object") return;
         useWebSocketStore.getState().touchEvent();
 
         const action = payload.action;

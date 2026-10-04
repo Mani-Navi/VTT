@@ -15,4 +15,14 @@ export const authApi = {
     const res = await api.post("/auth/google", { idToken });
     return res.data;
   },
+
+  refreshToken: async () => {
+    const res = await api.post("/auth/refresh");
+    return res.data;
+  },
+
+  logout: async () => {
+    const res = await api.post("/auth/logout");
+    return res.data;
+  },
 };

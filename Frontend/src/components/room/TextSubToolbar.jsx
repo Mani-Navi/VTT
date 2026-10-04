@@ -9,7 +9,7 @@ import {
     Layers,
     Check,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
+import { useCanvasStore } from "../../stores/canvas.store";
 import { TOOLS } from "../../constants/tools";
 import { cn } from "../../utils/cn";
 
@@ -166,7 +166,6 @@ export const TextSubToolbar = memo(() => {
 
             <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* انتخابگر رنگ متن */}
             <div className="relative">
                 <button
                     type="button"
@@ -212,7 +211,6 @@ export const TextSubToolbar = memo(() => {
                 )}
             </div>
 
-            {/* منوی حاشیه متن */}
             <div className="relative">
                 <button
                     type="button"
@@ -293,7 +291,6 @@ export const TextSubToolbar = memo(() => {
 
             <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
-            {/* منوی انتخاب ایموجی */}
             <div className="relative">
                 <button
                     type="button"

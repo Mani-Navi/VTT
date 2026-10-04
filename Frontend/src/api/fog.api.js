@@ -27,7 +27,7 @@ export const fogApi = {
 
   deleteFog: async (fogId, sceneId) => {
     try {
-      return await api.delete(`/api/fog/${fogId}`, {
+      return await api.delete(`/fog/${fogId}`, {
         params: { sceneId: sceneId || undefined },
       });
     } catch (err) {

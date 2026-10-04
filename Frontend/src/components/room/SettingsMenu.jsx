@@ -17,8 +17,8 @@ import {
   Eye,
   Ruler,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
 import { settingsApi } from "../../api/settings.api";
 import { wsService } from "../../services/websocket.service";
 import { Button } from "../ui/Button";

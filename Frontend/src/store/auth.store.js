@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { authApi } from "../api/auth.api";
 
 const getInitialUser = () => {
   try {
@@ -32,10 +33,16 @@ export const useAuthStore = create((set) => ({
     });
   },
 
-  logout: () => {
-    localStorage.removeItem("vtt_jwt");
-    localStorage.removeItem("vtt_user");
-    localStorage.removeItem("token");
-    set({ user: null, token: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // در صورت خطا یا قطعی شبکه، کلاینت در هر صورت باید وضعیت محلی را باطل کند
+    } finally {
+      localStorage.removeItem("vtt_jwt");
+      localStorage.removeItem("vtt_user");
+      localStorage.removeItem("token");
+      set({ user: null, token: null, isAuthenticated: false });
+    }
   },
 }));

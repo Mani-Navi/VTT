@@ -1,16 +1,33 @@
 import { ENV } from "../config/validateEnv";
 
+// الگوی مجاز برای Data URLهای تصویری امن (SVG و HTML به دلیل ریسک اجرای اسکریپت فیلتر شده‌اند)
+const SAFE_DATA_URL_REGEX = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i;
+
 export function getFullAssetUrl(url) {
     if (!url) return "";
     const trimmed = String(url).trim();
     if (!trimmed) return "";
 
-    // لینک‌های خارجی، Data URL یا Blob
+    // مسدودسازی پروتکل‌های مخرب اجرایی (XSS)
+    const lower = trimmed.toLowerCase();
     if (
-        trimmed.startsWith("data:") ||
-        trimmed.startsWith("blob:") ||
-        trimmed.startsWith("http://") ||
-        trimmed.startsWith("https://")
+        lower.startsWith("javascript:") ||
+        lower.startsWith("vbscript:") ||
+        lower.startsWith("file:")
+    ) {
+        return "";
+    }
+
+    // اعتبارسنجی Data URL برای اطمینان از امن بودن MIME-Type
+    if (lower.startsWith("data:")) {
+        return SAFE_DATA_URL_REGEX.test(trimmed) ? trimmed : "";
+    }
+
+    // مسیرهای Blob امن و لینک‌های وب با پروتکل استاندارد
+    if (
+        lower.startsWith("blob:") ||
+        lower.startsWith("http://") ||
+        lower.startsWith("https://")
     ) {
         return trimmed;
     }

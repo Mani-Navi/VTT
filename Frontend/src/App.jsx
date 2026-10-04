@@ -2,30 +2,11 @@ import React, { useEffect, useState } from "react";
 import { RouterProvider } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { router } from "./router";
-import { useAuthStore } from "./store/auth.store";
+import { useAuthStore } from "./stores/auth.store";
 import { ENV } from "./config/validateEnv";
+import { decodeToken, isTokenExpired } from "./utils/jwt";
 import { ToastContainer } from "./components/ui/ToastContainer.jsx";
 import { ConfirmModal } from "./components/ui/ConfirmModal.jsx";
-
-/**
- * رمزگشایی ایمن Base64 توکن JWT برای پشتیبانی کامل از کاراکترهای فارسی و UTF-8
- */
-function parseJwtPayload(token) {
-  try {
-    const base64Url = token.split(".")[1];
-    if (!base64Url) return null;
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-        atob(base64)
-            .split("")
-            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-            .join("")
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-}
 
 export default function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -39,9 +20,8 @@ export default function App() {
       return;
     }
 
-    const payload = parseJwtPayload(token);
-
-    if (payload && payload.exp && payload.exp * 1000 > Date.now()) {
+    if (!isTokenExpired(token)) {
+      const payload = decodeToken(token);
       setAuth(payload, token);
     } else {
       localStorage.removeItem("vtt_jwt");

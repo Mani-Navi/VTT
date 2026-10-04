@@ -1,15 +1,12 @@
 import React, { useEffect, useRef, memo } from "react";
 import { Group, Circle, Text, Rect } from "react-konva";
-import { useSceneStore } from "../../store/scene.store";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useAuthStore } from "../../store/auth.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { TOOLS } from "../../constants/tools";
 
 const LASER_DASH_PATTERN = [4, 4];
 
-/**
- * رندر مجزای نشانگر لیزری با رفرنس‌های پایدار
- */
 function renderLaserDot(x, y, name = "", color = "#ef4444", isLocal = false) {
     const key = isLocal ? "local-laser" : `laser-${name}-${x}-${y}`;
     const tagWidth = Math.max(name.length * 8 + 20, 48);
@@ -17,7 +14,6 @@ function renderLaserDot(x, y, name = "", color = "#ef4444", isLocal = false) {
 
     return (
         <Group key={key} x={x} y={y} listening={false}>
-            {/* هاله نئونی بیرونی */}
             <Circle
                 radius={16}
                 fill="rgba(239, 68, 68, 0.2)"
@@ -25,7 +21,6 @@ function renderLaserDot(x, y, name = "", color = "#ef4444", isLocal = false) {
                 strokeWidth={1.5}
                 listening={false}
             />
-            {/* نقطه مرکزی درخشان */}
             <Circle
                 radius={6}
                 fill={color}
@@ -34,10 +29,8 @@ function renderLaserDot(x, y, name = "", color = "#ef4444", isLocal = false) {
                 shadowOpacity={1}
                 listening={false}
             />
-            {/* نقطه روشن سفید در مرکز */}
             <Circle radius={2.5} fill="#ffffff" listening={false} />
 
-            {/* تگ نام بازیکن */}
             {name && (
                 <Group y={-24} listening={false}>
                     <Rect
@@ -81,7 +74,6 @@ export const PingLayer = memo(() => {
 
     const isLocalLaserActive = activeTool === TOOLS.LASER && Boolean(laserPosition);
 
-    // حفظ رفرنس به آخرین وضعیت لیزرها جهت ممانعت از ری‌لود اینتروال
     const remoteLasersRef = useRef(remoteLasers);
     useEffect(() => {
         remoteLasersRef.current = remoteLasers;
@@ -103,7 +95,6 @@ export const PingLayer = memo(() => {
 
     return (
         <Group listening={false}>
-            {/* رادار پینگ‌ها */}
             {pings.map((ping) => {
                 const userCol = ping.userColor || "#f59e0b";
                 return (
@@ -148,11 +139,9 @@ export const PingLayer = memo(() => {
                 );
             })}
 
-            {/* لیزر کاربر محلی */}
             {isLocalLaserActive &&
                 renderLaserDot(laserPosition.x, laserPosition.y, currentUser?.username || "شما", "#ef4444", true)}
 
-            {/* لیزر سایر بازیکنان */}
             {Object.values(remoteLasers).map((laser) => {
                 if (String(laser.userId) === currentUserId) return null;
                 return renderLaserDot(laser.x, laser.y, laser.userName || "بازیکن", laser.color || "#ef4444", false);

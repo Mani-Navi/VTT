@@ -1,8 +1,8 @@
 import React, { useEffect, useState, memo } from "react";
 import { Image as KonvaImage, Rect, Group } from "react-konva";
 import { getFullAssetUrl } from "../../utils/assetUrl.js";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
 
 const STATIC_SHADOW_OFFSET = Object.freeze({ x: 0, y: 15 });
 const MAP_CORNER_RADIUS = 24;
@@ -88,7 +88,6 @@ export const MapLayer = memo(({ mapUrl, width = 2000, height = 1500, onDimension
 
     return (
         <Group listening={false}>
-            {/* کادر و سایه عمیق دور نقشه */}
             <Rect
                 x={0}
                 y={0}
@@ -117,7 +116,6 @@ export const MapLayer = memo(({ mapUrl, width = 2000, height = 1500, onDimension
                     listening={false}
                 />
             ) : (
-                /* اسکلتون و کادر بارگذاری اولیه تا زمان لود کامل تصویر */
                 <Rect
                     x={0}
                     y={0}

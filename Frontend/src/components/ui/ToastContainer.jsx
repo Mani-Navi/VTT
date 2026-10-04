@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle, CheckCircle, Info, XCircle, X } from "lucide-react";
-import { useToastStore } from "../../store/toast.store";
+import { useToastStore } from "../../stores/toast.store";
 
 const ICONS = {
     error: XCircle,

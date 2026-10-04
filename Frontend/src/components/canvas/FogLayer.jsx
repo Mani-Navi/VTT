@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import { Group, Shape, Line, Circle as KonvaCircle, Rect as KonvaRect, Transformer } from "react-konva";
-import { useSceneStore } from "../../store/scene.store";
-import { useCanvasStore } from "../../store/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useCanvasStore } from "../../stores/canvas.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { TOOLS } from "../../constants/tools";
 import { wsService } from "../../services/websocket.service";
@@ -50,7 +50,6 @@ const getRegularPolygonPoints = (radius, sides) => {
 
 export const FogLayer = memo(
     ({ width = 2400, height = 1800, liveFog = null, polygonVertices = [] }) => {
-        // ۱. تمام استورها و مقادیر اولیه (همگی در بالاترین سطح)
         const currentScene = useSceneStore((state) => state.currentScene);
         const remoteLiveFog = useSceneStore((state) => state.remoteLiveFog);
         const updateFogShape = useSceneStore((state) => state.updateFogShape);
@@ -71,7 +70,6 @@ export const FogLayer = memo(
         const isSelectMode = (activeTool === TOOLS.SELECT || activeTool === TOOLS.FOG) && isGM;
         const currentSceneId = currentScene?.id;
 
-        // ۲. تعریف تمام هوک‌های useCallback در بالاترین سطح (قبل از هر return)
         const handleShapeDragStart = useCallback((fog) => {
             draggingFogId.current = String(fog.id);
         }, []);
@@ -170,7 +168,6 @@ export const FogLayer = memo(
             [updateFogShape, currentSceneId]
         );
 
-        // ۳. هوک‌های چرخه حیات (همواره در بالاترین سطح)
         useLayoutEffect(() => {
             return () => {
                 if (transformerRef.current) {
@@ -213,7 +210,6 @@ export const FogLayer = memo(
             }
         }, [selectedFogId, isSelectMode, isFogRevealedGlobally]);
 
-        // ۴. اکنون که تمام هوک‌ها بدون قید و شرط ثبت شدند، شروط خروج امن هستند:
         if (!currentScene || isFogRevealedGlobally) {
             return null;
         }

@@ -18,13 +18,14 @@ import {
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
-import { useRoomStore } from "../../store/room.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
+import { useRoomStore } from "../../stores/room.store";
 import { usePermissions } from "../../hooks/usePermissions";
 import { wsService } from "../../services/websocket.service";
-import { getAssetUrl, assetApi } from "../../api/asset.api";
+import { assetApi } from "../../api/asset.api";
+import { getFullAssetUrl } from "../../utils/assetUrl.js";
 import { WS_EVENTS } from "../../constants/wsEvents.js";
 import { uiAudio } from "../../utils/uiAudio";
 
@@ -74,15 +75,6 @@ const isValidImageUrl = (url) => {
   );
 };
 
-const safeAssetUrl = (url) => {
-  if (!url || typeof url !== "string") return "";
-  const trimmed = url.trim();
-  if (isValidImageUrl(trimmed)) {
-    return trimmed;
-  }
-  return getAssetUrl ? getAssetUrl(trimmed) : trimmed;
-};
-
 export const TokenEditorModal = memo(({ roomData }) => {
   const isEditing = useCanvasStore((state) => state.isTokenEditorOpen);
   const editingTokenId = useCanvasStore((state) => state.editingTokenId);
@@ -114,14 +106,18 @@ export const TokenEditorModal = memo(({ roomData }) => {
   const userEmail = currentUser?.email ? String(currentUser.email).toLowerCase().trim() : "";
   const tokenLabel = String(token?.label || token?.name || "").toLowerCase().trim();
 
+  // رفع آسیب‌پذیری BOLA: حذف !tokenOwner تا توکن‌های فاقد مالک صریح فقط توسط GM قابل کنترل باشند
   const isOwner = Boolean(
-      !tokenOwner ||
-      tokenOwner === userId ||
-      (userAltId && tokenOwner === userAltId) ||
-      (userName && tokenOwner === userName) ||
-      (userEmail && tokenOwner === userEmail) ||
-      (userName && tokenLabel === userName) ||
-      canMoveToken(token?.controlledBy)
+      isGM ||
+      (tokenOwner &&
+          ((userId && tokenOwner === userId) ||
+              (userAltId && tokenOwner === userAltId) ||
+              (userName && tokenOwner === userName) ||
+              (userEmail && tokenOwner === userEmail))) ||
+      (tokenLabel &&
+          ((userName && tokenLabel === userName) ||
+              (userEmail && tokenLabel === userEmail))) ||
+      (token?.controlledBy && canMoveToken(token.controlledBy))
   );
 
   const canEditBasic = Boolean(isGM || isOwner);
@@ -210,6 +206,12 @@ export const TokenEditorModal = memo(({ roomData }) => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // مسدودسازی صریح فایل‌های SVG جهت جلوگیری از حملات XSS
+    if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+      setUploadError("فرمت SVG به دلایل امنیتی مجاز نیست. لطفاً PNG، JPG یا WEBP آپلود کنید.");
+      return;
+    }
 
     if (file.size > MAX_TOKEN_FILE_SIZE) {
       setUploadError("حجم تصویر توکن نمی‌تواند بیشتر از ۳ مگابایت باشد.");
@@ -353,7 +355,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
               <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-500/40 bg-zinc-900 shrink-0 shadow-inner flex items-center justify-center group">
                 {hasValidAvatar ? (
                     <img
-                        src={safeAssetUrl(avatarUrl)}
+                        src={getFullAssetUrl(avatarUrl)}
                         alt="Avatar"
                         className="w-full h-full object-cover"
                         onError={() => setAvatarUrl("")}
@@ -387,7 +389,7 @@ export const TokenEditorModal = memo(({ roomData }) => {
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileUpload}
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
                       className="hidden"
                   />
                   <button
