@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { RouterProvider } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { router } from "./router";
-import { useAuthStore } from "./store/auth.store.js";
+import { useAuthStore } from "./stores/auth.store";
 import { ENV } from "./config/validateEnv";
 import { decodeToken, isTokenExpired } from "./utils/jwt";
 import { ToastContainer } from "./components/ui/ToastContainer.jsx";
