@@ -6,10 +6,7 @@ export const getAssetUrl = (url) => {
   if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
 
-  if (!trimmed.includes("/") && !trimmed.startsWith("data:")) {
-    return "";
-  }
-
+  // اگر لینک کامل یا داده data / blob است، فوراً برگردان
   if (
       trimmed.startsWith("http://") ||
       trimmed.startsWith("https://") ||
@@ -21,8 +18,13 @@ export const getAssetUrl = (url) => {
 
   const rawBase = api.defaults.baseURL || "http://localhost:8080/api";
   const backendHost = rawBase.replace(/\/api\/?$/, "");
-  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 
+  // اگر فقط نام فایل بدون اسلش بود، مسیر uploads را به آن اضافه کن
+  if (!trimmed.includes("/")) {
+    return `${backendHost}/uploads/${trimmed}`;
+  }
+
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${backendHost}${cleanPath}`;
 };
 
@@ -92,3 +94,5 @@ export const assetApi = {
     return true;
   },
 };
+
+export default assetApi;

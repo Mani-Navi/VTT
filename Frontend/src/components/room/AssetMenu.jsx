@@ -10,11 +10,10 @@ import {
   Link as LinkIcon,
   Trash2,
 } from "lucide-react";
-import { useCanvasStore } from "../../stores/canvas.store";
-import { useSceneStore } from "../../stores/scene.store";
-import { useAuthStore } from "../../stores/auth.store";
-import { assetApi } from "../../api/asset.api";
-import { getFullAssetUrl } from "../../utils/assetUrl.js";
+import { useCanvasStore } from "../../store/canvas.store";
+import { useSceneStore } from "../../store/scene.store";
+import { useAuthStore } from "../../store/auth.store";
+import { assetApi, getAssetUrl } from "../../api/asset.api";
 import { MAP_PRESETS } from "../../constants/mapPresets";
 import { TOKEN_PRESETS } from "../../constants/tokenPresets";
 import { Button } from "../ui/Button";
@@ -29,6 +28,21 @@ const SIZE_LIMITS = Object.freeze({
 const isValidUUID = (uuid) => {
   if (!uuid || typeof uuid !== "string") return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid.trim());
+};
+
+// حل همه‌جانبه‌ی آدرس فایل از هر فیلدی که بک‌اند فرستاده باشد
+const resolveAssetUrl = (asset) => {
+  if (!asset) return "";
+  if (typeof asset === "string") return getAssetUrl(asset);
+  const raw =
+      asset.fileUrl ||
+      asset.url ||
+      asset.assetUrl ||
+      asset.thumbnailUrl ||
+      asset.filePath ||
+      asset.path ||
+      "";
+  return getAssetUrl(raw);
 };
 
 export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
@@ -107,7 +121,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const handleSelectMap = async (rawMapUrl, assetId = null) => {
     if (!canUploadMap) return;
 
-    const fullMapUrl = getFullAssetUrl(rawMapUrl);
+    const fullMapUrl = getAssetUrl(rawMapUrl);
     const validAssetId = isValidUUID(assetId) ? assetId : null;
 
     toggleMenu("asset");
@@ -117,7 +131,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
   const handleAddToken = (rawTokenUrl, tokenName, extraData = {}) => {
     if (!hasActiveMap) return;
 
-    const fullUrl = getFullAssetUrl(rawTokenUrl);
+    const fullUrl = getAssetUrl(rawTokenUrl);
     const validAssetId = isValidUUID(extraData.id) ? extraData.id : null;
     const ownerId = currentUser?.id ? String(currentUser.id) : null;
 
@@ -147,7 +161,6 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // مسدودسازی صریح فایل‌های SVG طبق بند ۵ ممیزی
     if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
       setUploadError("فرمت SVG به دلایل امنیتی مجاز نیست. لطفاً PNG، JPG یا WEBP آپلود کنید.");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -167,11 +180,12 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
     try {
       const assetName = file.name.replace(/\.[^/.]+$/, "");
       const uploaded = await assetApi.uploadAsset(file, assetName, currentLimit.type, { dpi: 150 });
+      const uploadedUrl = uploaded.fileUrl || uploaded.url || uploaded.assetUrl || "";
 
       if (activeTab === "maps") {
-        await handleSelectMap(uploaded.fileUrl, uploaded.id);
+        await handleSelectMap(uploadedUrl, uploaded.id);
       } else {
-        handleAddToken(uploaded.fileUrl, uploaded.name, uploaded);
+        handleAddToken(uploadedUrl, uploaded.name, uploaded);
         loadAssets(true);
       }
     } catch (err) {
@@ -195,15 +209,16 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
           assetNameInput.trim() ||
           (activeTab === "maps" ? "نقشه اینترنتی" : "توکن اینترنتی");
       const created = await assetApi.createAssetFromUrl(assetUrlInput.trim(), name, currentLimit.type);
+      const createdUrl = created.fileUrl || created.url || created.assetUrl || "";
 
       setAssetUrlInput("");
       setAssetNameInput("");
       setShowUrlInput(false);
 
       if (activeTab === "maps") {
-        await handleSelectMap(created.fileUrl, created.id);
+        await handleSelectMap(createdUrl, created.id);
       } else {
-        handleAddToken(created.fileUrl, created.name, created);
+        handleAddToken(createdUrl, created.name, created);
         loadAssets(true);
       }
     } catch (err) {
@@ -382,7 +397,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                   {filteredPresets.map((map) => (
                       <div
                           key={map.id}
-                          onClick={() => canUploadMap && handleSelectMap(map.url || map.thumbnailUrl, map.id)}
+                          onClick={() => canUploadMap && handleSelectMap(resolveAssetUrl(map), map.id)}
                           className={cn(
                               "group relative rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950 transition-all duration-200",
                               canUploadMap
@@ -391,7 +406,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getFullAssetUrl(map.url || map.thumbnailUrl)}
+                            src={resolveAssetUrl(map)}
                             alt={map.name}
                             className="w-full h-24 object-cover group-hover:brightness-105 transition-all"
                             loading="lazy"
@@ -417,7 +432,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                   {filteredPresets.map((token) => (
                       <div
                           key={token.id}
-                          onClick={() => handleAddToken(token.avatarUrl || token.url, token.nameFa || token.name, token)}
+                          onClick={() => handleAddToken(resolveAssetUrl(token), token.nameFa || token.name, token)}
                           className={cn(
                               "group p-2 rounded-2xl border border-zinc-800 bg-zinc-950 transition-all duration-150 flex flex-col items-center gap-1.5 active:scale-95",
                               !hasActiveMap
@@ -426,7 +441,7 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
                           )}
                       >
                         <img
-                            src={getFullAssetUrl(token.avatarUrl || token.url)}
+                            src={resolveAssetUrl(token)}
                             alt={token.name}
                             className="w-12 h-12 rounded-full object-cover border border-amber-500/30"
                             loading="lazy"
@@ -446,41 +461,56 @@ export const AssetMenu = memo(({ isGM = false, permissions = {} }) => {
               فایل‌های شخصی شما:
             </span>
                 <div className="grid grid-cols-3 gap-2">
-                  {filteredUserAssets.map((asset) => (
-                      <div
-                          key={asset.id}
-                          onClick={() => {
-                            if (asset.type === "MAP" && canUploadMap) {
-                              handleSelectMap(asset.fileUrl, asset.id);
-                            } else if (hasActiveMap) {
-                              handleAddToken(asset.fileUrl, asset.name, asset);
-                            }
-                          }}
-                          className={cn(
-                              "group relative p-1.5 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col items-center gap-1 transition-all active:scale-95",
-                              !hasActiveMap && asset.type !== "MAP"
-                                  ? "opacity-40 cursor-not-allowed"
-                                  : "hover:border-amber-500 cursor-pointer"
-                          )}
-                      >
-                        <img
-                            src={getFullAssetUrl(asset.fileUrl)}
-                            alt={asset.name}
-                            className="w-10 h-10 object-cover rounded-lg"
-                            loading="lazy"
-                        />
-                        <span className="text-[10px] text-zinc-300 truncate max-w-full">{asset.name}</span>
-
-                        <button
-                            type="button"
-                            onClick={(e) => handleDeleteAsset(e, asset.id)}
-                            className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                            title="حذف"
+                  {filteredUserAssets.map((asset) => {
+                    const itemUrl = resolveAssetUrl(asset);
+                    return (
+                        <div
+                            key={asset.id}
+                            onClick={() => {
+                              if (asset.type === "MAP" && canUploadMap) {
+                                handleSelectMap(itemUrl, asset.id);
+                              } else if (hasActiveMap) {
+                                handleAddToken(itemUrl, asset.name, asset);
+                              }
+                            }}
+                            className={cn(
+                                "group relative p-2 rounded-2xl border border-zinc-800 bg-zinc-950 flex flex-col items-center gap-1.5 transition-all active:scale-95",
+                                !hasActiveMap && asset.type !== "MAP"
+                                    ? "opacity-40 cursor-not-allowed"
+                                    : "hover:border-amber-500 cursor-pointer hover:bg-zinc-900"
+                            )}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                  ))}
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 flex items-center justify-center border border-zinc-800 relative">
+                            <img
+                                src={itemUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.classList.remove("hidden");
+                                  }
+                                }}
+                            />
+                            <ImageIcon className="w-5 h-5 text-zinc-600 hidden" />
+                          </div>
+
+                          <span className="text-[10px] font-medium text-zinc-300 truncate max-w-full text-center">
+                      {asset.name}
+                    </span>
+
+                          <button
+                              type="button"
+                              onClick={(e) => handleDeleteAsset(e, asset.id)}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                              title="حذف"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                    );
+                  })}
                 </div>
               </div>
           )}
