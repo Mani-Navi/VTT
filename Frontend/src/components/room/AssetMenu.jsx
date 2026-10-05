@@ -10,9 +10,9 @@ import {
   Link as LinkIcon,
   Trash2,
 } from "lucide-react";
-import { useCanvasStore } from "../../store/canvas.store";
-import { useSceneStore } from "../../store/scene.store";
-import { useAuthStore } from "../../store/auth.store";
+import { useCanvasStore } from "../../stores/canvas.store";
+import { useSceneStore } from "../../stores/scene.store";
+import { useAuthStore } from "../../stores/auth.store";
 import { assetApi, getAssetUrl } from "../../api/asset.api";
 import { MAP_PRESETS } from "../../constants/mapPresets";
 import { TOKEN_PRESETS } from "../../constants/tokenPresets";
@@ -30,7 +30,6 @@ const isValidUUID = (uuid) => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid.trim());
 };
 
-// حل همه‌جانبه‌ی آدرس فایل از هر فیلدی که بک‌اند فرستاده باشد
 const resolveAssetUrl = (asset) => {
   if (!asset) return "";
   if (typeof asset === "string") return getAssetUrl(asset);
