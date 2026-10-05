@@ -40,16 +40,15 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // پیکربندی استاندارد CSP با پشتیبانی کامل از Google One-Tap و Google Identity Services
         String cspPolicy = String.join("; ",
                 "default-src 'self'",
                 "script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client",
                 "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style https://fonts.googleapis.com",
-                "img-src 'self' data: blob: https://lh3.googleusercontent.com https://accounts.google.com",
+                "img-src 'self' data: blob: https://*.railway.app https://*.vercel.app https://lh3.googleusercontent.com https://accounts.google.com",
                 "font-src 'self' data: https://fonts.gstatic.com",
                 "frame-src 'self' https://accounts.google.com",
-                "media-src 'self' blob: data:",
-                "connect-src 'self' https://accounts.google.com https://*.railway.app " + livekitUrl,
+                "media-src 'self' blob: data: https://*.railway.app",
+                "connect-src 'self' https://accounts.google.com https://*.railway.app https://*.vercel.app " + livekitUrl,
                 "object-src 'none'",
                 "base-uri 'self'",
                 "form-action 'self'",
@@ -68,7 +67,6 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(31536000)
                                 .preload(true)
                         )
-                        // اجازه باز شدن پاپ‌آپ گوگل و تبادل postMessage به کلاینت
                         .addHeaderWriter(new StaticHeadersWriter(
                                 "Cross-Origin-Opener-Policy",
                                 "same-origin-allow-popups"

@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -42,13 +43,16 @@ public class UserService {
     public UserDto updateProfile(String userEmail, UpdateProfileRequest request) {
         User user = getByEmail(userEmail);
 
-        if (request.getUsername() != null && !request.getUsername().isBlank()
-                && !request.getUsername().equals(user.getUsername())) {
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
             String trimmedUsername = request.getUsername().trim();
-            if (userRepository.existsByUsername(trimmedUsername)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "این نام کاربری قبلاً انتخاب شده است");
+            // اگر یوزرنیم تغییر کرده بود، چک کن که متعلق به کاربر دیگری نباشد (رفع خطای 409)
+            if (!trimmedUsername.equalsIgnoreCase(user.getUsername())) {
+                Optional<User> existingUser = userRepository.findByUsername(trimmedUsername);
+                if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "این نام کاربری قبلاً انتخاب شده است");
+                }
+                user.setUsername(trimmedUsername);
             }
-            user.setUsername(trimmedUsername);
         }
 
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
