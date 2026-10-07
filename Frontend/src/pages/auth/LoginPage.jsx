@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LoginForm } from "../../components/auth/LoginForm";
+import { Footer } from "../../components/layout/Footer.jsx";
 import { useAuthStore } from "../../stores/auth.store";
 import { isTokenExpired } from "../../utils/jwt";
 import { Dices, Sparkles, ShieldCheck } from "lucide-react";
@@ -22,27 +23,27 @@ export const LoginPage = () => {
 
   return (
       <div
-          className="min-h-screen w-full bg-[#090a0f] text-zinc-100 flex flex-col justify-start sm:justify-center items-center font-fa select-none relative overflow-y-auto overflow-x-hidden py-6 sm:py-10"
+          className="min-h-screen w-full bg-[#090a0f] text-zinc-100 flex flex-col justify-between items-center font-fa select-none relative overflow-y-auto overflow-x-hidden py-6 sm:py-8"
           dir="rtl"
       >
-        <div className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[110px] sm:blur-[140px] pointer-events-none" />
-        <div className="fixed -bottom-28 right-1/4 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-amber-600/5 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" />
+        <div className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[110px] sm:blur-[140px] pointer-events-none" aria-hidden="true" />
+        <div className="fixed -bottom-28 right-1/4 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-amber-600/5 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" aria-hidden="true" />
 
-        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 my-auto">
+        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 my-auto" role="main">
           <div className="w-full max-w-4xl glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] grid grid-cols-1 lg:grid-cols-12 overflow-hidden animate-fade-in-up">
             {/* ستون تزئینی */}
-            <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-[#090a0f] border-l border-zinc-800/70 p-7 flex-col justify-between overflow-hidden">
+            <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-[#090a0f] border-l border-zinc-800/70 p-7 flex-col justify-between overflow-hidden" aria-hidden="true">
               <div className="absolute inset-0 bg-[radial-gradient(#3f3f46_1px,transparent_1px)] [background-size:20px_20px] opacity-25 pointer-events-none" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="relative z-10 flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
-              </span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+                </span>
                 <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                Next-Gen Persian VTT
-              </span>
+                  Next-Gen Persian VTT
+                </span>
               </div>
 
               <div className="relative z-10 my-auto flex flex-col items-center justify-center py-4">
@@ -82,7 +83,7 @@ export const LoginPage = () => {
             <div className="lg:col-span-7 p-5 sm:p-7 md:p-8 flex flex-col justify-between">
               <div>
                 <div className="text-center mb-4 sm:mb-5">
-                  <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/25 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.12)]">
+                  <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/25 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.12)]" aria-hidden="true">
                     <Dices className="w-5 h-5 sm:w-5 sm:h-5" />
                   </div>
                   <h1 className="text-lg sm:text-xl font-black text-zinc-100 tracking-tight">
@@ -108,6 +109,9 @@ export const LoginPage = () => {
             </div>
           </div>
         </main>
+
+        {/* فوتر حقوقی */}
+        <Footer />
       </div>
   );
 };

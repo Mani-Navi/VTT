@@ -33,8 +33,13 @@ export default function App() {
 
     if (isCheckingAuth) {
         return (
-            <div className="min-h-screen bg-[#090a0f] flex items-center justify-center">
+            <div
+                className="min-h-screen bg-[#090a0f] flex items-center justify-center"
+                role="status"
+                aria-live="polite"
+            >
                 <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <span className="sr-only">در حال بررسی اطلاعات کاربری و راه‌اندازی میز...</span>
             </div>
         );
     }
