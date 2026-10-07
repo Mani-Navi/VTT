@@ -192,7 +192,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.SELECT,
       label: "Select",
-      labelFa: "انتخاب و جابجایی (V یا S)",
+      labelFa: "انتخاب و جابجایی",
       icon: MousePointer,
       shortcut: "V",
       allowed: true,
@@ -200,7 +200,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.PAN,
       label: "Pan",
-      labelFa: "حرکت در نقشه (H)",
+      labelFa: "حرکت در نقشه",
       icon: Hand,
       shortcut: "H",
       allowed: true,
@@ -208,7 +208,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.DRAW,
       label: "Draw",
-      labelFa: "قلم و اشکال هندسی (D)",
+      labelFa: "قلم و اشکال هندسی",
       icon: Pencil,
       shortcut: "D",
       allowed: isGM || permissions?.canDrawing !== false,
@@ -216,7 +216,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.TEXT,
       label: "Text",
-      labelFa: "نوشت‌افزار (T)",
+      labelFa: "نوشت‌افزار",
       icon: Type,
       shortcut: "T",
       allowed: isGM || permissions?.canText !== false,
@@ -224,7 +224,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.FOG,
       label: "Fog of War",
-      labelFa: "مه جنگ و تاریکی (F)",
+      labelFa: "مه جنگ و تاریکی",
       icon: EyeOff,
       shortcut: "F",
       allowed: isGM || permissions?.canFog === true,
@@ -232,7 +232,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.RULER,
       label: "Ruler",
-      labelFa: "خط‌کش اندازه‌گیری (R)",
+      labelFa: "خط‌کش اندازه‌گیری",
       icon: Ruler,
       shortcut: "R",
       allowed: isGM || permissions?.canRuler !== false,
@@ -240,7 +240,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
     {
       id: TOOLS.LASER,
       label: "Laser Pointer",
-      labelFa: "نشانگر لیزری (L)",
+      labelFa: "نشانگر لیزری",
       icon: Crosshair,
       shortcut: "L",
       allowed: true,
@@ -258,7 +258,11 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
               </div>
           )}
 
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.7)] backdrop-blur-2xl text-zinc-200 transition-all overflow-visible">
+          <div
+              role="toolbar"
+              aria-label="نوار ابزار اصلی میز بازی"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.7)] backdrop-blur-2xl text-zinc-200 transition-all overflow-visible"
+          >
             <div className="flex items-center gap-0.5 sm:gap-1">
               {primaryTools.map((t) => {
                 if (!t.allowed) return null;
@@ -270,13 +274,15 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                     <Tooltip
                         key={t.id}
                         content={t.label}
-                        subContent={isDisabled ? "ابتدا نقشه را بارگذاری کنید" : t.labelFa}
+                        subContent={isDisabled ? "ابتدا نقشه را بارگذاری کنید" : `${t.labelFa} (${t.shortcut})`}
                         shortcut={isDisabled ? undefined : t.shortcut}
                     >
                       <button
                           type="button"
                           disabled={isDisabled}
                           onClick={() => handleToolClick(t.id)}
+                          aria-label={`${t.labelFa} (کلید ${t.shortcut})`}
+                          aria-pressed={isActive}
                           className={cn(
                               "w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0",
                               isDisabled
@@ -286,27 +292,28 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                                       : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 active:scale-95 cursor-pointer"
                           )}
                       >
-                        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <Icon className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                       </button>
                     </Tooltip>
                 );
               })}
             </div>
 
-            <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" />
-            <Tooltip content="3D Dice" subContent="پرتاب تاس سه‌بعدی فیزیکی" shortcut="B">
+            <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" aria-hidden="true" />
+            <Tooltip content="3D Dice" subContent="پرتاب تاس سه‌بعدی فیزیکی (B)" shortcut="B">
               <button
                   type="button"
                   onClick={() => useDiceStore.getState().setOpen(true)}
+                  aria-label="پرتاب تاس سه‌بعدی فیزیکی (کلید B)"
                   className="w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20 active:scale-95 transition-all duration-150 cursor-pointer shrink-0 shadow-sm shadow-amber-500/5"
               >
-                <Dices className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Dices className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
               </button>
             </Tooltip>
 
             {!isGM && hasActiveMap && (
                 <>
-                  <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" />
+                  <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" aria-hidden="true" />
                   <Tooltip
                       content="My Character"
                       subContent={
@@ -318,6 +325,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                     <button
                         type="button"
                         onClick={handleMyCharacterClick}
+                        aria-label={myExistingToken ? "نمایش و تمرکز بر کاراکتر شما" : "افزودن کاراکتر من به نقشه"}
                         className={cn(
                             "w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 active:scale-95",
                             myExistingToken
@@ -325,19 +333,21 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                                 : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm"
                         )}
                     >
-                      <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <User className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                     </button>
                   </Tooltip>
                 </>
             )}
 
-            <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" />
+            <div className="h-5 sm:h-6 w-px bg-zinc-800/80 mx-0.5 sm:mx-1 shrink-0" aria-hidden="true" />
 
             {(isGM || permissions?.canAssets) && (
-                <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها" shortcut="A">
+                <Tooltip content="Asset Library" subContent="کتابخانه منابع و نقشه‌ها (A)" shortcut="A">
                   <button
                       type="button"
                       onClick={() => toggleMenu("asset")}
+                      aria-label="کتابخانه منابع و نقشه‌ها (کلید A)"
+                      aria-expanded={isAssetOpen}
                       className={cn(
                           "w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 active:scale-95",
                           isAssetOpen
@@ -347,7 +357,7 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                                   : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
                       )}
                   >
-                    <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                   </button>
                 </Tooltip>
             )}
@@ -357,6 +367,8 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                   <button
                       type="button"
                       onClick={() => toggleMenu("settings")}
+                      aria-label="تنظیمات اتاق و گرید نقشه"
+                      aria-expanded={isSettingsOpen}
                       className={cn(
                           "w-8.5 h-8.5 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 active:scale-95",
                           isSettingsOpen
@@ -364,14 +376,19 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                               : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
                       )}
                   >
-                    <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Settings className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                   </button>
                 </Tooltip>
             )}
           </div>
         </div>
 
-        <div className="fixed bottom-18 sm:bottom-6 right-3 sm:right-6 z-30 flex items-center gap-1 p-1 sm:p-1.5 bg-zinc-950/85 border border-zinc-800/80 rounded-xl shadow-[0_8px_25px_rgba(0,0,0,0.5)] backdrop-blur-xl text-xs text-zinc-300">
+        {/* نوار کنترل بزرگ‌نمایی */}
+        <div
+            role="toolbar"
+            aria-label="کنترل بزرگ‌نمایی نقشه"
+            className="fixed bottom-18 sm:bottom-6 right-3 sm:right-6 z-30 flex items-center gap-1 p-1 sm:p-1.5 bg-zinc-950/85 border border-zinc-800/80 rounded-xl shadow-[0_8px_25px_rgba(0,0,0,0.5)] backdrop-blur-xl text-xs text-zinc-300"
+        >
           <button
               type="button"
               disabled={!hasActiveMap}
@@ -383,8 +400,9 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                       : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-90 cursor-pointer"
               )}
               title="کوچک‌نمایی"
+              aria-label="کوچک‌نمایی نقشه"
           >
-            <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
           </button>
           <button
               type="button"
@@ -396,7 +414,8 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                       ? "text-zinc-700 cursor-not-allowed"
                       : "text-zinc-300 hover:bg-zinc-800/80 hover:text-amber-400 active:scale-95 cursor-pointer font-bold"
               )}
-              title="بازنشانی بزرگ‌نمایی"
+              title="بازنشانی بزرگ‌نمایی به ۱۰۰ درصد"
+              aria-label={`بزرگ‌نمایی کنونی ${Math.round(zoom * 100)} درصد، کلیک برای بازنشانی`}
           >
             {Math.round(zoom * 100)}%
           </button>
@@ -411,8 +430,9 @@ export const Toolbar = memo(({ isGM: propIsGM, permissions = {} }) => {
                       : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-90 cursor-pointer"
               )}
               title="بزرگ‌نمایی"
+              aria-label="بزرگ‌نمایی نقشه"
           >
-            <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
           </button>
         </div>
       </>
