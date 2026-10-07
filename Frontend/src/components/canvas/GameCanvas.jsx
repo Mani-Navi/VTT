@@ -1466,7 +1466,7 @@ export const GameCanvas = ({ isGM = false, permissions = {} }) => {
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-semibold mb-2">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>میز مجازی Persian VTT</span>
+                    <span>میز مجازی Titipool</span>
                   </div>
                   <h1 className="text-xl md:text-2xl font-black text-zinc-100">
                     به ماجراجویی خوش آمدید!

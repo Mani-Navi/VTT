@@ -22,7 +22,7 @@ export const PrivacyPolicyPage = () => {
 
             <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6 text-zinc-300 text-xs sm:text-sm leading-relaxed" role="main">
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 space-y-1">
-                    <h1 className="font-bold text-sm sm:text-base">سیاست حفظ حریم خصوصی کاربران Persian VTT</h1>
+                    <h1 className="font-bold text-sm sm:text-base">سیاست حفظ حریم خصوصی کاربران Titipool</h1>
                     <p className="text-[11px] text-amber-400/80">آخرین بروزرسانی: اسفند ۱۴۰۳ (مطابق با استانداردهای GDPR و قوانین ناظر بر حریم خصوصی داده‌ها)</p>
                 </div>
 
@@ -57,7 +57,7 @@ export const PrivacyPolicyPage = () => {
                         ۳. پردازش صوت و اشخاص ثالث
                     </h2>
                     <p>
-                        پلتفرم Persian VTT از سرور مستقل SFU صوت (LiveKit) استفاده می‌نماید. استریم‌های صوتی به هیچ‌وجه روی سرورها ذخیره یا ضبط نمی‌گردند و صرفاً در زمان واقعی بین اعضای اتاق بازپخش می‌شوند. هیچ‌گونه ابزار تحلیلی ردیابی شخص ثالث (مانند Google Analytics یا بازاریابی تجاری) در پلتفرم فعال نیست.
+                        پلتفرم Titipool از سرور مستقل SFU صوت (LiveKit) استفاده می‌نماید. استریم‌های صوتی به هیچ‌وجه روی سرورها ذخیره یا ضبط نمی‌گردند و صرفاً در زمان واقعی بین اعضای اتاق بازپخش می‌شوند. هیچ‌گونه ابزار تحلیلی ردیابی شخص ثالث (مانند Google Analytics یا بازاریابی تجاری) در پلتفرم فعال نیست.
                     </p>
                 </section>
 

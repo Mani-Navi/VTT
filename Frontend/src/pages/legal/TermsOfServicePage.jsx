@@ -22,7 +22,7 @@ export const TermsOfServicePage = () => {
 
             <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6 text-zinc-300 text-xs sm:text-sm leading-relaxed" role="main">
                 <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-zinc-300 space-y-1">
-                    <h1 className="font-bold text-sm sm:text-base text-zinc-100">توافق‌نامه شرایط خدمات پلتفرم Persian VTT</h1>
+                    <h1 className="font-bold text-sm sm:text-base text-zinc-100">توافق‌نامه شرایط خدمات پلتفرم Titipool</h1>
                     <p className="text-[11px] text-zinc-400">ثبت‌نام و ورود به محیط بازی به منزله پذیرش بدون قید و شرط این توافق‌نامه است.</p>
                 </div>
 
@@ -32,7 +32,7 @@ export const TermsOfServicePage = () => {
                         ۱. مالکیت محتوا و حق کپی‌رایت
                     </h2>
                     <p className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-200 font-medium">
-                        کاربر مسئولیت کامل محتوایی که بر روی پلتفرم آپلود می‌نماید (تصاویر نقشه، آواتار و فایل‌های ضمیمه) را شخصاً می‌پذیرد. آپلود هرگونه محتوای دارای کپی‌رایت بدون اخذ مجوز مالک ممنوع است و Persian VTT حق حذف محتوای گزارش‌شده را بدون اطلاع قبلی برای خود محفوظ می‌دارد.
+                        کاربر مسئولیت کامل محتوایی که بر روی پلتفرم آپلود می‌نماید (تصاویر نقشه، آواتار و فایل‌های ضمیمه) را شخصاً می‌پذیرد. آپلود هرگونه محتوای دارای کپی‌رایت بدون اخذ مجوز مالک ممنوع است و Titipool حق حذف محتوای گزارش‌شده را بدون اطلاع قبلی برای خود محفوظ می‌دارد.
                     </p>
                 </section>
 

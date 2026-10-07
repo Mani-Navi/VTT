@@ -42,7 +42,7 @@ export const LoginPage = () => {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
                 </span>
                 <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Next-Gen Persian VTT
+                  Titipool
                 </span>
               </div>
 

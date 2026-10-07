@@ -13,7 +13,7 @@ export const Footer = () => {
         >
             <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] sm:text-xs text-zinc-400">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-300">Persian VTT (Titipool)</span>
+                    <span className="font-semibold text-zinc-300">Titipool</span>
                     <span className="text-zinc-600">|</span>
                     <span>© {currentYear} تمامی حقوق محفوظ است.</span>
                 </div>
