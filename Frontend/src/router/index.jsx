@@ -6,6 +6,8 @@ import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { useAuthStore } from "../stores/auth.store";
 import { isTokenExpired } from "../utils/jwt";
+import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
+import { Dices } from "lucide-react";
 
 // لود تنبل صفحات حقوقی الزامی
 const PrivacyPolicyPage = lazy(() => import("../pages/legal/PrivacyPolicyPage.jsx"));
@@ -20,22 +22,27 @@ const ProfilePage = lazy(() =>
     }))
 );
 
-// طبق بند ۲ سند: RoomPage و کتابخانه صوتی در زمان ورود به اتاق لود می‌شوند
+// لود تنبل صفحه اتاق بازی
 const RoomPage = lazy(() =>
     import("../pages/room/RoomPage.jsx").then((m) => ({
         default: m.RoomPage || m.default,
     }))
 );
 
-// اسپینر لودینگ هماهنگ با پالت تاریک و استانداردهای دسترس‌پذیری
+// اسپینر لودینگ شیک و هماهنگ با تم دارک‌فانتزی
 const LoadingFallback = () => (
     <div
-        className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center gap-3"
+        className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center gap-3 font-fa select-none"
         role="status"
         aria-live="polite"
     >
-        <div className="w-10 h-10 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs text-zinc-400 font-medium">در حال بارگذاری اطلاعات...</span>
+        <div className="relative flex items-center justify-center">
+            <div className="w-12 h-12 border-2 border-amber-500/20 border-t-amber-400 rounded-full animate-spin" />
+            <Dices className="w-5 h-5 text-amber-400/80 absolute" />
+        </div>
+        <span className="text-xs text-zinc-400 font-medium tracking-wide animate-pulse">
+      در حال آماده‌سازی میز بازی...
+    </span>
     </div>
 );
 
@@ -48,13 +55,26 @@ const RootRedirect = () => {
 };
 
 export const router = createBrowserRouter([
-    { path: "/", element: <RootRedirect /> },
-    { path: "/login", element: <LoginPage /> },
-    { path: "/register", element: <RegisterPage /> },
+    {
+        path: "/",
+        element: <RootRedirect />,
+        errorElement: <RouteErrorBoundary />,
+    },
+    {
+        path: "/login",
+        element: <LoginPage />,
+        errorElement: <RouteErrorBoundary />,
+    },
+    {
+        path: "/register",
+        element: <RegisterPage />,
+        errorElement: <RouteErrorBoundary />,
+    },
 
-    // مسیرهای عمومی و باز الزامات قانونی (Legal Compliance Routes)
+    // مسیرهای عمومی الزامات قانونی
     {
         path: "/privacy-policy",
+        errorElement: <RouteErrorBoundary />,
         element: (
             <Suspense fallback={<LoadingFallback />}>
                 <PrivacyPolicyPage />
@@ -63,6 +83,7 @@ export const router = createBrowserRouter([
     },
     {
         path: "/terms-of-service",
+        errorElement: <RouteErrorBoundary />,
         element: (
             <Suspense fallback={<LoadingFallback />}>
                 <TermsOfServicePage />
@@ -71,6 +92,7 @@ export const router = createBrowserRouter([
     },
     {
         path: "/cookie-policy",
+        errorElement: <RouteErrorBoundary />,
         element: (
             <Suspense fallback={<LoadingFallback />}>
                 <CookiePolicyPage />
@@ -79,6 +101,7 @@ export const router = createBrowserRouter([
     },
     {
         path: "/refund-policy",
+        errorElement: <RouteErrorBoundary />,
         element: (
             <Suspense fallback={<LoadingFallback />}>
                 <RefundPolicyPage />
@@ -89,10 +112,16 @@ export const router = createBrowserRouter([
     // مسیرهای محافظت‌شده کاربری
     {
         element: <ProtectedRoute />,
+        errorElement: <RouteErrorBoundary />,
         children: [
-            { path: "/dashboard", element: <DashboardPage /> },
+            {
+                path: "/dashboard",
+                element: <DashboardPage />,
+                errorElement: <RouteErrorBoundary />,
+            },
             {
                 path: "/profile",
+                errorElement: <RouteErrorBoundary />,
                 element: (
                     <Suspense fallback={<LoadingFallback />}>
                         <ProfilePage />
@@ -101,6 +130,7 @@ export const router = createBrowserRouter([
             },
             {
                 path: "/room/:roomId",
+                errorElement: <RouteErrorBoundary />,
                 element: (
                     <Suspense fallback={<LoadingFallback />}>
                         <RoomPage />
