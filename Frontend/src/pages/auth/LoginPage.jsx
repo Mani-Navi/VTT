@@ -23,13 +23,14 @@ export const LoginPage = () => {
 
   return (
       <div
-          className="min-h-screen w-full bg-[#090a0f] text-zinc-100 flex flex-col justify-between items-center font-fa select-none relative overflow-y-auto overflow-x-hidden py-6 sm:py-8"
+          className="fixed inset-0 w-full h-[100dvh] bg-[#090a0f] text-zinc-100 flex flex-col font-fa select-none overflow-y-auto overflow-x-hidden"
+          style={{ WebkitOverflowScrolling: "touch" }}
           dir="rtl"
       >
         <div className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[110px] sm:blur-[140px] pointer-events-none" aria-hidden="true" />
         <div className="fixed -bottom-28 right-1/4 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-amber-600/5 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" aria-hidden="true" />
 
-        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 my-auto" role="main">
+        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 py-8 sm:py-12 shrink-0" role="main">
           <div className="w-full max-w-4xl glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] grid grid-cols-1 lg:grid-cols-12 overflow-hidden animate-fade-in-up">
             {/* ستون تزئینی */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-[#090a0f] border-l border-zinc-800/70 p-7 flex-col justify-between overflow-hidden" aria-hidden="true">
@@ -42,7 +43,7 @@ export const LoginPage = () => {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
                 </span>
                 <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Titipool
+                  Next-Gen Persian VTT
                 </span>
               </div>
 
