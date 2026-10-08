@@ -1,13 +1,14 @@
 import React, { Suspense, lazy } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "../pages/auth/LoginPage.jsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.jsx";
 import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { useAuthStore } from "../stores/auth.store";
-import { isTokenExpired } from "../utils/jwt";
 import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
 import { Dices } from "lucide-react";
+
+// لود تنبل صفحه لندینگ اصلی
+const LandingPage = lazy(() => import("../pages/LandingPage.jsx"));
 
 // لود تنبل صفحات حقوقی الزامی
 const PrivacyPolicyPage = lazy(() => import("../pages/legal/PrivacyPolicyPage.jsx"));
@@ -29,7 +30,7 @@ const RoomPage = lazy(() =>
     }))
 );
 
-// اسپینر لودینگ شیک و هماهنگ با تم دارک‌فانتزی
+// اسپینر لودینگ هماهنگ با تم دارک‌فانتزی پروژه
 const LoadingFallback = () => (
     <div
         className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center gap-3 font-fa select-none"
@@ -41,24 +42,21 @@ const LoadingFallback = () => (
             <Dices className="w-5 h-5 text-amber-400/80 absolute" />
         </div>
         <span className="text-xs text-zinc-400 font-medium tracking-wide animate-pulse">
-      در حال آماده‌سازی میز بازی...
-    </span>
+            در حال آماده‌سازی میز بازی...
+        </span>
     </div>
 );
 
-const RootRedirect = () => {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const token = useAuthStore((state) => state.token);
-    const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
-
-    return <Navigate to={isSessionValid ? "/dashboard" : "/login"} replace />;
-};
-
 export const router = createBrowserRouter([
+    // روت اصلی: نمایش لندینگ پیج مدرن
     {
         path: "/",
-        element: <RootRedirect />,
         errorElement: <RouteErrorBoundary />,
+        element: (
+            <Suspense fallback={<LoadingFallback />}>
+                <LandingPage />
+            </Suspense>
+        ),
     },
     {
         path: "/login",
