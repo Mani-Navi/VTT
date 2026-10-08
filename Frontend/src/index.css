@@ -5,7 +5,7 @@
     overflow-y: auto !important;
     overflow-x: hidden;
     height: auto;
-    scroll-behavior: smooth;
+    /* حذف scroll-behavior: smooth برای روان و فوری شدن اسکرول موس */
   }
 
   body {
@@ -34,7 +34,6 @@
     position: relative;
   }
 
-  /* شاخص وضوح فوکوس برای ناوبری با صفحه‌کلید طبق استاندارد WCAG 2.1 AA */
   :focus-visible {
     outline: 2px solid #f59e0b;
     outline-offset: 2px;
@@ -62,46 +61,46 @@
   }
 }
 
-/* انیمیشن‌ها و ترنزیشن‌های استاندارد و بهینه */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+/* انیمیشن رول شدن دوبعدی و تغییر وجه‌های تاس D20 */
+@keyframes diceRollCycle {
+  0% {
+    transform: scale(1) rotate(0deg);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  20% {
+    transform: scale(1.08) rotate(15deg);
+  }
+  40% {
+    transform: scale(0.92) rotate(-10deg) skewX(4deg);
+  }
+  60% {
+    transform: scale(1.06) rotate(8deg) skewY(-3deg);
+  }
+  80% {
+    transform: scale(0.96) rotate(-4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
   }
 }
 
-@keyframes shakeSubtle {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-3px); }
-  40%, 80% { transform: translateX(3px); }
+/* افکت نورپردازی چرخشی روی وجه‌ها */
+@keyframes facetGlow {
+  0%, 100% {
+    fill: #21232e;
+    stroke: #f59e0b;
+  }
+  50% {
+    fill: #3b2810;
+    stroke: #fbbf24;
+  }
 }
 
-@keyframes floatGentle {
-  0%, 100% { transform: translateY(0px) rotate(var(--tw-rotate, 0deg)); }
-  50% { transform: translateY(-4px) rotate(var(--tw-rotate, 0deg)); }
-}
-
+/* کلاس‌های سبک و شتاب‌دهنده GPU بدون فشار به CPU */
 @layer utilities {
-  .animate-fade-in-up {
-    animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  .animate-shake-subtle {
-    animation: shakeSubtle 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-  }
-
-  .animate-float-card {
-    animation: floatGentle 5s ease-in-out infinite;
-  }
-
-  .glass-card {
-    background: linear-gradient(135deg, rgba(24, 24, 27, 0.8) 0%, rgba(9, 10, 15, 0.95) 100%);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  .gpu-smooth {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .sr-only {
@@ -114,15 +113,5 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
-  }
-}
-
-/* سازگاری با ترجیحات کاربر برای حذف موشن طبق WCAG 2.3.3 */
-@media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }

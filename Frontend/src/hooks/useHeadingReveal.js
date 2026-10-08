@@ -11,13 +11,11 @@ export function useHeadingReveal(options = {}) {
         lineSelector = '.reveal-line',
         eyebrowSelector = '.reveal-eyebrow',
         subtitleSelector = '.reveal-subtitle',
-        yPercent = 125,
-        stagger = 0.14,
-        duration = 1.05,
-        ease = 'power4.out',
-        start = 'top 85%',
-        rotateX = 25,
-        blur = true,
+        yPercent = 110,
+        stagger = 0.08,
+        duration = 0.75,
+        ease = 'power3.out',
+        start = 'top 88%',
         delay = 0,
         once = true,
     } = options;
@@ -49,65 +47,30 @@ export function useHeadingReveal(options = {}) {
                 delay,
             });
 
+            // انیمیشن‌های بهینه شده بدون فیلتر Blur که باعث افت فریم می‌شدند
             if (eyebrow) {
                 tl.fromTo(
                     eyebrow,
-                    {
-                        yPercent: 120,
-                        opacity: 0,
-                        ...(blur ? { filter: 'blur(4px)' } : {}),
-                    },
-                    {
-                        yPercent: 0,
-                        opacity: 1,
-                        ...(blur ? { filter: 'blur(0px)' } : {}),
-                        duration: 0.7,
-                        ease: 'power3.out',
-                    }
+                    { yPercent: 100, opacity: 0 },
+                    { yPercent: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
                 );
             }
 
             if (lines.length > 0) {
                 tl.fromTo(
                     lines,
-                    {
-                        yPercent,
-                        rotateX,
-                        rotateZ: -1.2,
-                        opacity: 0,
-                        transformOrigin: 'right bottom -30px',
-                        ...(blur ? { filter: 'blur(8px)' } : {}),
-                    },
-                    {
-                        yPercent: 0,
-                        rotateX: 0,
-                        rotateZ: 0,
-                        opacity: 1,
-                        ...(blur ? { filter: 'blur(0px)' } : {}),
-                        duration,
-                        ease,
-                        stagger,
-                    },
-                    eyebrow ? '<0.08' : 0
+                    { yPercent, opacity: 0 },
+                    { yPercent: 0, opacity: 1, duration, ease, stagger },
+                    eyebrow ? '<0.05' : 0
                 );
             }
 
             if (subtitle) {
                 tl.fromTo(
                     subtitle,
-                    {
-                        y: 28,
-                        opacity: 0,
-                        ...(blur ? { filter: 'blur(3px)' } : {}),
-                    },
-                    {
-                        y: 0,
-                        opacity: 1,
-                        ...(blur ? { filter: 'blur(0px)' } : {}),
-                        duration: 0.8,
-                        ease: 'power3.out',
-                    },
-                    '<0.25'
+                    { y: 16, opacity: 0 },
+                    { y: 0, opacity: 1, duration: 0.6, ease: 'power2.out' },
+                    '<0.15'
                 );
             }
         }, el);
@@ -122,8 +85,6 @@ export function useHeadingReveal(options = {}) {
         duration,
         ease,
         start,
-        rotateX,
-        blur,
         delay,
         once,
     ]);

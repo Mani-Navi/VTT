@@ -5,6 +5,7 @@ import { RegisterPage } from "../pages/auth/RegisterPage.jsx";
 import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
+import { DiceLoader } from "../components/ui/DiceLoader.jsx";
 import { Dices } from "lucide-react";
 
 // لود تنبل صفحه لندینگ اصلی
@@ -28,6 +29,17 @@ const RoomPage = lazy(() =>
     import("../pages/room/RoomPage.jsx").then((m) => ({
         default: m.RoomPage || m.default,
     }))
+);
+
+// لودینگ شیک و روان با تاس D20 متحرک
+const LoadingFallback = () => (
+    <div
+        className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center font-fa select-none"
+        role="status"
+        aria-live="polite"
+    >
+        <DiceLoader text="در حال آماده‌سازی میز بازی..." />
+    </div>
 );
 
 // اسپینر لودینگ هماهنگ با تم دارک‌فانتزی پروژه
