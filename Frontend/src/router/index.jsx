@@ -8,7 +8,7 @@ import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
 import { Dices } from "lucide-react";
 
 // لود تنبل صفحه لندینگ اصلی
-const LandingPage = lazy(() => import("../pages/LandingPage.jsx"));
+const LandingPage = lazy(() => import("../pages/LandingPage/LandingPage.jsx"));
 
 // لود تنبل صفحات حقوقی الزامی
 const PrivacyPolicyPage = lazy(() => import("../pages/legal/PrivacyPolicyPage.jsx"));
