@@ -12,8 +12,11 @@ import { BigStatement } from '../../components/landing/BigStatement';
 import { DiceSection } from '../../components/landing/DiceSection';
 import { ScenariosSection } from '../../components/landing/ScenariosSection';
 import { GameMasterSection } from '../../components/landing/GameMasterSection';
+import { PlayerSection } from '../../components/landing/PlayerSection';
+import { FeaturesSequence } from '../../components/landing/FeaturesSequence';
 import { HowItWorks } from '../../components/landing/HowItWorks';
 import { PersianBrandSection } from '../../components/landing/PersianBrandSection';
+import { FinalCta } from '../../components/landing/FinalCta';
 import { Footer } from '../../components/landing/Footer';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -74,9 +77,10 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-[#f0ece5] p-2 sm:p-5 md:p-8 flex flex-col items-center justify-start text-[#121316]">
-            {/* پوسته آرت‌بورد سفید معلق قبلی با حفظ اسکرول روان */}
-            <div className="w-full max-w-[1360px] bg-white rounded-[24px] sm:rounded-[36px] md:rounded-[44px] shadow-[0_30px_90px_rgba(25,23,20,0.06)] border border-[#e4ded4] relative flex flex-col">
+        <div className="w-full min-h-screen bg-white text-[#121316] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
+            {/* لایه‌بندی لبه‌به‌لبه و تمام‌صفحه بدون کادر و حاشیه اضافه */}
+            <div className="w-full flex flex-col relative">
+                {/* نوبار */}
                 <Navbar
                     onOpenAuth={handleOpenAuth}
                     onOpenProfile={handleOpenProfile}
@@ -85,6 +89,7 @@ export default function LandingPage() {
                     user={isSessionValid ? user : null}
                 />
 
+                {/* بخش هیرو */}
                 <Hero
                     onStartGame={handleStartGame}
                     onExploreMore={() => {
@@ -97,19 +102,37 @@ export default function LandingPage() {
                     }}
                 />
 
+                {/* بیانیه بزرگ */}
                 <BigStatement />
 
-                {/* سکشن تاس با موتور سه‌بعدی واقعی */}
+                {/* استیج سه‌بعدی تاس (پیش‌فرض D12) */}
                 <DiceSection />
 
+                {/* سناریوها */}
                 <ScenariosSection onSelectScenario={handleSelectScenario} />
 
+                {/* پنل دانجن‌مستر */}
                 <GameMasterSection />
 
+                {/* کارت تعاملی بازیکن نبرد */}
+                <PlayerSection />
+
+                {/* توالی قابلیت‌های ۶گانه */}
+                <FeaturesSequence />
+
+                {/* مراحل شروع بازی */}
                 <HowItWorks onStartGame={handleStartGame} />
 
+                {/* هویت فارسی */}
                 <PersianBrandSection />
 
+                {/* پیام اقدام پایانی */}
+                <FinalCta
+                    onStartGame={handleStartGame}
+                    onOpenAuth={handleOpenAuth}
+                />
+
+                {/* فوتر */}
                 <Footer />
             </div>
         </div>

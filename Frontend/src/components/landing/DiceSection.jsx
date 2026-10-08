@@ -30,7 +30,8 @@ export const DiceSection = () => {
 
     const [mode, setMode] = useState('quick');
     const [poolCounts, setPoolCounts] = useState({});
-    const [lastRollTypes, setLastRollTypes] = useState(['d20']);
+    // تنظیم پیش‌فرض روی d12
+    const [lastRollTypes, setLastRollTypes] = useState(['d12']);
     const playedCritAudioRef = useRef(false);
 
     // بررسی رخ دادن کریتیکال (Max Die)
@@ -54,10 +55,10 @@ export const DiceSection = () => {
         }
     }, [isAnyCritical, isRolling]);
 
-    // پرتاب نمایشی یک D20 در بارگذاری اولیه
+    // پرتاب نمایشی خودکار یک تاس D12 در ورود به سکشن
     useEffect(() => {
         const timer = setTimeout(() => {
-            triggerRoll(['d20']);
+            triggerRoll(['d12']);
         }, 800);
         return () => clearTimeout(timer);
     }, []);
@@ -109,14 +110,14 @@ export const DiceSection = () => {
         if (lastRollTypes.length > 0) {
             triggerRoll(lastRollTypes);
         } else {
-            triggerRoll(['d20']);
+            triggerRoll(['d12']);
         }
     };
 
     const totalPoolCount = Object.values(poolCounts).reduce((a, b) => a + b, 0);
 
     return (
-        <section id="dice" className="py-20 sm:py-28 px-4 sm:px-8 overflow-hidden" dir="rtl">
+        <section id="dice" className="py-20 sm:py-28 px-4 sm:px-8 overflow-hidden w-full" dir="rtl">
             <div className="max-w-6xl mx-auto">
                 <GsapHeadingReveal
                     eyebrow="موتور فیزیک سه‌بعدی · REAL 3D RAPIER PHYSICS"
@@ -125,7 +126,6 @@ export const DiceSection = () => {
                     containerClassName="max-w-2xl mx-auto mb-10 sm:mb-14"
                 />
 
-                {/* استیج سه‌بعدی تعبیه شده در لندینگ با پس‌زمینه دارک مخملی */}
                 <div className="relative rounded-3xl bg-[#090a10] border border-[#242738] shadow-[0_30px_90px_rgba(0,0,0,0.25)] h-[520px] sm:h-[580px] overflow-hidden select-none">
 
                     {/* رندر مستقیم کانواس سه بعدی راپیر */}
@@ -133,7 +133,7 @@ export const DiceSection = () => {
                         <DiceCanvas />
                     </div>
 
-                    {/* بنر نتیجه نهایی (Top Result HUD) */}
+                    {/* بنر نتیجه نهایی */}
                     {results.length > 0 && (
                         <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 z-20 animate-fade-in-up">
                             <div
@@ -187,9 +187,8 @@ export const DiceSection = () => {
                         </div>
                     )}
 
-                    {/* داک کنترل تاس در پایین باکس سه‌بعدی */}
+                    {/* داک کنترل تاس در پایین باکس */}
                     <div className="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-2 z-20 w-full px-4 max-w-2xl">
-                        {/* استخر چندتایی تاس‌ها */}
                         {mode === 'pool' && totalPoolCount > 0 && (
                             <div className="bg-zinc-950/95 border border-amber-500/30 p-2 rounded-2xl shadow-2xl backdrop-blur-2xl flex items-center justify-between gap-3 animate-fade-in-up w-full sm:w-auto">
                                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -229,10 +228,9 @@ export const DiceSection = () => {
                             </div>
                         )}
 
-                        {/* ردیف اصلی دکمه‌های پرتاب تاس و تم‌ها */}
                         <div className="flex items-center gap-1 sm:gap-1.5 bg-zinc-950/90 border border-zinc-800/80 p-1.5 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-2xl flex-wrap justify-center">
 
-                            {/* سوییچر تم‌های مرمر */}
+                            {/* سوییچر تم‌ها */}
                             <div className="flex items-center gap-1 bg-zinc-900/80 p-1 rounded-xl border border-zinc-800/80 ml-1">
                                 {Object.values(DICE_THEMES).map((t) => (
                                     <button
@@ -285,7 +283,7 @@ export const DiceSection = () => {
 
                             <div className="w-px h-5 bg-zinc-800/80 mx-0.5" />
 
-                            {/* دکمه‌های پرتاب تاس */}
+                            {/* دکمه‌های انتخاب تاس */}
                             {DICE_TYPES.map((d) => {
                                 const inPool = poolCounts[d.type] || 0;
                                 return (
