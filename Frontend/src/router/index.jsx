@@ -6,7 +6,6 @@ import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
 import { DiceLoader } from "../components/ui/DiceLoader.jsx";
-import { Dices } from "lucide-react";
 
 // لود تنبل صفحه لندینگ اصلی
 const LandingPage = lazy(() => import("../pages/LandingPage/LandingPage.jsx"));
@@ -31,7 +30,7 @@ const RoomPage = lazy(() =>
     }))
 );
 
-// لودینگ شیک و روان با تاس D20 متحرک
+// لودینگ شیک و هماهنگ با انیمیشن تاس D20 دوبعدی
 const LoadingFallback = () => (
     <div
         className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center font-fa select-none"
@@ -39,23 +38,6 @@ const LoadingFallback = () => (
         aria-live="polite"
     >
         <DiceLoader text="در حال آماده‌سازی میز بازی..." />
-    </div>
-);
-
-// اسپینر لودینگ هماهنگ با تم دارک‌فانتزی پروژه
-const LoadingFallback = () => (
-    <div
-        className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center gap-3 font-fa select-none"
-        role="status"
-        aria-live="polite"
-    >
-        <div className="relative flex items-center justify-center">
-            <div className="w-12 h-12 border-2 border-amber-500/20 border-t-amber-400 rounded-full animate-spin" />
-            <Dices className="w-5 h-5 text-amber-400/80 absolute" />
-        </div>
-        <span className="text-xs text-zinc-400 font-medium tracking-wide animate-pulse">
-            در حال آماده‌سازی میز بازی...
-        </span>
     </div>
 );
 
