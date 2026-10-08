@@ -5,7 +5,6 @@ import { RegisterPage } from "../pages/auth/RegisterPage.jsx";
 import { DashboardPage } from "../pages/dashboard/DashboardPage.jsx";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RouteErrorBoundary } from "../components/ui/RouteErrorBoundary.jsx";
-import { DiceLoader } from "../components/ui/DiceLoader.jsx";
 
 // لود تنبل صفحه لندینگ اصلی
 const LandingPage = lazy(() => import("../pages/LandingPage/LandingPage.jsx"));
@@ -30,16 +29,8 @@ const RoomPage = lazy(() =>
     }))
 );
 
-// لودینگ شیک و هماهنگ با انیمیشن تاس D20 دوبعدی
-const LoadingFallback = () => (
-    <div
-        className="min-h-screen w-full bg-[#090a0f] flex flex-col items-center justify-center font-fa select-none"
-        role="status"
-        aria-live="polite"
-    >
-        <DiceLoader text="در حال آماده‌سازی میز بازی..." />
-    </div>
-);
+// پس‌زمینه خام بدون هیچ انیمیشن یا اسپینر لودینگ
+const LoadingFallback = () => <div className="min-h-screen w-full bg-[#090a0f]" />;
 
 export const router = createBrowserRouter([
     // روت اصلی: نمایش لندینگ پیج مدرن

@@ -1,117 +1,100 @@
 @import "tailwindcss";
 
 @layer base {
-  html {
-    overflow-y: auto !important;
-    overflow-x: hidden;
-    height: auto;
-    /* حذف scroll-behavior: smooth برای روان و فوری شدن اسکرول موس */
-  }
+    html {
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        height: auto;
+    }
 
-  body {
-    background-color: #090a0f;
-    color: #f3f4f6;
-    font-family: "Vazirmatn", system-ui, sans-serif;
-    user-select: auto;
-    min-height: 100vh;
-    height: auto;
-    overflow-y: auto !important;
-    overflow-x: hidden;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-image:
-            radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.07) 0%, transparent 55%),
-            radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
-            radial-gradient(circle at 0% 100%, rgba(217, 119, 6, 0.04) 0%, transparent 45%);
-    background-attachment: fixed;
-  }
+    body {
+        background-color: #090a0f;
+        color: #f3f4f6;
+        font-family: "Vazirmatn", system-ui, sans-serif;
+        user-select: auto;
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-image:
+                radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.07) 0%, transparent 55%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(217, 119, 6, 0.04) 0%, transparent 45%);
+        background-attachment: fixed;
+    }
 
-  #root {
-    min-height: 100vh;
-    height: auto;
-    overflow-x: hidden;
-    position: relative;
-  }
+    #root {
+        min-height: 100vh;
+        height: auto;
+        overflow-x: hidden;
+        position: relative;
+    }
 
-  :focus-visible {
-    outline: 2px solid #f59e0b;
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
+    :focus-visible {
+        outline: 2px solid #f59e0b;
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
 
-  :focus:not(:focus-visible) {
-    outline: none;
-  }
+    :focus:not(:focus-visible) {
+        outline: none;
+    }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #090a0f;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #27272a;
-    border-radius: 9999px;
-    transition: background-color 0.2s ease;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #f59e0b;
-  }
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #090a0f;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #27272a;
+        border-radius: 9999px;
+        transition: background-color 0.2s ease;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #f59e0b;
+    }
 }
 
-/* انیمیشن رول شدن دوبعدی و تغییر وجه‌های تاس D20 */
-@keyframes diceRollCycle {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  20% {
-    transform: scale(1.08) rotate(15deg);
-  }
-  40% {
-    transform: scale(0.92) rotate(-10deg) skewX(4deg);
-  }
-  60% {
-    transform: scale(1.06) rotate(8deg) skewY(-3deg);
-  }
-  80% {
-    transform: scale(0.96) rotate(-4deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
+/* کی‌فریم‌های سبک سخت‌افزاری معلق بودن روی پردازنده گرافیکی (GPU) */
+@keyframes floatLevitateA {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
-/* افکت نورپردازی چرخشی روی وجه‌ها */
-@keyframes facetGlow {
-  0%, 100% {
-    fill: #21232e;
-    stroke: #f59e0b;
-  }
-  50% {
-    fill: #3b2810;
-    stroke: #fbbf24;
-  }
+@keyframes floatLevitateB {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(8px);
+    }
 }
 
-/* کلاس‌های سبک و شتاب‌دهنده GPU بدون فشار به CPU */
 @layer utilities {
-  .gpu-smooth {
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
+    .gpu-smooth {
+        will-change: transform;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
 
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
 }

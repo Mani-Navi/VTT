@@ -22,7 +22,7 @@ import { GsapHeadingReveal } from './GsapHeadingReveal';
 export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
     return (
         <section id="hero" className="relative pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-8 text-center w-full" dir="rtl">
-            {/* هاله نور بهینه */}
+            {/* هاله نور پس‌زمینه */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-amber-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
 
             <GsapHeadingReveal
@@ -66,167 +66,167 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                 </button>
             </motion.div>
 
-            {/* کهکشان اسمارتیزی سبک با شتاب‌دهنده گرافیکی GPU */}
-            <div className="relative mt-8 sm:mt-12 max-w-6xl mx-auto flex flex-wrap items-center justify-center gap-3 sm:gap-5 p-2 sm:p-4 select-none gpu-smooth">
+            {/* کهکشان اسمارتیزی با انیمیشن معلق و شناور نرم و سبک */}
+            <div className="relative mt-8 sm:mt-12 max-w-6xl mx-auto flex flex-wrap items-center justify-center gap-3 sm:gap-5 p-2 sm:p-4 select-none">
 
-                {/* ۱. چیپ طلایی کریتیکال */}
+                {/* ۱. چیپ طلایی کریتیکال (معلق) */}
                 <div
                     onClick={() => { sound.playCritChime(); onDiceClick(); }}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.2s_ease-in-out_infinite] gpu-smooth"
                 >
                     <Sparkles className="w-5 h-5" />
                     <span>Nat 20 Critical!</span>
                 </div>
 
-                {/* ۲. توکن زمردی پالادین */}
+                {/* ۲. توکن زمردی پالادین (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-emerald-950 border-2 border-emerald-500/60 text-emerald-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-emerald-950 border-2 border-emerald-500/60 text-emerald-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.8s_ease-in-out_infinite] gpu-smooth"
                 >
                     <div className="w-7 h-7 rounded-xl bg-emerald-500/30 flex items-center justify-center text-sm">🛡️</div>
                     <span>امیر (پالادین) · AC 18</span>
                 </div>
 
-                {/* ۳. چیپ یاقوتی اژدها */}
+                {/* ۳. چیپ یاقوتی اژدها (معلق) */}
                 <div
                     onClick={() => sound.playDiceRoll()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-rose-950 border-2 border-rose-500/60 text-rose-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-rose-950 border-2 border-rose-500/60 text-rose-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.1s_ease-in-out_infinite_0.4s] gpu-smooth"
                 >
                     <span className="text-xl">🐉</span>
                     <span>اژدهای سرخ · HP 160</span>
                 </div>
 
-                {/* ۴. کپسول ویس‌چت نعنایی */}
+                {/* ۴. کپسول ویس‌چت نعنایی (معلق) */}
                 <div
                     onClick={() => sound.playPttBeep(true)}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-emerald-400/60 text-emerald-400 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-emerald-400/60 text-emerald-400 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.5s_ease-in-out_infinite_0.6s] gpu-smooth"
                 >
                     <Mic className="w-5 h-5 text-emerald-400 animate-pulse" />
                     <span>صدای زنده · Space</span>
                 </div>
 
-                {/* ۵. توکن بنفش ویزارد */}
+                {/* ۵. توکن بنفش ویزارد (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-purple-950 border-2 border-purple-500/60 text-purple-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-purple-950 border-2 border-purple-500/60 text-purple-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.9s_ease-in-out_infinite_0.2s] gpu-smooth"
                 >
                     <span className="text-xl">🧙‍♂️</span>
                     <span>مانی (DM)</span>
                     <Crown className="w-4 h-4 text-amber-400" />
                 </div>
 
-                {/* ۶. چیپ کد اتاق */}
+                {/* ۶. چیپ کد اتاق (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.3s_ease-in-out_infinite_0.5s] gpu-smooth"
                 >
                     <Key className="w-5 h-5 text-amber-400" />
                     <span>ROOM: 75B4EE</span>
                 </div>
 
-                {/* ۷. چیپ صورتی سارا */}
+                {/* ۷. چیپ صورتی سارا (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-fuchsia-950 border-2 border-fuchsia-500/60 text-fuchsia-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-fuchsia-950 border-2 border-fuchsia-500/60 text-fuchsia-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.3s_ease-in-out_infinite_0.7s] gpu-smooth"
                 >
                     <span className="text-xl">🔮</span>
                     <span>سارا · طلسم نور</span>
                 </div>
 
-                {/* ۸. برچسب زرد خط‌کش */}
+                {/* ۸. برچسب زرد خط‌کش (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-yellow-500/60 text-yellow-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-yellow-500/60 text-yellow-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.7s_ease-in-out_infinite_0.3s] gpu-smooth"
                 >
                     <Ruler className="w-5 h-5 text-yellow-400" />
                     <span>30ft (6 سلول)</span>
                 </div>
 
-                {/* ۹. چیپ ارغوانی مه جنگ */}
+                {/* ۹. چیپ ارغوانی مه جنگ (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-violet-950 border-2 border-violet-500/60 text-violet-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-violet-950 border-2 border-violet-500/60 text-violet-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.6s_ease-in-out_infinite_0.4s] gpu-smooth"
                 >
                     <EyeOff className="w-5 h-5 text-violet-400" />
                     <span>برش مه (Fog)</span>
                 </div>
 
-                {/* ۱۰. اسمارتیز تم مرمر آتشین */}
+                {/* ۱۰. اسمارتیز تم مرمر آتشین (معلق) */}
                 <div
                     onClick={() => sound.playDiceRoll()}
-                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-amber-600 to-rose-600 border-2 border-amber-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold"
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-amber-600 to-rose-600 border-2 border-amber-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateB_3.9s_ease-in-out_infinite] gpu-smooth"
                     title="تاس مرمر آتشین"
                 >
                     🔥
                 </div>
 
-                {/* ۱۱. بج سلامت */}
+                {/* ۱۱. بج سلامت (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-rose-500/60 text-rose-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-rose-500/60 text-rose-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.0s_ease-in-out_infinite_0.5s] gpu-smooth"
                 >
                     <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
                     <span>HP 42/48</span>
                 </div>
 
-                {/* ۱۲. تگ اکشن مبارزه */}
+                {/* ۱۲. تگ اکشن مبارزه (معلق) */}
                 <div
                     onClick={() => sound.playDiceRoll()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.4s_ease-in-out_infinite_0.2s] gpu-smooth"
                 >
                     <Swords className="w-5 h-5 text-amber-400" />
                     <span>1d20+6 = 24</span>
                 </div>
 
-                {/* ۱۳. اسمارتیز تم مرمر آمیتیست */}
+                {/* ۱۳. اسمارتیز تم مرمر آمیتیست (معلق) */}
                 <div
                     onClick={() => sound.playDiceRoll()}
-                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-600 border-2 border-purple-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold"
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-600 border-2 border-purple-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateA_4.1s_ease-in-out_infinite_0.6s] gpu-smooth"
                     title="تاس مرمر آمیتیست"
                 >
                     💎
                 </div>
 
-                {/* ۱۴. تگ Live Sync */}
+                {/* ۱۴. تگ Live Sync (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-cyan-950 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-cyan-950 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_5.2s_ease-in-out_infinite_0.3s] gpu-smooth"
                 >
                     <Zap className="w-5 h-5 text-cyan-400" />
                     <span>Live Sync · 32ms</span>
                 </div>
 
-                {/* ۱۵. تگ شفای آسمانی */}
+                {/* ۱۵. تگ شفای آسمانی (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-sky-950 border-2 border-sky-400/60 text-sky-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-sky-950 border-2 border-sky-400/60 text-sky-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.3s_ease-in-out_infinite_0.5s] gpu-smooth"
                 >
                     <Sparkles className="w-5 h-5 text-sky-400" />
                     <span>لمس شفا +15 HP</span>
                 </div>
 
-                {/* ۱۶. اسمارتیز تم مرمر سبز */}
+                {/* ۱۶. اسمارتیز تم مرمر سبز (معلق) */}
                 <div
                     onClick={() => sound.playDiceRoll()}
-                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-500 border-2 border-emerald-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold"
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-500 border-2 border-emerald-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateB_4.2s_ease-in-out_infinite] gpu-smooth"
                     title="تاس مرمر جنگل"
                 >
                     🌲
                 </div>
 
-                {/* ۱۷. تگ اسنپ گرید */}
+                {/* ۱۷. تگ اسنپ گرید (معلق) */}
                 <div
                     onClick={() => sound.playTokenClick()}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-zinc-700 text-zinc-200 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-zinc-700 text-zinc-200 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.9s_ease-in-out_infinite_0.3s] gpu-smooth"
                 >
                     <Grid className="w-5 h-5 text-amber-400" />
                     <span>اسنپ گرید D&D 5e</span>
                 </div>
 
-                {/* ۱۸. نشان پرتاب تاس D12 */}
+                {/* ۱۸. نشان پرتاب تاس D12 (معلق) */}
                 <div
                     onClick={() => { sound.playDiceRoll(); onDiceClick(); }}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer border border-amber-300 hover:scale-105 active:scale-95 transition-transform"
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer border border-amber-300 hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.6s_ease-in-out_infinite_0.4s] gpu-smooth"
                 >
                     <Dices className="w-5 h-5" />
                     <span>D12 Polyhedral</span>
