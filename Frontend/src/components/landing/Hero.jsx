@@ -1,12 +1,28 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowDown, ArrowUpRight, Mic, Dices, Compass } from 'lucide-react';
+import {
+    ArrowDown,
+    ArrowUpRight,
+    Mic,
+    Dices,
+    Compass,
+    Crown,
+    Shield,
+    Sparkles,
+    MousePointer,
+    EyeOff,
+    Ruler,
+    ImageIcon,
+    Copy,
+    Check,
+} from 'lucide-react';
 import { sound } from '../../utils/tableAudio';
 import { GsapHeadingReveal } from './GsapHeadingReveal';
 
 export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
     return (
-        <section id="hero" className="relative pt-8 pb-16 sm:pb-24 px-4 sm:px-8 text-center" dir="rtl">
+        <section id="hero" className="relative pt-8 pb-16 sm:pb-24 px-4 sm:px-8 text-center w-full" dir="rtl">
+            {/* هاله نور پس‌زمینه */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-gradient-to-tr from-amber-100/40 via-amber-50/20 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
             <GsapHeadingReveal
@@ -20,6 +36,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                 subtitleClassName="mt-6 text-base sm:text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto font-normal leading-relaxed"
             />
 
+            {/* دکمه‌های اکشن اولیه */}
             <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -49,106 +66,161 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                 </button>
             </motion.div>
 
-            <div className="relative mt-14 sm:mt-20 max-w-4xl mx-auto min-h-[220px] sm:min-h-[280px] flex items-center justify-center [perspective:1000px]">
-                {/* Floating Card 1: Tactical Token Party */}
+            {/* ترکیب‌بندی چندلایه‌ای المان‌های معلق تاکتیکال (Kinetic Tabletop Deck) */}
+            <div className="relative mt-16 sm:mt-24 max-w-5xl mx-auto min-h-[300px] sm:min-h-[340px] flex items-center justify-center select-none">
+
+                {/* ۱. هسته مرکزی: تاس سه‌بعدی هولوگرافیک D20 */}
                 <motion.div
-                    initial={{ opacity: 0, x: 60, rotate: 6 }}
-                    animate={{ opacity: 1, x: 0, rotate: 4 }}
-                    whileHover={{ scale: 1.05, rotate: 0, zIndex: 30 }}
-                    transition={{ duration: 0.9, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute -right-2 sm:right-6 top-4 sm:top-2 w-52 sm:w-64 p-3.5 sm:p-4 rounded-2xl bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-[0_20px_45px_rgba(0,0,0,0.08)] z-10 text-right cursor-pointer"
-                >
-                    <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-neutral-900 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>بازیکنان آماده</span>
-            </span>
-                        <span className="text-[10px] font-mono text-neutral-400">۳ نفر</span>
-                    </div>
-
-                    <div className="flex items-center -space-x-2 space-x-reverse py-1">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#2a2060] to-[#7c6fd4] border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow">
-                            مانی
-                        </div>
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#0f4040] to-[#3dba7a] border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow">
-                            امیر
-                        </div>
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#5c1e3a] to-[#e05c6a] border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow">
-                            سارا
-                        </div>
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500">
-                        <span>کد اتاق</span>
-                        <span className="font-mono font-bold text-[#ea580c] bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
-              75B4EE
-            </span>
-                    </div>
-                </motion.div>
-
-                {/* Center Hero Die */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.1, rotate: 12 }}
+                    whileHover={{ scale: 1.08, rotate: 6 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                         sound.playDiceRoll();
                         onDiceClick();
                     }}
-                    transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                    className="relative z-20 w-32 h-32 sm:w-40 sm:h-40 rounded-3xl bg-gradient-to-br from-[#181922] via-[#0e1017] to-[#07080b] border-2 border-[#f59e0b]/60 shadow-[0_25px_60px_rgba(245,158,11,0.25)] flex flex-col items-center justify-center text-white cursor-pointer group"
+                    transition={{ duration: 0.7, delay: 0.2 }}
+                    className="relative z-30 w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-gradient-to-br from-[#1a1d28] via-[#0f1118] to-[#07080d] border-2 border-[#f59e0b]/70 shadow-[0_20px_60px_rgba(245,158,11,0.25)] flex flex-col items-center justify-center text-white cursor-pointer group backdrop-blur-2xl"
                 >
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.15),transparent)] rounded-3xl" />
+                    <div className="absolute inset-0 bg-radial from-amber-500/15 to-transparent rounded-[32px] pointer-events-none" />
                     <motion.div
-                        animate={{ rotate: [0, 8, -8, 0] }}
+                        animate={{ rotate: [0, 6, -6, 0] }}
                         transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
                     >
-                        <Dices className="w-12 h-12 sm:w-16 sm:h-16 text-[#f59e0b] drop-shadow-[0_0_16px_rgba(245,158,11,0.6)]" />
+                        <Dices className="w-14 h-14 sm:w-16 sm:h-16 text-[#f59e0b] drop-shadow-[0_0_20px_rgba(245,158,11,0.65)]" />
                     </motion.div>
-                    <div className="mt-1 text-xs sm:text-sm font-mono font-extrabold text-[#f59e0b] tracking-wider">
+                    <div className="mt-1 text-xs sm:text-sm font-mono font-black text-[#f59e0b] tracking-wider">
                         D20 CRIT
                     </div>
-                    <span className="text-[10px] text-neutral-400 font-medium">کلیک برای تاس</span>
+                    <span className="text-[10px] text-zinc-400 font-medium">کلیک برای تاس</span>
+
+                    {/* افکت نئونی دور کادر هنگام هاور */}
+                    <div className="absolute inset-0 rounded-[32px] border border-amber-400/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </motion.div>
 
-                {/* Floating Card 2: Voice PTT Live */}
+                {/* ۲. کارت پارتی بازیکنان آنلاین (بالا - راست) با استایل واقعی اتاق */}
                 <motion.div
-                    initial={{ opacity: 0, x: -60, rotate: -6 }}
-                    animate={{ opacity: 1, x: 0, rotate: -4 }}
-                    whileHover={{ scale: 1.05, rotate: 0, zIndex: 30 }}
-                    transition={{ duration: 0.9, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute -left-2 sm:left-6 bottom-3 sm:bottom-1 w-52 sm:w-60 p-3.5 sm:p-4 rounded-2xl bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-[0_20px_45px_rgba(0,0,0,0.08)] z-10 text-right cursor-pointer"
+                    initial={{ opacity: 0, x: 50, rotate: 4 }}
+                    animate={{ opacity: 1, x: 0, rotate: 3, y: [0, -6, 0] }}
+                    transition={{ y: { repeat: Infinity, duration: 5, ease: 'easeInOut' }, duration: 0.8, delay: 0.3 }}
+                    whileHover={{ scale: 1.05, rotate: 0, zIndex: 40 }}
+                    onClick={() => sound.playTokenClick()}
+                    className="absolute -right-2 sm:right-8 top-0 sm:top-2 w-56 sm:w-64 p-3.5 rounded-2xl bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/90 shadow-[0_20px_45px_rgba(0,0,0,0.6)] z-20 text-right cursor-pointer"
                 >
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-                            <Mic className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                            <div className="text-xs font-bold text-neutral-900">صدای بلادرنگ</div>
-                            <div className="text-[10px] font-mono text-neutral-400">Push-to-Talk (Space)</div>
-                        </div>
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80 mb-2.5">
+                        <span className="text-[11px] font-bold text-zinc-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>۳ بازیکن آماده نبرد</span>
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-amber-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                            75B4EE
+                        </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 h-5 bg-neutral-50 px-2.5 py-1 rounded-lg border border-neutral-200/60">
-                        <span className="w-1 h-3 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="w-1 h-4 bg-emerald-500 rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
-                        <span className="w-1 h-2 bg-emerald-500 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
-                        <span className="w-1 h-5 bg-emerald-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                        <span className="text-[10px] font-medium text-neutral-600 mr-auto font-mono">
-              LiveKit SFU &lt;80ms
-            </span>
+                    <div className="flex items-center -space-x-2 space-x-reverse py-0.5">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[10px] font-bold shadow-sm relative">
+                            MA
+                            <Crown className="w-2.5 h-2.5 text-amber-400 absolute -top-1 -right-1" />
+                        </div>
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 flex items-center justify-center text-[10px] font-bold shadow-sm">
+                            AM
+                        </div>
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold shadow-sm">
+                            SA
+                        </div>
+                        <span className="text-[10px] text-zinc-400 mr-4 font-medium">مانی (DM)، امیر، سارا</span>
                     </div>
                 </motion.div>
 
+                {/* ۳. ویجت ویس‌چت و PTT واقعی (پایین - چپ) */}
                 <motion.div
-                    animate={{ y: [0, -6, 0] }}
+                    initial={{ opacity: 0, x: -50, rotate: -4 }}
+                    animate={{ opacity: 1, x: 0, rotate: -3, y: [0, 6, 0] }}
+                    transition={{ y: { repeat: Infinity, duration: 5.5, ease: 'easeInOut' }, duration: 0.8, delay: 0.35 }}
+                    whileHover={{ scale: 1.05, rotate: 0, zIndex: 40 }}
+                    onClick={() => sound.playPttBeep(true)}
+                    className="absolute -left-2 sm:left-8 bottom-2 sm:bottom-4 w-56 sm:w-60 p-3.5 rounded-2xl bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/90 shadow-[0_20px_45px_rgba(0,0,0,0.6)] z-20 text-right cursor-pointer"
+                >
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                                <Mic className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-zinc-100">صدای بلادرنگ</div>
+                                <div className="text-[9px] text-zinc-400 font-mono">Push-to-Talk (Space)</div>
+                            </div>
+                        </div>
+                        <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold">
+                            LiveKit
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 h-5 bg-zinc-900/80 px-2.5 py-1 rounded-lg border border-zinc-800">
+                        <span className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
+                        <span className="w-1 h-4 bg-emerald-400 rounded-full animate-bounce" />
+                        <span className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                        <span className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" />
+                        <span className="text-[10px] text-zinc-400 mr-auto font-mono">Ping: 34ms</span>
+                    </div>
+                </motion.div>
+
+                {/* ۴. مینی-تولبار معلق شبیه‌سازی اتاق (پایین - مرکز) */}
+                <motion.div
+                    animate={{ y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-                    className="hidden sm:flex absolute -top-4 left-1/4 -translate-x-1/2 items-center gap-1.5 px-3 py-1 rounded-full bg-[#12141d] text-white border border-[#2b2d3d] text-[11px] font-medium shadow-lg z-25"
+                    whileHover={{ scale: 1.05 }}
+                    className="hidden md:flex absolute -bottom-5 z-25 items-center gap-1 p-1 bg-zinc-950/95 border border-zinc-800/90 rounded-2xl shadow-xl backdrop-blur-xl text-zinc-300"
                 >
-                    <Compass className="w-3.5 h-3.5 text-[#f59e0b]" />
-                    <span>موتور رندر Konva ۶۰fps</span>
+                    <div className="w-7 h-7 rounded-xl bg-amber-500 text-zinc-950 flex items-center justify-center font-bold">
+                        <MousePointer className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="w-7 h-7 rounded-xl hover:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                        <EyeOff className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="w-7 h-7 rounded-xl hover:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                        <Ruler className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="w-7 h-7 rounded-xl hover:bg-zinc-900 flex items-center justify-center text-amber-400">
+                        <Dices className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="w-7 h-7 rounded-xl hover:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                    </div>
                 </motion.div>
+
+                {/* ۵. چیپ نبرد کاراکتر: AC 18 و HP (پایین - راست) */}
+                <motion.div
+                    animate={{ y: [0, 5, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.5, ease: 'easeInOut' }}
+                    className="hidden sm:flex absolute bottom-2 right-1/4 translate-x-12 z-20 items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-950/90 border border-zinc-800 text-[11px] font-mono font-bold text-zinc-200 shadow-lg"
+                >
+                    <Shield className="w-3.5 h-3.5 text-amber-400" />
+                    <span>AC 18</span>
+                    <span className="text-zinc-600">·</span>
+                    <span className="text-emerald-400">HP 48/48</span>
+                </motion.div>
+
+                {/* ۶. نشانگر وضعیت رندر سخت‌افزاری Konva (بالا - چپ) */}
+                <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.2, ease: 'easeInOut' }}
+                    className="hidden sm:flex absolute -top-4 left-1/4 -translate-x-12 z-20 items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950/95 border border-zinc-800 text-[11px] font-medium text-zinc-300 shadow-lg"
+                >
+                    <Compass className="w-3.5 h-3.5 text-amber-400" />
+                    <span>موتور رندر Konva 60fps</span>
+                </motion.div>
+
+                {/* ۷. بج کریتیکال معلق درخشان (بالا - کنار تاس) */}
+                <motion.div
+                    animate={{ scale: [1, 1.08, 1], rotate: [-2, 2, -2] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                    className="absolute -top-3 right-1/3 z-35 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 text-[10px] font-black flex items-center gap-1 shadow-md shadow-amber-500/20"
+                >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Nat 20!</span>
+                </motion.div>
+
             </div>
         </section>
     );
