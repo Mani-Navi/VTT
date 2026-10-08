@@ -78,7 +78,6 @@ export default function LandingPage() {
 
     return (
         <div className="w-full min-h-screen bg-white text-[#121316] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
-            {/* لایه‌بندی لبه‌به‌لبه و تمام‌صفحه بدون کادر و حاشیه اضافه */}
             <div className="w-full flex flex-col relative">
                 {/* نوبار */}
                 <Navbar
@@ -89,7 +88,7 @@ export default function LandingPage() {
                     user={isSessionValid ? user : null}
                 />
 
-                {/* بخش هیرو */}
+                {/* بخش هیرو فشرده و پرحجم */}
                 <Hero
                     onStartGame={handleStartGame}
                     onExploreMore={() => {
@@ -102,10 +101,10 @@ export default function LandingPage() {
                     }}
                 />
 
-                {/* بیانیه بزرگ */}
+                {/* بیانیه فشرده بدون فضای خالی غول‌پیکر */}
                 <BigStatement />
 
-                {/* استیج سه‌بعدی تاس (پیش‌فرض D12) */}
+                {/* استیج سه‌بعدی تاس */}
                 <DiceSection />
 
                 {/* سناریوها */}
@@ -114,19 +113,19 @@ export default function LandingPage() {
                 {/* پنل دانجن‌مستر */}
                 <GameMasterSection />
 
-                {/* کارت تعاملی بازیکن نبرد */}
+                {/* کارت تعاملی بازیکن */}
                 <PlayerSection />
 
                 {/* توالی قابلیت‌های ۶گانه */}
                 <FeaturesSequence />
 
-                {/* مراحل شروع بازی */}
+                {/* مراحل شروع سریع */}
                 <HowItWorks onStartGame={handleStartGame} />
 
                 {/* هویت فارسی */}
                 <PersianBrandSection />
 
-                {/* پیام اقدام پایانی */}
+                {/* دعوت به اقدام پایانی کادربندی‌شده */}
                 <FinalCta
                     onStartGame={handleStartGame}
                     onOpenAuth={handleOpenAuth}
