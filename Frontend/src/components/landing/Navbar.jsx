@@ -49,8 +49,8 @@ export const Navbar = ({
             <div
                 className={`max-w-[1240px] mx-auto rounded-full transition-all duration-300 flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 ${
                     scrolled
-                        ? 'bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)]'
-                        : 'bg-white/60 backdrop-blur-sm border border-neutral-200/40'
+                        ? 'bg-[#0e1017]/85 backdrop-blur-md border border-[#262838] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                        : 'bg-[#12141f]/60 backdrop-blur-sm border border-[#242738]/60'
                 }`}
             >
                 <a
@@ -58,20 +58,20 @@ export const Navbar = ({
                     onClick={() => sound.playTokenClick()}
                     className="flex items-center gap-2.5 group"
                 >
-                    <div className="w-8 h-8 rounded-lg bg-[#0e1017] border border-[#262835] flex items-center justify-center text-[#f59e0b] shadow-sm transition-transform duration-200 group-hover:scale-105">
+                    <div className="w-8 h-8 rounded-lg bg-[#181a24] border border-[#2d3042] flex items-center justify-center text-[#f59e0b] shadow-sm transition-transform duration-200 group-hover:scale-105">
                         <Dices className="w-4 h-4" />
                     </div>
                     <div className="flex items-baseline gap-1.5">
-            <span className="text-base sm:text-lg font-black tracking-tight text-neutral-900">
-              Titipool
-            </span>
+                        <span className="text-base sm:text-lg font-black tracking-tight text-white">
+                            Titipool
+                        </span>
                         <span className="text-[11px] font-mono font-bold text-[#ea580c] uppercase">
-              VTT
-            </span>
+                            VTT
+                        </span>
                     </div>
                 </a>
 
-                <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-neutral-600">
+                <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-zinc-400">
                     {navLinks.map((link) => {
                         const isActive = activeSection === link.id;
                         return (
@@ -80,12 +80,12 @@ export const Navbar = ({
                                 href={`#${link.id}`}
                                 onClick={() => sound.playTokenClick()}
                                 className={`transition-colors relative py-1 ${
-                                    isActive ? 'text-neutral-950 font-bold' : 'hover:text-neutral-950'
+                                    isActive ? 'text-white font-bold' : 'hover:text-white'
                                 }`}
                             >
                                 {link.label}
                                 {isActive && (
-                                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#f59e0b] rounded-full" />
+                                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#f59e0b] rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
                                 )}
                             </a>
                         );
@@ -98,7 +98,7 @@ export const Navbar = ({
                             sound.playTokenClick();
                             onOpenRoomCode();
                         }}
-                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100/80 transition-colors cursor-pointer"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                         title="ورود مستقیم به اتاق با کد"
                     >
                         <Key className="w-3.5 h-3.5 text-[#f59e0b]" />
@@ -111,7 +111,7 @@ export const Navbar = ({
                                 sound.playTokenClick();
                                 onOpenProfile();
                             }}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200/80 text-xs font-bold text-neutral-800 transition-colors cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#181a26] border border-[#292c3e] hover:border-[#f59e0b]/50 text-xs font-bold text-zinc-200 transition-colors cursor-pointer"
                         >
                             <div className="w-5 h-5 rounded-full bg-[#f59e0b] text-neutral-950 flex items-center justify-center text-[10px] font-black">
                                 {(user.name || user.email || 'U').charAt(0).toUpperCase()}
@@ -124,7 +124,7 @@ export const Navbar = ({
                                 sound.playTokenClick();
                                 onOpenAuth();
                             }}
-                            className="text-xs font-semibold text-neutral-700 hover:text-neutral-950 px-2.5 py-1.5 transition-colors cursor-pointer"
+                            className="text-xs font-semibold text-zinc-300 hover:text-white px-2.5 py-1.5 transition-colors cursor-pointer"
                         >
                             ورود
                         </button>
@@ -135,7 +135,7 @@ export const Navbar = ({
                             sound.playDiceRoll();
                             onStartGame();
                         }}
-                        className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs sm:text-[13px] shadow-[0_2px_12px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] transition-all cursor-pointer group active:scale-[0.97]"
+                        className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-gradient-to-r from-[#f59e0b] to-[#ea580c] hover:from-[#fbbf24] hover:to-[#f59e0b] text-neutral-950 font-bold text-xs sm:text-[13px] shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all cursor-pointer group active:scale-[0.97]"
                     >
                         <span>شروع بازی</span>
                         <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

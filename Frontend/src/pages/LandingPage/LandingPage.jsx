@@ -75,9 +75,9 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-[#f0ece5] p-2 sm:p-5 md:p-8 flex flex-col items-center justify-start text-[#121316]">
-            {/* کارت معلق بدون کلاس overflow-hidden تا محتوا آزادانه اسکرول عمودی شود */}
-            <div className="w-full max-w-[1360px] bg-white rounded-[24px] sm:rounded-[36px] md:rounded-[44px] shadow-[0_30px_90px_rgba(25,23,20,0.06)] border border-[#e4ded4] relative flex flex-col">
+        <div className="w-full min-h-screen bg-[#090a0f] text-[#f3f4f6] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
+            {/* ساختار تمام‌صفحه بدون کادر و حاشیه سفید */}
+            <div className="w-full flex flex-col relative">
                 {/* نوبار هوشمند متصل به کاربر جاری */}
                 <Navbar
                     onOpenAuth={handleOpenAuth}
