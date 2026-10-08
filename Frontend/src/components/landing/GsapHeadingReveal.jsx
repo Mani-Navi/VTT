@@ -5,14 +5,14 @@ export const GsapHeadingReveal = ({
                                       lines = [],
                                       eyebrow,
                                       subtitle,
-                                      eyebrowColor = 'text-[#f59e0b]',
+                                      eyebrowColor = 'text-[#ea580c]',
                                       align = 'center',
                                       headingTag: HeadingTag = 'h2',
-                                      headingClassName = 'text-3xl sm:text-5xl md:text-6xl font-black text-white mt-2 tracking-tight leading-tight',
+                                      headingClassName = 'text-3xl sm:text-5xl md:text-6xl font-black text-neutral-950 mt-2 tracking-tight leading-tight',
                                       containerClassName = '',
-                                      subtitleClassName = 'text-base sm:text-lg text-zinc-400 mt-4 leading-relaxed',
+                                      subtitleClassName = 'text-base sm:text-lg text-neutral-600 mt-4 leading-relaxed',
                                       gradientLineIndex,
-                                      gradientClassName = 'bg-gradient-to-l from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent',
+                                      gradientClassName = 'bg-gradient-to-l from-neutral-950 via-neutral-800 to-neutral-700 bg-clip-text text-transparent',
                                       delay = 0,
                                   }) => {
     const containerRef = useHeadingReveal({

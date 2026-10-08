@@ -27,7 +27,6 @@ export default function LandingPage() {
     const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
     useEffect(() => {
-        // باز کردن قفل اسکرول برای کل سند در هنگام لود لندینگ
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.height = 'auto';
         document.body.style.overflowY = 'auto';
@@ -75,10 +74,9 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-[#090a0f] text-[#f3f4f6] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
-            {/* ساختار تمام‌صفحه بدون کادر و حاشیه سفید */}
-            <div className="w-full flex flex-col relative">
-                {/* نوبار هوشمند متصل به کاربر جاری */}
+        <div className="w-full min-h-screen bg-[#f0ece5] p-2 sm:p-5 md:p-8 flex flex-col items-center justify-start text-[#121316]">
+            {/* پوسته آرت‌بورد سفید معلق قبلی با حفظ اسکرول روان */}
+            <div className="w-full max-w-[1360px] bg-white rounded-[24px] sm:rounded-[36px] md:rounded-[44px] shadow-[0_30px_90px_rgba(25,23,20,0.06)] border border-[#e4ded4] relative flex flex-col">
                 <Navbar
                     onOpenAuth={handleOpenAuth}
                     onOpenProfile={handleOpenProfile}
@@ -87,7 +85,6 @@ export default function LandingPage() {
                     user={isSessionValid ? user : null}
                 />
 
-                {/* بخش هیرو */}
                 <Hero
                     onStartGame={handleStartGame}
                     onExploreMore={() => {
@@ -100,25 +97,19 @@ export default function LandingPage() {
                     }}
                 />
 
-                {/* بیانیه مینیمال */}
                 <BigStatement />
 
-                {/* تاس ۳بعدی با فیزیک و صدای وب‌اودیو */}
+                {/* سکشن تاس با موتور سه‌بعدی واقعی */}
                 <DiceSection />
 
-                {/* سناریوها */}
                 <ScenariosSection onSelectScenario={handleSelectScenario} />
 
-                {/* کنترل‌پنل دانجن‌مستر */}
                 <GameMasterSection />
 
-                {/* مراحل شروع سریع */}
                 <HowItWorks onStartGame={handleStartGame} />
 
-                {/* ستون‌های هویت فارسی */}
                 <PersianBrandSection />
 
-                {/* فوتر متصل به روت‌های حقوقی واقعی */}
                 <Footer />
             </div>
         </div>
