@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-import { useAuthStore } from '../stores/auth.store';
-import { isTokenExpired } from '../utils/jwt';
+// دو مرحله به عقب برای رسیدن به src/stores و src/utils
+import { useAuthStore } from '../../stores/auth.store';
+import { isTokenExpired } from '../../utils/jwt';
 
-import { Navbar } from '../components/landing/Navbar';
-import { Hero } from '../components/landing/Hero';
-import { BigStatement } from '../components/landing/BigStatement';
-import { DiceSection } from '../components/landing/DiceSection';
-import { ScenariosSection } from '../components/landing/ScenariosSection';
-import { GameMasterSection } from '../components/landing/GameMasterSection';
-import { HowItWorks } from '../components/landing/HowItWorks';
-import { PersianBrandSection } from '../components/landing/PersianBrandSection';
-import { Footer } from '../components/landing/Footer';
+// دو مرحله به عقب برای رسیدن به src/components
+import { Navbar } from '../../components/landing/Navbar';
+import { Hero } from '../../components/landing/Hero';
+import { BigStatement } from '../../components/landing/BigStatement';
+import { DiceSection } from '../../components/landing/DiceSection';
+import { ScenariosSection } from '../../components/landing/ScenariosSection';
+import { GameMasterSection } from '../../components/landing/GameMasterSection';
+import { HowItWorks } from '../../components/landing/HowItWorks';
+import { PersianBrandSection } from '../../components/landing/PersianBrandSection';
+import { Footer } from '../../components/landing/Footer';
 
 gsap.registerPlugin(ScrollTrigger);
 
