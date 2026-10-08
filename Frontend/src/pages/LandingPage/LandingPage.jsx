@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-// دو مرحله به عقب برای رسیدن به src/stores و src/utils
 import { useAuthStore } from '../../stores/auth.store';
 import { isTokenExpired } from '../../utils/jwt';
 
-// دو مرحله به عقب برای رسیدن به src/components
 import { Navbar } from '../../components/landing/Navbar';
 import { Hero } from '../../components/landing/Hero';
 import { BigStatement } from '../../components/landing/BigStatement';
@@ -26,21 +24,22 @@ export default function LandingPage() {
     const token = useAuthStore((state) => state.token);
     const user = useAuthStore((state) => state.user);
 
-    // بررسی دقیق اعتبار نشست
     const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
     useEffect(() => {
-        if (typeof document !== 'undefined' && 'fonts' in document) {
-            document.fonts.ready.then(() => {
-                ScrollTrigger.refresh();
-            });
-        }
+        // باز کردن قفل اسکرول برای کل سند در هنگام لود لندینگ
+        document.documentElement.style.overflowY = 'auto';
+        document.documentElement.style.height = 'auto';
+        document.body.style.overflowY = 'auto';
+        document.body.style.height = 'auto';
 
         const timer = setTimeout(() => {
             ScrollTrigger.refresh();
-        }, 400);
+        }, 250);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+        };
     }, []);
 
     const handleStartGame = () => {
@@ -76,8 +75,9 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f0ece5] p-2 sm:p-5 md:p-8 flex flex-col items-center justify-start text-[#121316]">
-            <div className="w-full max-w-[1360px] bg-white rounded-[24px] sm:rounded-[36px] md:rounded-[44px] shadow-[0_30px_90px_rgba(25,23,20,0.06)] border border-[#e4ded4] overflow-hidden relative flex flex-col">
+        <div className="w-full min-h-screen bg-[#f0ece5] p-2 sm:p-5 md:p-8 flex flex-col items-center justify-start text-[#121316]">
+            {/* کارت معلق بدون کلاس overflow-hidden تا محتوا آزادانه اسکرول عمودی شود */}
+            <div className="w-full max-w-[1360px] bg-white rounded-[24px] sm:rounded-[36px] md:rounded-[44px] shadow-[0_30px_90px_rgba(25,23,20,0.06)] border border-[#e4ded4] relative flex flex-col">
                 {/* نوبار هوشمند متصل به کاربر جاری */}
                 <Navbar
                     onOpenAuth={handleOpenAuth}
