@@ -63,9 +63,10 @@
     40%, 80% { transform: translateX(3px); }
 }
 
+/* اصلاح شد: حذف وابستگی به متغیر داخلی Tailwind و اجرای مستقیم ترنسفرم */
 @keyframes floatGentle {
-    0%, 100% { transform: translateY(0px) rotate(var(--tw-rotate, 0deg)); }
-    50% { transform: translateY(-4px) rotate(var(--tw-rotate, 0deg)); }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
 }
 
 @keyframes floatLevitateA {
