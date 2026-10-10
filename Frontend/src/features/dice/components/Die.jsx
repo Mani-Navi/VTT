@@ -294,6 +294,7 @@ export function Die({
             onCollisionEnter={handleCollision}
         >
             <mesh
+                userData={{ isDie: true }}
                 geometry={geometry}
                 material={materials}
                 castShadow
