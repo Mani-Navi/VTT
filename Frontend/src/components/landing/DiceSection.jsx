@@ -24,6 +24,7 @@ export const DiceSection = () => {
         totalSum,
         triggerRoll,
         clearDice,
+        setOpen,
         selectedTheme,
         setSelectedTheme,
     } = useDiceStore();
@@ -55,13 +56,18 @@ export const DiceSection = () => {
         }
     }, [isAnyCritical, isRolling]);
 
-    // پرتاب خودکار یک تاس D12 در ورود به بخش
+    // پرتاب خودکار یک تاس D12 در ورود به بخش و پاکسازی کامل استور در زمان ترک لندینگ
     useEffect(() => {
         const timer = setTimeout(() => {
             triggerRoll(['d12']);
         }, 800);
-        return () => clearTimeout(timer);
-    }, [triggerRoll]);
+
+        return () => {
+            clearTimeout(timer);
+            clearDice();
+            setOpen(false);
+        };
+    }, [triggerRoll, clearDice, setOpen]);
 
     const handleQuickRoll = (type) => {
         const diceToRoll = type === 'd100' ? ['d100', 'd10'] : [type];
