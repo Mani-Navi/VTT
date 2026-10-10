@@ -13,7 +13,7 @@ export const Footer = () => {
                                 <Dices className="w-4 h-4" />
                             </div>
                             <span className="text-lg font-black text-neutral-900 tracking-tight">
-                                Titipool / Persian VTT
+                                Titipool
                             </span>
                         </div>
                         <p className="text-xs text-neutral-500 leading-relaxed">
@@ -72,7 +72,7 @@ export const Footer = () => {
                 </div>
 
                 <div className="mt-12 pt-6 border-t border-neutral-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-neutral-400">
-                    <span>© 2026 Persian . تمامی حقوق محفوظ است.</span>
+                    <span>© 2026 Titipool . تمامی حقوق محفوظ است.</span>
                     <div className="flex items-center gap-4">
                         <span className="font-mono">پلتفرم امن بازی رومیزی</span>
                         <span>·</span>
