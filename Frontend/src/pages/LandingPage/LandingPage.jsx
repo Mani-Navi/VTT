@@ -62,8 +62,9 @@ export default function LandingPage() {
         navigate('/login');
     };
 
+    // هدایت مستقیم به صفحه پروفایل کاربر با کلیک روی نام/آواتار در نوبار
     const handleOpenProfile = () => {
-        navigate('/dashboard');
+        navigate('/profile');
     };
 
     const handleOpenRoomCode = () => {
@@ -85,7 +86,7 @@ export default function LandingPage() {
     return (
         <div className="w-full min-h-screen bg-white text-[#121316] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
             <div className="w-full flex flex-col relative">
-                {/* نوبار مجهز به نام نمایشی و آواتار RPG */}
+                {/* نوبار مجهز به نام نمایشی و آواتار RPG متصل به روت پروفایل */}
                 <Navbar
                     onOpenAuth={handleOpenAuth}
                     onOpenProfile={handleOpenProfile}
