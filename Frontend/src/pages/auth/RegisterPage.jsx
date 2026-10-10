@@ -13,11 +13,14 @@ export const RegisterPage = () => {
 
   const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
+  // پاکسازی فوری نشست‌های منقضی و هدایت کاربران لاگین‌شده
   useEffect(() => {
-    if (isSessionValid) {
+    if (token && isTokenExpired(token)) {
+      useAuthStore.getState().logout?.();
+    } else if (isSessionValid) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isSessionValid, navigate]);
+  }, [isSessionValid, token, navigate]);
 
   if (isSessionValid) return null;
 
@@ -27,16 +30,22 @@ export const RegisterPage = () => {
           style={{ WebkitOverflowScrolling: "touch" }}
           dir="rtl"
       >
-        {/* هاله‌های نور پس‌زمینه محیطی */}
-        <div className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[110px] sm:blur-[140px] pointer-events-none" aria-hidden="true" />
-        <div className="fixed -bottom-28 left-1/4 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-purple-600/5 rounded-full blur-[120px] sm:blur-[150px] pointer-events-none" aria-hidden="true" />
+        {/* هاله‌های نور پس‌زمینه محیطی با شتاب‌دهی سخت‌افزاری */}
+        <div
+            className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[90px] sm:blur-[120px] pointer-events-none transform-gpu"
+            aria-hidden="true"
+        />
+        <div
+            className="fixed -bottom-28 left-1/4 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-purple-600/5 rounded-full blur-[100px] sm:blur-[130px] pointer-events-none transform-gpu"
+            aria-hidden="true"
+        />
 
         <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 py-8 sm:py-12 shrink-0" role="main">
           <div className="w-full max-w-4xl glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] grid grid-cols-1 lg:grid-cols-12 overflow-hidden animate-fade-in-up">
             {/* ستون تزئینی دسکتاپ */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-[#090a0f] border-l border-zinc-800/70 p-7 flex-col justify-between overflow-hidden" aria-hidden="true">
               <div className="absolute inset-0 bg-[radial-gradient(#3f3f46_1px,transparent_1px)] [background-size:20px_20px] opacity-25 pointer-events-none" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none transform-gpu" />
 
               <div className="relative z-10 flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
@@ -50,7 +59,7 @@ export const RegisterPage = () => {
 
               <div className="relative z-10 my-auto flex flex-col items-center justify-center py-4">
                 <div className="relative w-40 h-40 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border border-amber-500/15 border-dashed animate-[spin_35s_linear_infinite]" />
+                  <div className="absolute inset-0 rounded-full border border-amber-500/15 border-dashed animate-[spin_35s_linear_infinite] transform-gpu will-change-transform" />
 
                   <div className="absolute -right-2 top-1 w-26 h-34 bg-gradient-to-tr from-zinc-900 via-zinc-850 to-zinc-800 border border-amber-500/25 rounded-2xl shadow-2xl rotate-12 flex flex-col items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:rotate-[8deg] hover:border-amber-400/40">
                     <Sparkles className="w-9 h-9 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.4)]" />

@@ -18,6 +18,10 @@ const DICE_TYPES = [
 ];
 
 export const DiceSection = () => {
+    const sectionRef = useRef(null);
+    const [isCanvasVisible, setIsCanvasVisible] = useState(false);
+    const hasTriggeredInitialRoll = useRef(false);
+
     const {
         isRolling,
         results,
@@ -30,9 +34,27 @@ export const DiceSection = () => {
 
     const [mode, setMode] = useState('quick');
     const [poolCounts, setPoolCounts] = useState({});
-    // تنظیم پیش‌فرض روی d12
     const [lastRollTypes, setLastRollTypes] = useState(['d12']);
     const playedCritAudioRef = useRef(false);
+
+    // بهینه‌سازی لود تنبل کانواس سه‌بعدی و فیزیک Rapier با IntersectionObserver
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsCanvasVisible(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '300px' }
+        );
+
+        if (sectionRef.current) {
+            observer.observe(sectionRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
 
     // بررسی رخ دادن کریتیکال (Max Die)
     const isAnyCritical = useMemo(() => {
@@ -55,13 +77,16 @@ export const DiceSection = () => {
         }
     }, [isAnyCritical, isRolling]);
 
-    // پرتاب نمایشی خودکار یک تاس D12 در ورود به سکشن
+    // پرتاب خودکار D12 فقط زمانی که کاربر به سکشن رسیده باشد (صرفه‌جویی کامل در توان CPU لود اولیه)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            triggerRoll(['d12']);
-        }, 800);
-        return () => clearTimeout(timer);
-    }, []);
+        if (isCanvasVisible && !hasTriggeredInitialRoll.current) {
+            hasTriggeredInitialRoll.current = true;
+            const timer = setTimeout(() => {
+                triggerRoll(['d12']);
+            }, 400);
+            return () => clearTimeout(timer);
+        }
+    }, [isCanvasVisible, triggerRoll]);
 
     const handleQuickRoll = (type) => {
         const diceToRoll = type === 'd100' ? ['d100', 'd10'] : [type];
@@ -117,7 +142,12 @@ export const DiceSection = () => {
     const totalPoolCount = Object.values(poolCounts).reduce((a, b) => a + b, 0);
 
     return (
-        <section id="dice" className="py-20 sm:py-28 px-4 sm:px-8 overflow-hidden w-full" dir="rtl">
+        <section
+            ref={sectionRef}
+            id="dice"
+            className="py-20 sm:py-28 px-4 sm:px-8 overflow-hidden w-full"
+            dir="rtl"
+        >
             <div className="max-w-6xl mx-auto">
                 <GsapHeadingReveal
                     eyebrow="موتور فیزیک سه‌بعدی · REAL 3D RAPIER PHYSICS"
@@ -128,9 +158,15 @@ export const DiceSection = () => {
 
                 <div className="relative rounded-3xl bg-[#090a10] border border-[#242738] shadow-[0_30px_90px_rgba(0,0,0,0.25)] h-[520px] sm:h-[580px] overflow-hidden select-none">
 
-                    {/* رندر مستقیم کانواس سه بعدی راپیر */}
+                    {/* رندر هوشمند کانواس سه‌بعدی فقط هنگام رسیدن اسکرول */}
                     <div className="absolute inset-0">
-                        <DiceCanvas />
+                        {isCanvasVisible ? (
+                            <DiceCanvas />
+                        ) : (
+                            <div className="w-full h-full bg-[#090a10] flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin opacity-40" />
+                            </div>
+                        )}
                     </div>
 
                     {/* بنر نتیجه نهایی */}
