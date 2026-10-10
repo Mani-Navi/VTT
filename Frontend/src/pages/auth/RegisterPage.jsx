@@ -4,7 +4,7 @@ import { RegisterForm } from "../../components/auth/RegisterForm.jsx";
 import { Footer } from "../../components/layout/Footer.jsx";
 import { useAuthStore } from "../../stores/auth.store";
 import { isTokenExpired } from "../../utils/jwt";
-import { Dices, Sparkles, Wand2 } from "lucide-react";
+import { Dices, Sparkles, Wand2, ArrowRight } from "lucide-react";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -13,7 +13,6 @@ export const RegisterPage = () => {
 
   const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
-  // پاکسازی فوری نشست‌های منقضی و هدایت کاربران لاگین‌شده
   useEffect(() => {
     if (token && isTokenExpired(token)) {
       useAuthStore.getState().logout?.();
@@ -30,7 +29,6 @@ export const RegisterPage = () => {
           style={{ WebkitOverflowScrolling: "touch" }}
           dir="rtl"
       >
-        {/* هاله‌های نور پس‌زمینه محیطی با شتاب‌دهی سخت‌افزاری */}
         <div
             className="fixed -top-28 left-1/2 -translate-x-1/2 w-80 sm:w-[40rem] h-80 sm:h-[40rem] bg-amber-500/10 rounded-full blur-[90px] sm:blur-[120px] pointer-events-none transform-gpu"
             aria-hidden="true"
@@ -40,7 +38,18 @@ export const RegisterPage = () => {
             aria-hidden="true"
         />
 
-        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 py-8 sm:py-12 shrink-0" role="main">
+        {/* دکمه بازگشت به صفحه اصلی لندینگ */}
+        <header className="w-full max-w-4xl mx-auto px-4 pt-4 sm:pt-6 z-20 shrink-0">
+          <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition-all shadow-sm active:scale-95 group"
+          >
+            <ArrowRight className="w-3.5 h-3.5 text-amber-400 transition-transform group-hover:translate-x-0.5" />
+            <span>بازگشت به صفحه اصلی</span>
+          </Link>
+        </header>
+
+        <main className="w-full flex-1 flex items-center justify-center p-3 sm:p-6 z-10 py-6 sm:py-8 shrink-0" role="main">
           <div className="w-full max-w-4xl glass-card border border-zinc-800/80 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] grid grid-cols-1 lg:grid-cols-12 overflow-hidden animate-fade-in-up">
             {/* ستون تزئینی دسکتاپ */}
             <div className="hidden lg:flex lg:col-span-5 relative bg-gradient-to-br from-zinc-900/90 via-zinc-950 to-[#090a0f] border-l border-zinc-800/70 p-7 flex-col justify-between overflow-hidden" aria-hidden="true">
@@ -78,9 +87,9 @@ export const RegisterPage = () => {
               </div>
 
               <div className="relative z-10 text-center space-y-1">
-                <div className="text-sm font-black text-amber-400 tracking-wide">
+                <Link to="/" className="text-sm font-black text-amber-400 hover:text-amber-300 transition-colors tracking-wide inline-block">
                   Titipool Platform
-                </div>
+                </Link>
                 <p className="text-[11px] text-zinc-400 leading-relaxed max-w-[240px] mx-auto">
                   ساخت آسان مپ، مه جنگ پویا، توکن‌ها و تاس‌های ۳بعدی در یکجا.
                 </p>
@@ -94,9 +103,9 @@ export const RegisterPage = () => {
             <div className="lg:col-span-7 p-5 sm:p-7 md:p-8 flex flex-col justify-between">
               <div>
                 <div className="text-center mb-3 sm:mb-4">
-                  <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/25 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.12)]">
+                  <Link to="/" className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 text-amber-400 hover:text-amber-300 border border-amber-500/25 mb-2 shadow-[0_0_15px_rgba(251,191,36,0.12)] transition-transform active:scale-95" title="بازگشت به صفحه اصلی">
                     <Dices className="w-5 h-5 sm:w-5 sm:h-5" />
-                  </div>
+                  </Link>
                   <h1 className="text-lg sm:text-xl font-black text-zinc-100 tracking-tight">
                     ساخت حساب کاربری جدید
                   </h1>

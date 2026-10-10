@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useRooms } from "../../hooks/useRooms";
 import { useAuth } from "../../hooks/useAuth";
 import { RoomCard } from "../../components/dashboard/RoomCard";
@@ -146,8 +146,8 @@ export const DashboardPage = () => {
           style={{ WebkitOverflowScrolling: "touch" }}
           dir="rtl"
       >
-        {/* نور ملایم محیطی در بالای داشبورد */}
-        <div className="fixed -top-32 left-1/2 -translate-x-1/2 w-96 sm:w-[48rem] h-64 bg-amber-500/8 rounded-full blur-[130px] pointer-events-none" aria-hidden="true" />
+        {/* نور ملایم محیطی در بالای داشبورد با شتاب‌دهی GPU */}
+        <div className="fixed -top-32 left-1/2 -translate-x-1/2 w-96 sm:w-[48rem] h-64 bg-amber-500/8 rounded-full blur-[130px] pointer-events-none transform-gpu" aria-hidden="true" />
 
         {toastError && (
             <div
@@ -166,30 +166,41 @@ export const DashboardPage = () => {
             role="banner"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.12)] shrink-0 transition-transform duration-200 hover:scale-105" aria-hidden="true">
-              <Dices className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-black text-xs sm:text-sm text-zinc-100 tracking-wide truncate flex items-center gap-1.5">
-                <span>میز بازی Titipool</span>
-                <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700/60" aria-label="نسخه ۱.۴">
-                v1.4
-              </span>
-              </h1>
-              {user?.username && (
-                  <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">
-                    خوش آمدید،{" "}
-                    <button
-                        type="button"
-                        onClick={() => navigate("/profile")}
-                        className="text-amber-400 font-semibold hover:text-amber-300 hover:underline transition-colors cursor-pointer"
-                        aria-label={`مشاهده پروفایل ${user.username}`}
-                    >
-                      {user.username}
-                    </button>
-                  </p>
-              )}
-            </div>
+            {/* لوگو و نام پلتفرم با قابلیت هدایت به لندینگ‌پیج */}
+            <Link
+                to="/"
+                className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 rounded-xl transition-all"
+                title="بازگشت به صفحه اصلی"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.12)] shrink-0 transition-transform duration-200 group-hover:scale-105 group-active:scale-95" aria-hidden="true">
+                <Dices className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="font-black text-xs sm:text-sm text-zinc-100 group-hover:text-amber-400 tracking-wide truncate flex items-center gap-1.5 transition-colors">
+                  <span>میز بازی Titipool</span>
+                  <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700/60" aria-label="نسخه ۱.۴">
+                    v1.4
+                  </span>
+                </h1>
+                {user?.username && (
+                    <p className="text-[10px] sm:text-[11px] text-zinc-400 truncate">
+                      خوش آمدید،{" "}
+                      <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate("/profile");
+                          }}
+                          className="text-amber-400 font-semibold hover:text-amber-300 hover:underline transition-colors cursor-pointer"
+                          aria-label={`مشاهده پروفایل ${user.username}`}
+                      >
+                        {user.username}
+                      </button>
+                    </p>
+                )}
+              </div>
+            </Link>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
