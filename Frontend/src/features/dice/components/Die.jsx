@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
 import { DICE_CONFIGS } from '../engine/diceDefinitions';
@@ -25,6 +25,7 @@ export function Die({
                         initialAngularVelocity,
                     }) {
     const rigidBodyRef = useRef(null);
+    const { viewport } = useThree();
     const config = DICE_CONFIGS[type] || DICE_CONFIGS.d6;
     const setDieResult = useDiceStore((s) => s.setDieResult);
     const isRemoteRoll = useDiceStore((s) => s.isRemoteRoll);
@@ -38,6 +39,10 @@ export function Die({
 
     const isDraggingRef = useRef(false);
     const dragHistoryRef = useRef([]);
+
+    // محدوده امن حرکتی ماوس برای جلوگیری از عبور تاس از دیواره‌های سینی
+    const safeLimitX = Math.max((viewport.width / 2) - 1.8, 2.2);
+    const safeLimitZ = Math.max((viewport.height / 2) - 1.8, 2.2);
 
     // همگام‌سازی دوران و موقعیت قطعی دریافتی از پرتاب‌کننده
     useEffect(() => {
@@ -188,6 +193,8 @@ export function Die({
         document.body.style.cursor = 'grabbing';
 
         if (rigidBodyRef.current) {
+            // حذف جاذبه موقت جهت از بین بردن ۱۰۰٪ پرش و لرزش تاس در زمان نگه داشتن با ماوس
+            rigidBodyRef.current.setGravityScale(0, true);
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
             rigidBodyRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
         }
@@ -199,13 +206,17 @@ export function Die({
 
         const targetPoint = new THREE.Vector3();
         if (e.ray && e.ray.intersectPlane(DRAG_PLANE, targetPoint)) {
+            // مهار موقعیت در محدوده امن دیواره‌ها برای جلوگیری از خروج تاس از کادر
+            const clampedX = THREE.MathUtils.clamp(targetPoint.x, -safeLimitX, safeLimitX);
+            const clampedZ = THREE.MathUtils.clamp(targetPoint.z, -safeLimitZ, safeLimitZ);
+
             rigidBodyRef.current.setTranslation(
-                { x: targetPoint.x, y: 3.2, z: targetPoint.z },
+                { x: clampedX, y: 3.2, z: clampedZ },
                 true
             );
 
             const now = performance.now();
-            dragHistoryRef.current.push({ x: targetPoint.x, z: targetPoint.z, time: now });
+            dragHistoryRef.current.push({ x: clampedX, z: clampedZ, time: now });
             if (dragHistoryRef.current.length > 5) {
                 dragHistoryRef.current.shift();
             }
@@ -219,6 +230,9 @@ export function Die({
 
         isDraggingRef.current = false;
         document.body.style.cursor = 'default';
+
+        // بازگرداندن جاذبه طبیعی به تاس
+        rigidBodyRef.current.setGravityScale(1, true);
 
         let vx = (Math.random() - 0.5) * 4;
         let vz = (Math.random() - 0.5) * 4;
@@ -234,16 +248,17 @@ export function Die({
             const calcVx = (last.x - first.x) / dt;
             const calcVz = (last.z - first.z) / dt;
 
-            vx = THREE.MathUtils.clamp(calcVx * 0.85, -28, 28);
-            vz = THREE.MathUtils.clamp(calcVz * 0.85, -28, 28);
+            // محدودسازی سرعت پرتاب برای تضمین عملکرد الگوریتم ضدتونلینگ CCD دیواره‌ها
+            vx = THREE.MathUtils.clamp(calcVx * 0.75, -20, 20);
+            vz = THREE.MathUtils.clamp(calcVz * 0.75, -20, 20);
         }
 
         const vy = -4 - Math.random() * 4;
         const finalVelocity = { x: vx, y: vy, z: vz };
         const finalAngvel = {
-            x: (Math.random() - 0.5) * 45,
-            y: (Math.random() - 0.5) * 45,
-            z: (Math.random() - 0.5) * 45,
+            x: (Math.random() - 0.5) * 40,
+            y: (Math.random() - 0.5) * 40,
+            z: (Math.random() - 0.5) * 40,
         };
 
         rigidBodyRef.current.setLinvel(finalVelocity, true);
