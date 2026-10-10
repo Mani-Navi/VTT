@@ -1,21 +1,12 @@
 @import "tailwindcss";
 
 @layer base {
-    html {
-        overflow-y: auto !important;
-        overflow-x: hidden;
-        height: auto;
-    }
-
     body {
         background-color: #090a0f;
         color: #f3f4f6;
         font-family: "Vazirmatn", system-ui, sans-serif;
         user-select: auto;
         min-height: 100vh;
-        height: auto;
-        overflow-y: auto !important;
-        overflow-x: hidden;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
@@ -26,13 +17,7 @@
         background-attachment: fixed;
     }
 
-    #root {
-        min-height: 100vh;
-        height: auto;
-        overflow-x: hidden;
-        position: relative;
-    }
-
+    /* شاخص وضوح فوکوس برای ناوبری با صفحه‌کلید طبق استاندارد WCAG 2.1 AA */
     :focus-visible {
         outline: 2px solid #f59e0b;
         outline-offset: 2px;
@@ -60,26 +45,52 @@
     }
 }
 
-/* کی‌فریم‌های سبک سخت‌افزاری معلق بودن روی پردازنده گرافیکی (GPU) */
+/* انیمیشن‌ها و ترنزیشن‌های استاندارد و بهینه */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shakeSubtle {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-3px); }
+    40%, 80% { transform: translateX(3px); }
+}
+
+@keyframes floatGentle {
+    0%, 100% { transform: translateY(0px) rotate(var(--tw-rotate, 0deg)); }
+    50% { transform: translateY(-4px) rotate(var(--tw-rotate, 0deg)); }
+}
+
 @keyframes floatLevitateA {
-    0%, 100% {
-        transform: translateY(0px);
-    }
-    50% {
-        transform: translateY(-8px);
-    }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
 }
 
 @keyframes floatLevitateB {
-    0%, 100% {
-        transform: translateY(0px);
-    }
-    50% {
-        transform: translateY(8px);
-    }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(8px); }
 }
 
 @layer utilities {
+    .animate-fade-in-up {
+        animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-shake-subtle {
+        animation: shakeSubtle 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    .animate-float-card {
+        animation: floatGentle 5s ease-in-out infinite;
+    }
+
     .gpu-smooth {
         will-change: transform;
         transform: translateZ(0);
@@ -100,61 +111,80 @@
 }
 
 /* ==========================================================================
-   LIQUID GLASS SYSTEM (افکت شیشه مایع با لبه‌های بازتابی کریستالی)
+   LIQUID GLASS EFFECT SPECIFICATION (افکت شیشه مایع دقیقا طبق الگو)
    ========================================================================== */
 @layer components {
-    /* کلاس پایه شیشه مایع (Liquid Glass Surface) */
+    /* بدنه اصلی شیشه مایع: تینت زنده + درخشش لبه‌ها (liquidGlass-shine) + سایه نرم */
     .liquid-glass,
     .glass-card,
-    .glass-modal,
     .glass-panel,
+    .glass-modal,
     .glass-menu {
         position: relative;
-        background: rgba(12, 15, 25, 0.88) !important;
-        backdrop-filter: blur(16px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        background: rgba(18, 20, 30, 0.82) !important;
+        backdrop-filter: blur(18px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+
+        /* ترکیب دقیق درخشش دور و شکست نور مایع (liquidGlass-shine + box-shadow) */
         box-shadow:
-            /* درخشش لبه بالا-چپ (Liquid Glass Shine) */
-                inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.35),
-                    /* بازتاب انکساری لبه پایین-راست */
-                inset -1px -1px 1px 0 rgba(255, 255, 255, 0.12),
-                    /* سایه عمیق کف جهت تمایز از نقشه */
-                0 12px 36px -6px rgba(0, 0, 0, 0.75),
-                0 4px 14px rgba(0, 0, 0, 0.4) !important;
-        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+                inset 2px 2px 1px 0 rgba(255, 255, 255, 0.45),
+                inset -1px -1px 1px 1px rgba(255, 255, 255, 0.22),
+                0 6px 12px rgba(0, 0, 0, 0.35),
+                0 0 25px rgba(0, 0, 0, 0.2) !important;
+
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
     }
 
-    /* اعمال شیشه مایع به پنل‌های تنظیمات و منوهای شناور روی نقشه */
+    /* اعمال خودکار استایل شیشه مایع به تمام منوهای شناور، تنظیمات و مدال‌های روی نقشه */
     div[class*="backdrop-blur"]:not(.inset-0):not(header):not(header *):not(#hero *),
     [role="dialog"]:not(.inset-0),
     .settings-modal,
     .settings-menu,
     .room-menu {
         position: relative;
-        background: rgba(12, 15, 25, 0.88) !important;
-        backdrop-filter: blur(16px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        background: rgba(16, 18, 28, 0.84) !important;
+        backdrop-filter: blur(18px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+
         box-shadow:
-                inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.35),
-                inset -1px -1px 1px 0 rgba(255, 255, 255, 0.12),
-                0 14px 40px -6px rgba(0, 0, 0, 0.8),
-                0 4px 16px rgba(0, 0, 0, 0.45) !important;
+                inset 2px 2px 1px 0 rgba(255, 255, 255, 0.45),
+                inset -1px -1px 1px 1px rgba(255, 255, 255, 0.22),
+                0 10px 24px rgba(0, 0, 0, 0.45),
+                0 0 30px rgba(0, 0, 0, 0.25) !important;
+
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
     }
 
-    /* دکمه‌ها و گزینه‌های داخلی با افکت کریستالی شیشه مایع */
+    /* افکت شیشه مایع ریز برای دکمه‌ها و چیپ‌های داخل منو (مثل نوع گرید و خط‌کش) */
     div[class*="backdrop-blur"]:not(.inset-0) button:not([class*="bg-amber-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-purple-"]) {
-        background: rgba(22, 27, 44, 0.75) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        box-shadow: inset 1px 1px 0.5px rgba(255, 255, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
-        backdrop-filter: blur(8px) !important;
-        transition: all 0.2s ease;
+        background: rgba(25, 30, 48, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow:
+                inset 1px 1px 1px 0 rgba(255, 255, 255, 0.25),
+                inset -1px -1px 1px 0 rgba(255, 255, 255, 0.1),
+                0 2px 6px rgba(0, 0, 0, 0.2) !important;
+        backdrop-filter: blur(10px) !important;
+        transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
     }
 
+    /* هاور دکمه‌های شیشه مایع */
     div[class*="backdrop-blur"]:not(.inset-0) button:not([class*="bg-amber-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-purple-"]):hover {
-        background: rgba(30, 37, 60, 0.9) !important;
-        border-color: rgba(255, 255, 255, 0.25) !important;
-        box-shadow: inset 1px 1px 1px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+        background: rgba(35, 42, 68, 0.8) !important;
+        border-color: rgba(255, 255, 255, 0.35) !important;
+        box-shadow:
+                inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.5),
+                0 4px 12px rgba(0, 0, 0, 0.35) !important;
+    }
+}
+
+/* سازگاری با ترجیحات کاربر برای حذف موشن طبق WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
