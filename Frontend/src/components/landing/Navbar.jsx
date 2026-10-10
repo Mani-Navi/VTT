@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dices, Key, ArrowUpRight } from 'lucide-react';
+import { Dices, Key, ArrowUpRight, Menu, X } from 'lucide-react';
 import { sound } from '../../utils/tableAudio';
 import { RpgAvatar } from '../profile/RpgAvatar';
 
@@ -12,6 +12,7 @@ export const Navbar = ({
                        }) => {
     const [scrolled, setScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState('hero');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -42,41 +43,51 @@ export const Navbar = ({
         { id: 'how-it-works', label: 'نحوه کار' },
     ];
 
-    // استخراج نام نمایشی کاربر بدون نمایش آدرس ایمیل
     const displayName = user
         ? (user.displayName || user.username || user.name || (user.email ? user.email.split('@')[0] : 'کاربر'))
         : '';
 
+    const handleMobileNavClick = (id) => {
+        sound.playTokenClick();
+        setIsMobileMenuOpen(false);
+        const el = document.getElementById(id);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <header
-            className="sticky top-3 sm:top-5 z-40 w-full transition-all duration-300 px-3 sm:px-6"
+            className="sticky top-2 sm:top-5 z-40 w-full transition-all duration-300 px-2.5 sm:px-6"
             dir="rtl"
         >
             <div
-                className={`max-w-[1240px] mx-auto rounded-full transition-all duration-300 flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 ${
+                className={`max-w-[1240px] mx-auto rounded-2xl sm:rounded-full transition-all duration-300 flex items-center justify-between px-3 sm:px-6 py-2 sm:py-3 ${
                     scrolled
-                        ? 'bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)]'
-                        : 'bg-white/60 backdrop-blur-sm border border-neutral-200/40'
+                        ? 'bg-white/95 backdrop-blur-md border border-neutral-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
+                        : 'bg-white/70 backdrop-blur-sm border border-neutral-200/50'
                 }`}
             >
+                {/* لوگو و نام پلتفرم */}
                 <a
                     href="#hero"
                     onClick={() => sound.playTokenClick()}
-                    className="flex items-center gap-2.5 group"
+                    className="flex items-center gap-2 group shrink-0"
                 >
-                    <div className="w-8 h-8 rounded-lg bg-[#0e1017] border border-[#262835] flex items-center justify-center text-[#f59e0b] shadow-sm transition-transform duration-200 group-hover:scale-105">
-                        <Dices className="w-4 h-4" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#0e1017] border border-[#262835] flex items-center justify-center text-[#f59e0b] shadow-sm transition-transform duration-200 group-hover:scale-105">
+                        <Dices className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base sm:text-lg font-black tracking-tight text-neutral-900">
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-sm sm:text-lg font-black tracking-tight text-neutral-900">
                             Titipool
                         </span>
-                        <span className="text-[11px] font-mono font-bold text-[#ea580c] uppercase">
+                        <span className="text-[10px] sm:text-[11px] font-mono font-bold text-[#ea580c] uppercase">
                             VTT
                         </span>
                     </div>
                 </a>
 
+                {/* منوی ناوبری دسکتاپ */}
                 <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-neutral-600">
                     {navLinks.map((link) => {
                         const isActive = activeSection === link.id;
@@ -98,7 +109,9 @@ export const Navbar = ({
                     })}
                 </nav>
 
-                <div className="flex items-center gap-2 sm:gap-3">
+                {/* دکمه‌های اکشن */}
+                <div className="flex items-center gap-1.5 sm:gap-3">
+                    {/* دکمه ورود با کد فقط در صفحات بزرگ‌تر */}
                     <button
                         onClick={() => {
                             sound.playTokenClick();
@@ -111,19 +124,20 @@ export const Navbar = ({
                         <span>ورود با کد</span>
                     </button>
 
+                    {/* دکمه ورود یا پروفایل کاربر با بهینه‌سازی لمسی موبایل */}
                     {user ? (
                         <button
                             onClick={() => {
                                 sound.playTokenClick();
                                 onOpenProfile();
                             }}
-                            className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200/80 text-xs font-bold text-neutral-800 transition-colors cursor-pointer border border-neutral-200/60 shadow-sm"
-                            title={`مشاهده داشبورد ${displayName}`}
+                            className="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 pr-1 sm:pr-1.5 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200/80 text-xs font-bold text-neutral-800 transition-colors cursor-pointer border border-neutral-200/70 shadow-sm active:scale-95"
+                            title={`پروفایل ${displayName}`}
                         >
-                            <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-900 border border-amber-500/40 shrink-0 flex items-center justify-center">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden bg-zinc-900 border border-amber-500/40 shrink-0 flex items-center justify-center">
                                 <RpgAvatar avatarId={user.avatarUrl || "cowboy"} className="w-full h-full object-cover" />
                             </div>
-                            <span className="max-w-[100px] sm:max-w-[130px] truncate font-bold text-neutral-900">
+                            <span className="max-w-[70px] sm:max-w-[120px] truncate font-bold text-neutral-900 text-[11px] sm:text-xs">
                                 {displayName}
                             </span>
                         </button>
@@ -133,24 +147,72 @@ export const Navbar = ({
                                 sound.playTokenClick();
                                 onOpenAuth();
                             }}
-                            className="text-xs font-semibold text-neutral-700 hover:text-neutral-950 px-2.5 py-1.5 transition-colors cursor-pointer"
+                            className="text-xs font-bold text-neutral-700 hover:text-neutral-950 px-2 py-1.5 transition-colors cursor-pointer"
                         >
                             ورود
                         </button>
                     )}
 
+                    {/* دکمه شروع بازی */}
                     <button
                         onClick={() => {
                             sound.playDiceRoll();
                             onStartGame();
                         }}
-                        className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs sm:text-[13px] shadow-[0_2px_12px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] transition-all cursor-pointer group active:scale-[0.97]"
+                        className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs sm:text-[13px] shadow-[0_2px_12px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] transition-all cursor-pointer group active:scale-[0.96]"
                     >
                         <span>شروع بازی</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                        <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </button>
+
+                    {/* دکمه منوی همبرگری موبایل */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            sound.playTokenClick();
+                            setIsMobileMenuOpen(!isMobileMenuOpen);
+                        }}
+                        className="md:hidden w-8 h-8 rounded-xl bg-neutral-100 hover:bg-neutral-200/80 border border-neutral-200 flex items-center justify-center text-neutral-800 transition-colors active:scale-95"
+                        aria-label="منوی سایت"
+                    >
+                        {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
+
+            {/* دراور منوی بازشونده موبایل */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden mt-2 p-4 rounded-2xl bg-white/95 backdrop-blur-2xl border border-neutral-200/80 shadow-2xl animate-fade-in-up text-right">
+                    <nav className="flex flex-col space-y-1 pb-3 border-b border-neutral-100">
+                        {navLinks.map((link) => (
+                            <button
+                                key={link.id}
+                                onClick={() => handleMobileNavClick(link.id)}
+                                className="w-full py-2.5 px-3 rounded-xl text-right text-xs font-bold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-100 transition-colors cursor-pointer"
+                            >
+                                {link.label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <div className="pt-3">
+                        <button
+                            onClick={() => {
+                                sound.playTokenClick();
+                                setIsMobileMenuOpen(false);
+                                onOpenRoomCode();
+                            }}
+                            className="w-full py-2.5 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 text-xs font-bold flex items-center justify-between cursor-pointer active:scale-98 transition-all"
+                        >
+                            <span className="flex items-center gap-2">
+                                <Key className="w-3.5 h-3.5 text-[#f59e0b]" />
+                                <span>ورود مستقیم به اتاق با کد</span>
+                            </span>
+                            <span className="text-[10px] text-amber-700">سریع</span>
+                        </button>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };
