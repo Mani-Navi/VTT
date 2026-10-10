@@ -45,7 +45,7 @@
     }
 }
 
-/* انیمیشن‌ها و ترنزیشن‌های استاندارد و بهینه */
+/* انیمیشن‌ها و ترنزیشن‌های استاندارد و بهینه (بدون وارنینگ لینتر) */
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -63,20 +63,22 @@
     40%, 80% { transform: translateX(3px); }
 }
 
-/* اصلاح شد: حذف وابستگی به متغیر داخلی Tailwind و اجرای مستقیم ترنسفرم */
 @keyframes floatGentle {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-4px); }
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
 }
 
-@keyframes floatLevitateA {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-}
-
-@keyframes floatLevitateB {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(8px); }
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), inset 0 0 10px rgba(245, 158, 11, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(245, 158, 11, 0.4), inset 0 0 15px rgba(245, 158, 11, 0.2);
+    }
 }
 
 @layer utilities {
@@ -92,12 +94,95 @@
         animation: floatGentle 5s ease-in-out infinite;
     }
 
-    .gpu-smooth {
-        will-change: transform;
-        transform: translateZ(0);
-        backface-visibility: hidden;
+    /* ========================================================= */
+    /*                  سیستم شیشه مایع (Liquid Glass)            */
+    /* ========================================================= */
+
+    /* ۱. شیشه مایع پایه (کارت‌ها و پنل‌های عمومی) */
+    .liquid-glass {
+        background: linear-gradient(
+                135deg,
+                rgba(24, 27, 38, 0.75) 0%,
+                rgba(11, 13, 20, 0.88) 100%
+        );
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow:
+                inset 1px 1px 1px 0 rgba(255, 255, 255, 0.35),
+                inset -1px -1px 1px 0 rgba(0, 0, 0, 0.5),
+                0 12px 32px -4px rgba(0, 0, 0, 0.65);
     }
 
+    /* ۲. منوهای بازشونده و دراپ‌داون‌ها (تینت تیره غلیظ برای خوانایی ۱۰۰٪ روی نقشه) */
+    .liquid-glass-menu {
+        background: linear-gradient(
+                145deg,
+                rgba(18, 21, 31, 0.94) 0%,
+                rgba(10, 11, 17, 0.98) 100%
+        );
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow:
+                inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.4),
+                inset -1px -1px 1px 0 rgba(0, 0, 0, 0.6),
+                0 20px 45px -5px rgba(0, 0, 0, 0.85);
+    }
+
+    /* ۳. سینی و داک ابزارها (مثل داک پایین تاس‌ها یا نوار ابزار GM) */
+    .liquid-glass-dock {
+        background: linear-gradient(
+                180deg,
+                rgba(26, 29, 43, 0.82) 0%,
+                rgba(12, 14, 22, 0.92) 100%
+        );
+        backdrop-filter: blur(20px) saturate(190%);
+        -webkit-backdrop-filter: blur(20px) saturate(190%);
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        box-shadow:
+                inset 1px 1px 1px 0 rgba(255, 255, 255, 0.3),
+                inset -1px -1px 2px 0 rgba(0, 0, 0, 0.6),
+                0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    /* ۴. مدال‌ها و شیت کاراکتر (پوشش کامل بدون نشت نور نقشه زیرین) */
+    .liquid-glass-modal {
+        background: linear-gradient(
+                140deg,
+                rgba(17, 20, 29, 0.95) 0%,
+                rgba(9, 10, 15, 0.98) 100%
+        );
+        backdrop-filter: blur(28px) saturate(210%);
+        -webkit-backdrop-filter: blur(28px) saturate(210%);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow:
+                inset 2px 2px 2px 0 rgba(255, 255, 255, 0.45),
+                inset -1px -1px 2px 1px rgba(0, 0, 0, 0.7),
+                0 25px 60px -10px rgba(0, 0, 0, 0.9);
+    }
+
+    /* ۵. آیتم‌های فعال/هاور منو با هاله طلایی کهربایی */
+    .liquid-glass-item-active {
+        background: linear-gradient(
+                90deg,
+                rgba(245, 158, 11, 0.18) 0%,
+                rgba(245, 158, 11, 0.05) 100%
+        );
+        border: 1px solid rgba(245, 158, 11, 0.45);
+        color: #fbbf24;
+        text-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+    }
+
+    /* کلاس قدیمی جهت حفظ سازگاری */
+    .glass-card {
+        background: linear-gradient(135deg, rgba(24, 24, 27, 0.85) 0%, rgba(9, 10, 15, 0.95) 100%);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* کلاس دسترسی‌پذیری جهت المان‌های مخصوص صفحه‌خوان‌ها بدون تغییر چیدمان */
     .sr-only {
         position: absolute;
         width: 1px;
@@ -108,75 +193,6 @@
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border-width: 0;
-    }
-}
-
-/* ==========================================================================
-   LIQUID GLASS EFFECT SPECIFICATION (افکت شیشه مایع دقیقا طبق الگو)
-   ========================================================================== */
-@layer components {
-    /* بدنه اصلی شیشه مایع: تینت زنده + درخشش لبه‌ها (liquidGlass-shine) + سایه نرم */
-    .liquid-glass,
-    .glass-card,
-    .glass-panel,
-    .glass-modal,
-    .glass-menu {
-        position: relative;
-        background: rgba(18, 20, 30, 0.82) !important;
-        backdrop-filter: blur(18px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
-
-        /* ترکیب دقیق درخشش دور و شکست نور مایع (liquidGlass-shine + box-shadow) */
-        box-shadow:
-                inset 2px 2px 1px 0 rgba(255, 255, 255, 0.45),
-                inset -1px -1px 1px 1px rgba(255, 255, 255, 0.22),
-                0 6px 12px rgba(0, 0, 0, 0.35),
-                0 0 25px rgba(0, 0, 0, 0.2) !important;
-
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
-    }
-
-    /* اعمال خودکار استایل شیشه مایع به تمام منوهای شناور، تنظیمات و مدال‌های روی نقشه */
-    div[class*="backdrop-blur"]:not(.inset-0):not(header):not(header *):not(#hero *),
-    [role="dialog"]:not(.inset-0),
-    .settings-modal,
-    .settings-menu,
-    .room-menu {
-        position: relative;
-        background: rgba(16, 18, 28, 0.84) !important;
-        backdrop-filter: blur(18px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
-
-        box-shadow:
-                inset 2px 2px 1px 0 rgba(255, 255, 255, 0.45),
-                inset -1px -1px 1px 1px rgba(255, 255, 255, 0.22),
-                0 10px 24px rgba(0, 0, 0, 0.45),
-                0 0 30px rgba(0, 0, 0, 0.25) !important;
-
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
-    }
-
-    /* افکت شیشه مایع ریز برای دکمه‌ها و چیپ‌های داخل منو (مثل نوع گرید و خط‌کش) */
-    div[class*="backdrop-blur"]:not(.inset-0) button:not([class*="bg-amber-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-purple-"]) {
-        background: rgba(25, 30, 48, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.14) !important;
-        box-shadow:
-                inset 1px 1px 1px 0 rgba(255, 255, 255, 0.25),
-                inset -1px -1px 1px 0 rgba(255, 255, 255, 0.1),
-                0 2px 6px rgba(0, 0, 0, 0.2) !important;
-        backdrop-filter: blur(10px) !important;
-        transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2) !important;
-    }
-
-    /* هاور دکمه‌های شیشه مایع */
-    div[class*="backdrop-blur"]:not(.inset-0) button:not([class*="bg-amber-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-purple-"]):hover {
-        background: rgba(35, 42, 68, 0.8) !important;
-        border-color: rgba(255, 255, 255, 0.35) !important;
-        box-shadow:
-                inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.5),
-                0 4px 12px rgba(0, 0, 0, 0.35) !important;
     }
 }
 
