@@ -31,6 +31,30 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick, user }) => {
 
     return (
         <section id="hero" className="relative pt-3 sm:pt-6 pb-8 sm:pb-16 px-3 sm:px-8 text-center w-full" dir="rtl">
+            {/* استایل کی‌فریم‌های شناور ارگانیک با شتاب‌دهنده سخت‌افزاری */}
+            <style>{`
+                @keyframes floatLevitateA {
+                    0%, 100% {
+                        transform: translateY(0px) rotate(0deg);
+                    }
+                    50% {
+                        transform: translateY(-8px) rotate(0.8deg);
+                    }
+                }
+                @keyframes floatLevitateB {
+                    0%, 100% {
+                        transform: translateY(0px) rotate(0deg);
+                    }
+                    50% {
+                        transform: translateY(-7px) rotate(-0.8deg);
+                    }
+                }
+                .gpu-smooth {
+                    will-change: transform;
+                    transform: translateZ(0);
+                }
+            `}</style>
+
             {/* هاله نور پس‌زمینه با ابعاد واکنش‌گرا */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[700px] h-72 sm:h-[450px] bg-amber-100/50 rounded-full blur-3xl pointer-events-none -z-10 transform-gpu" />
 
