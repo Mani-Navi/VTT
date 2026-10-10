@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dices, Key, ArrowUpRight } from 'lucide-react';
 import { sound } from '../../utils/tableAudio';
+import { RpgAvatar } from '../profile/RpgAvatar';
 
 export const Navbar = ({
                            onOpenAuth,
@@ -40,6 +41,11 @@ export const Navbar = ({
         { id: 'features', label: 'امکانات' },
         { id: 'how-it-works', label: 'نحوه کار' },
     ];
+
+    // استخراج نام نمایشی کاربر بدون نمایش آدرس ایمیل
+    const displayName = user
+        ? (user.displayName || user.username || user.name || (user.email ? user.email.split('@')[0] : 'کاربر'))
+        : '';
 
     return (
         <header
@@ -111,12 +117,15 @@ export const Navbar = ({
                                 sound.playTokenClick();
                                 onOpenProfile();
                             }}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200/80 text-xs font-bold text-neutral-800 transition-colors cursor-pointer"
+                            className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200/80 text-xs font-bold text-neutral-800 transition-colors cursor-pointer border border-neutral-200/60 shadow-sm"
+                            title={`مشاهده داشبورد ${displayName}`}
                         >
-                            <div className="w-5 h-5 rounded-full bg-[#f59e0b] text-neutral-950 flex items-center justify-center text-[10px] font-black">
-                                {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                            <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-900 border border-amber-500/40 shrink-0 flex items-center justify-center">
+                                <RpgAvatar avatarId={user.avatarUrl || "cowboy"} className="w-full h-full object-cover" />
                             </div>
-                            <span className="max-w-[80px] truncate">{user.name || user.email}</span>
+                            <span className="max-w-[100px] sm:max-w-[130px] truncate font-bold text-neutral-900">
+                                {displayName}
+                            </span>
                         </button>
                     ) : (
                         <button

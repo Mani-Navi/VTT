@@ -19,7 +19,16 @@ import {
 import { sound } from '../../utils/tableAudio';
 import { GsapHeadingReveal } from './GsapHeadingReveal';
 
-export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
+export const Hero = ({ onStartGame, onExploreMore, onDiceClick, user }) => {
+    // استخراج نام نمایشی کاربر برای جایگزینی در المان‌های کهکشان
+    const currentUserName = user
+        ? (user.displayName || user.username || user.name || (user.email ? user.email.split('@')[0] : null))
+        : null;
+
+    const paladinLabel = currentUserName ? `${currentUserName} (پالادین) · AC 18` : 'امیر (پالادین) · AC 18';
+    const dmLabel = currentUserName ? `${currentUserName} (DM)` : 'مانی (DM)';
+    const casterLabel = currentUserName ? `${currentUserName} · طلسم نور` : 'سارا · طلسم نور';
+
     return (
         <section id="hero" className="relative pt-4 sm:pt-6 pb-12 sm:pb-16 px-4 sm:px-8 text-center w-full" dir="rtl">
             {/* هاله نور پس‌زمینه */}
@@ -66,10 +75,10 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                 </button>
             </motion.div>
 
-            {/* کهکشان اسمارتیزی با انیمیشن معلق و شناور نرم و سبک */}
+            {/* کهکشان اسمارتیزی با اسامی واکنش‌پذیر بر اساس وضعیت لاگین */}
             <div className="relative mt-8 sm:mt-12 max-w-6xl mx-auto flex flex-wrap items-center justify-center gap-3 sm:gap-5 p-2 sm:p-4 select-none">
 
-                {/* ۱. چیپ طلایی کریتیکال (معلق) */}
+                {/* ۱. چیپ طلایی کریتیکال */}
                 <div
                     onClick={() => { sound.playCritChime(); onDiceClick(); }}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.2s_ease-in-out_infinite] gpu-smooth"
@@ -78,16 +87,16 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>Nat 20 Critical!</span>
                 </div>
 
-                {/* ۲. توکن زمردی پالادین (معلق) */}
+                {/* ۲. توکن زمردی پالادین (متصل به نام کاربر لاگین‌شده) */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-emerald-950 border-2 border-emerald-500/60 text-emerald-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.8s_ease-in-out_infinite] gpu-smooth"
                 >
                     <div className="w-7 h-7 rounded-xl bg-emerald-500/30 flex items-center justify-center text-sm">🛡️</div>
-                    <span>امیر (پالادین) · AC 18</span>
+                    <span>{paladinLabel}</span>
                 </div>
 
-                {/* ۳. چیپ یاقوتی اژدها (معلق) */}
+                {/* ۳. چیپ یاقوتی اژدها */}
                 <div
                     onClick={() => sound.playDiceRoll()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-rose-950 border-2 border-rose-500/60 text-rose-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.1s_ease-in-out_infinite_0.4s] gpu-smooth"
@@ -96,7 +105,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>اژدهای سرخ · HP 160</span>
                 </div>
 
-                {/* ۴. کپسول ویس‌چت نعنایی (معلق) */}
+                {/* ۴. کپسول ویس‌چت نعنایی */}
                 <div
                     onClick={() => sound.playPttBeep(true)}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-emerald-400/60 text-emerald-400 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.5s_ease-in-out_infinite_0.6s] gpu-smooth"
@@ -105,17 +114,17 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>صدای زنده · Space</span>
                 </div>
 
-                {/* ۵. توکن بنفش ویزارد (معلق) */}
+                {/* ۵. توکن بنفش ویزارد/DM (متصل به نام کاربر لاگین‌شده) */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-purple-950 border-2 border-purple-500/60 text-purple-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.9s_ease-in-out_infinite_0.2s] gpu-smooth"
                 >
                     <span className="text-xl">🧙‍♂️</span>
-                    <span>مانی (DM)</span>
+                    <span>{dmLabel}</span>
                     <Crown className="w-4 h-4 text-amber-400" />
                 </div>
 
-                {/* ۶. چیپ کد اتاق (معلق) */}
+                {/* ۶. چیپ کد اتاق */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.3s_ease-in-out_infinite_0.5s] gpu-smooth"
@@ -124,16 +133,16 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>ROOM: 75B4EE</span>
                 </div>
 
-                {/* ۷. چیپ صورتی سارا (معلق) */}
+                {/* ۷. چیپ صورتی طلسم نور (متصل به نام کاربر لاگین‌شده) */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-fuchsia-950 border-2 border-fuchsia-500/60 text-fuchsia-300 font-bold text-sm sm:text-base flex items-center gap-3 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.3s_ease-in-out_infinite_0.7s] gpu-smooth"
                 >
                     <span className="text-xl">🔮</span>
-                    <span>سارا · طلسم نور</span>
+                    <span>{casterLabel}</span>
                 </div>
 
-                {/* ۸. برچسب زرد خط‌کش (معلق) */}
+                {/* ۸. برچسب زرد خط‌کش */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-yellow-500/60 text-yellow-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.7s_ease-in-out_infinite_0.3s] gpu-smooth"
@@ -142,7 +151,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>30ft (6 سلول)</span>
                 </div>
 
-                {/* ۹. چیپ ارغوانی مه جنگ (معلق) */}
+                {/* ۹. چیپ ارغوانی مه جنگ */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-violet-950 border-2 border-violet-500/60 text-violet-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.6s_ease-in-out_infinite_0.4s] gpu-smooth"
@@ -151,7 +160,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>برش مه (Fog)</span>
                 </div>
 
-                {/* ۱۰. اسمارتیز تم مرمر آتشین (معلق) */}
+                {/* ۱۰. اسمارتیز تم مرمر آتشین */}
                 <div
                     onClick={() => sound.playDiceRoll()}
                     className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-amber-600 to-rose-600 border-2 border-amber-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateB_3.9s_ease-in-out_infinite] gpu-smooth"
@@ -160,7 +169,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     🔥
                 </div>
 
-                {/* ۱۱. بج سلامت (معلق) */}
+                {/* ۱۱. بج سلامت */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-rose-500/60 text-rose-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_5.0s_ease-in-out_infinite_0.5s] gpu-smooth"
@@ -169,7 +178,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>HP 42/48</span>
                 </div>
 
-                {/* ۱۲. تگ اکشن مبارزه (معلق) */}
+                {/* ۱۲. تگ اکشن مبارزه */}
                 <div
                     onClick={() => sound.playDiceRoll()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-amber-500/60 text-amber-300 font-mono font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.4s_ease-in-out_infinite_0.2s] gpu-smooth"
@@ -178,7 +187,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>1d20+6 = 24</span>
                 </div>
 
-                {/* ۱۳. اسمارتیز تم مرمر آمیتیست (معلق) */}
+                {/* ۱۳. اسمارتیز تم مرمر آمیتیست */}
                 <div
                     onClick={() => sound.playDiceRoll()}
                     className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-600 border-2 border-purple-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateA_4.1s_ease-in-out_infinite_0.6s] gpu-smooth"
@@ -187,7 +196,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     💎
                 </div>
 
-                {/* ۱۴. تگ Live Sync (معلق) */}
+                {/* ۱۴. تگ Live Sync */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-cyan-950 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_5.2s_ease-in-out_infinite_0.3s] gpu-smooth"
@@ -196,7 +205,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>Live Sync · 32ms</span>
                 </div>
 
-                {/* ۱۵. تگ شفای آسمانی (معلق) */}
+                {/* ۱۵. تگ شفای آسمانی */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-sky-950 border-2 border-sky-400/60 text-sky-300 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.3s_ease-in-out_infinite_0.5s] gpu-smooth"
@@ -205,7 +214,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>لمس شفا +15 HP</span>
                 </div>
 
-                {/* ۱۶. اسمارتیز تم مرمر سبز (معلق) */}
+                {/* ۱۶. اسمارتیز تم مرمر سبز */}
                 <div
                     onClick={() => sound.playDiceRoll()}
                     className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-gradient-to-tr from-emerald-700 to-teal-500 border-2 border-emerald-300 shadow-md flex items-center justify-center text-xl text-white cursor-pointer hover:scale-110 active:scale-95 transition-transform font-bold animate-[floatLevitateB_4.2s_ease-in-out_infinite] gpu-smooth"
@@ -214,7 +223,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     🌲
                 </div>
 
-                {/* ۱۷. تگ اسنپ گرید (معلق) */}
+                {/* ۱۷. تگ اسنپ گرید */}
                 <div
                     onClick={() => sound.playTokenClick()}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-zinc-950 border-2 border-zinc-700 text-zinc-200 font-bold text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateA_4.9s_ease-in-out_infinite_0.3s] gpu-smooth"
@@ -223,7 +232,7 @@ export const Hero = ({ onStartGame, onExploreMore, onDiceClick }) => {
                     <span>اسنپ گرید D&D 5e</span>
                 </div>
 
-                {/* ۱۸. نشان پرتاب تاس D12 (معلق) */}
+                {/* ۱۸. نشان پرتاب تاس D12 */}
                 <div
                     onClick={() => { sound.playDiceRoll(); onDiceClick(); }}
                     className="px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-sm sm:text-base flex items-center gap-2.5 shadow-md cursor-pointer border border-amber-300 hover:scale-105 active:scale-95 transition-transform animate-[floatLevitateB_4.6s_ease-in-out_infinite_0.4s] gpu-smooth"

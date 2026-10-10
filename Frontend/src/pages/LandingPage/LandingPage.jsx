@@ -29,7 +29,6 @@ export default function LandingPage() {
 
     const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
-    // پاکسازی امن توکن‌های منقضی‌شده جهت جلوگیری از عدم تطابق وضعیت نشست
     useEffect(() => {
         if (token && isTokenExpired(token)) {
             useAuthStore.getState().logout?.();
@@ -86,7 +85,7 @@ export default function LandingPage() {
     return (
         <div className="w-full min-h-screen bg-white text-[#121316] flex flex-col items-center justify-start overflow-x-hidden selection:bg-[#f59e0b] selection:text-black">
             <div className="w-full flex flex-col relative">
-                {/* نوبار */}
+                {/* نوبار مجهز به نام نمایشی و آواتار RPG */}
                 <Navbar
                     onOpenAuth={handleOpenAuth}
                     onOpenProfile={handleOpenProfile}
@@ -95,8 +94,9 @@ export default function LandingPage() {
                     user={isSessionValid ? user : null}
                 />
 
-                {/* بخش هیرو فشرده و پرحجم */}
+                {/* بخش هیرو متصل به اطلاعات کاربر جهت شخصی‌سازی خودکار المان‌ها */}
                 <Hero
+                    user={isSessionValid ? user : null}
                     onStartGame={handleStartGame}
                     onExploreMore={() => {
                         const el = document.getElementById('dice');
@@ -108,7 +108,7 @@ export default function LandingPage() {
                     }}
                 />
 
-                {/* بیانیه فشرده بدون فضای خالی غول‌پیکر */}
+                {/* بیانیه فشرده */}
                 <BigStatement />
 
                 {/* استیج سه‌بعدی تاس */}
@@ -132,7 +132,7 @@ export default function LandingPage() {
                 {/* هویت فارسی */}
                 <PersianBrandSection />
 
-                {/* دعوت به اقدام پایانی کادربندی‌شده */}
+                {/* دعوت به اقدام پایانی */}
                 <FinalCta
                     onStartGame={handleStartGame}
                     onOpenAuth={handleOpenAuth}
