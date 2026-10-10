@@ -18,10 +18,6 @@ const DICE_TYPES = [
 ];
 
 export const DiceSection = () => {
-    const sectionRef = useRef(null);
-    const [isCanvasVisible, setIsCanvasVisible] = useState(false);
-    const hasTriggeredInitialRoll = useRef(false);
-
     const {
         isRolling,
         results,
@@ -37,24 +33,7 @@ export const DiceSection = () => {
     const [lastRollTypes, setLastRollTypes] = useState(['d12']);
     const playedCritAudioRef = useRef(false);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setIsCanvasVisible(true);
-                    observer.disconnect();
-                }
-            },
-            { rootMargin: '300px' }
-        );
-
-        if (sectionRef.current) {
-            observer.observe(sectionRef.current);
-        }
-
-        return () => observer.disconnect();
-    }, []);
-
+    // بررسی رخ دادن کریتیکال (Max Die)
     const isAnyCritical = useMemo(() => {
         if (results.length === 0 || isRolling) return false;
         return results.some((r) => {
@@ -75,15 +54,13 @@ export const DiceSection = () => {
         }
     }, [isAnyCritical, isRolling]);
 
+    // پرتاب پایدار خودکار یک تاس D12 در ورود به بخش
     useEffect(() => {
-        if (isCanvasVisible && !hasTriggeredInitialRoll.current) {
-            hasTriggeredInitialRoll.current = true;
-            const timer = setTimeout(() => {
-                triggerRoll(['d12']);
-            }, 400);
-            return () => clearTimeout(timer);
-        }
-    }, [isCanvasVisible, triggerRoll]);
+        const timer = setTimeout(() => {
+            triggerRoll(['d12']);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [triggerRoll]);
 
     const handleQuickRoll = (type) => {
         const diceToRoll = type === 'd100' ? ['d100', 'd10'] : [type];
@@ -139,39 +116,25 @@ export const DiceSection = () => {
     const totalPoolCount = Object.values(poolCounts).reduce((a, b) => a + b, 0);
 
     return (
-        <section
-            ref={sectionRef}
-            id="dice"
-            className="py-14 sm:py-28 px-3 sm:px-8 overflow-hidden w-full"
-            dir="rtl"
-        >
+        <section id="dice" className="py-16 sm:py-28 px-3 sm:px-8 overflow-hidden w-full" dir="rtl">
             <div className="max-w-6xl mx-auto">
                 <GsapHeadingReveal
                     eyebrow="موتور فیزیک سه‌بعدی · REAL 3D RAPIER PHYSICS"
                     lines={['پرتاب واقعی،', 'درست مثل دور میز نبرد.']}
-                    subtitle="با انگشت یا ماوس تاس‌ها را بردارید و پرتاب کنید. فیزیک واقعی قطعی، صداگذاری چوب و بافت مرمر دست‌ساز."
-                    containerClassName="max-w-2xl mx-auto mb-6 sm:mb-14"
+                    subtitle="با ماوس یا لمس صفحه تاس‌ها را بردارید و پرتاب کنید. فیزیک واقعی قطعی، صداگذاری چوب و بافت مرمر دست‌ساز."
+                    containerClassName="max-w-2xl mx-auto mb-8 sm:mb-14"
                 />
 
                 <div className="relative rounded-3xl bg-[#090a10] border border-[#242738] shadow-[0_30px_90px_rgba(0,0,0,0.25)] h-[520px] sm:h-[580px] overflow-hidden select-none">
 
-                    {/* کانواس سه‌بعدی لمسی */}
-                    <div
-                        className="absolute inset-0 touch-none"
-                        style={{ touchAction: 'none' }}
-                    >
-                        {isCanvasVisible ? (
-                            <DiceCanvas />
-                        ) : (
-                            <div className="w-full h-full bg-[#090a10] flex items-center justify-center">
-                                <div className="w-10 h-10 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin opacity-40" />
-                            </div>
-                        )}
+                    {/* رندر مستقیم کانواس سه‌بعدی راپیر (ضامن پایداری ۱۰۰٪ دیواره‌های فیزیکی) */}
+                    <div className="absolute inset-0">
+                        <DiceCanvas />
                     </div>
 
-                    {/* بنر نتیجه نهایی (مرتب و جمع‌وجور بدون تداخل) */}
+                    {/* بنر نتیجه نهایی (مرتب و بدون تداخل با دیواره‌ها) */}
                     {results.length > 0 && (
-                        <div className="absolute top-3 sm:top-6 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1 z-20 w-auto max-w-[94%]">
+                        <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1 z-20 w-auto max-w-[94%] animate-fade-in-up">
                             <div
                                 className={`flex items-center gap-2 sm:gap-3.5 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-2xl backdrop-blur-2xl transition-all duration-300 shadow-2xl ${
                                     isAnyCritical
@@ -223,7 +186,7 @@ export const DiceSection = () => {
                         </div>
                     )}
 
-                    {/* داک کنترل کنسولی مهندسی‌شده موبایل */}
+                    {/* داک کنترل کنسولی منظم و خوش‌دست برای موبایل و دسکتاپ */}
                     <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 pointer-events-auto flex flex-col items-center gap-1.5 z-20 w-full px-2.5 sm:px-4 max-w-xl">
 
                         {/* تولبار حالت استخر */}
@@ -263,10 +226,10 @@ export const DiceSection = () => {
                             </div>
                         )}
 
-                        {/* پنل اصلی: ساختار دوخطی منظم و مهندسی‌شده برای موبایل */}
+                        {/* پنل اصلی: ساختار دوخطی متقارن، شکیل و بدون شکستگی تصادفی */}
                         <div className="w-full bg-zinc-950/95 border border-zinc-800/90 p-2 rounded-2xl shadow-[0_15px_45px_rgba(0,0,0,0.8)] backdrop-blur-2xl flex flex-col gap-2">
 
-                            {/* خط اول: دقیقاً ۷ کلید انتخاب تاس در یک ردیف منظم و هم‌اندازه */}
+                            {/* سطر اول: کلیدهای ۷گانه تاس دقیقاً در یک ردیف منظم و هم‌عرض */}
                             <div className="grid grid-cols-7 gap-1 w-full">
                                 {DICE_TYPES.map((d) => {
                                     const inPool = poolCounts[d.type] || 0;
@@ -294,10 +257,10 @@ export const DiceSection = () => {
                                 })}
                             </div>
 
-                            {/* خط دوم: تم‌ها + سوئیچ حالت + پاکسازی */}
+                            {/* سطر دوم: سوییچر تم‌ها + سوئیچ حالت تکی/چندتایی + پاکسازی میز */}
                             <div className="flex items-center justify-between pt-1 border-t border-zinc-850 px-0.5">
 
-                                {/* تم‌های رنگی */}
+                                {/* تم‌های سنگ مرمر */}
                                 <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
                                     {Object.values(DICE_THEMES).map((t) => (
                                         <button
@@ -317,7 +280,7 @@ export const DiceSection = () => {
                                     ))}
                                 </div>
 
-                                {/* حالت تکی / استخر و سطل آشغال */}
+                                {/* ابزارها */}
                                 <div className="flex items-center gap-1">
                                     <div className="flex items-center bg-zinc-900/90 p-0.5 rounded-xl border border-zinc-800">
                                         <button
@@ -353,7 +316,7 @@ export const DiceSection = () => {
                                             setPoolCounts({});
                                         }}
                                         className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-xl bg-zinc-900/90 border border-zinc-800 active:scale-90 transition-all cursor-pointer"
-                                        title="پاکسازی"
+                                        title="پاکسازی میز"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>
