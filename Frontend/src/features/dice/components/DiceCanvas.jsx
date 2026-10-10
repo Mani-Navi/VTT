@@ -8,9 +8,8 @@ import { Die } from './Die';
 import { useDiceStore } from '../state/dice.store';
 
 /**
- * مدیریت هوشمند رویدادهای ماوس:
- * در صورتی که ماوس روی کالبد هیچ تاسی نباشد، pointer-events به none تغییر می‌کند
- * تا تمام کلیک‌ها و درگ‌ها به نقشه، توکن‌ها و ابزارها برسد.
+ * مدیر عبور کلیک: صرفاً زمانی که کانواس به صورت Overlay تمام‌صفحه روی اتاق بازی است،
+ * کلیک‌های فضای خالی را به نقشه و ابزارها عبور می‌دهد.
  */
 function ClickThroughManager() {
     const { camera, scene, gl } = useThree();
@@ -82,7 +81,9 @@ function ClickThroughManager() {
     return null;
 }
 
-export function DiceCanvas() {
+export function DiceCanvas({ overlayMode = false }) {
+    const activeDice = useDiceStore((s) => s.activeDice);
+
     return (
         <Canvas
             shadows
@@ -91,12 +92,13 @@ export function DiceCanvas() {
             style={{
                 width: '100%',
                 height: '100%',
-                pointerEvents: 'none',
+                // در حالت عادی (لندینگ پیج) کانواس تعاملی کامل است؛ در حالت Overlay اتاق توسط مدیر کنترل می‌شود
+                pointerEvents: overlayMode ? 'none' : (activeDice.length > 0 ? 'auto' : 'none'),
+                touchAction: 'none',
             }}
         >
             <ambientLight intensity={0.85} color="#ffffff" />
 
-            {/* نورپردازی عمودی تمیز برای جلوگیری از کشیده شدن سایه به دیواره‌ها و گوشه‌ها */}
             <directionalLight
                 position={[2, 22, 3]}
                 intensity={1.8}
@@ -114,7 +116,7 @@ export function DiceCanvas() {
 
             <pointLight position={[-8, 12, -8]} intensity={0.4} color="#e0e7ff" />
 
-            <ClickThroughManager />
+            {overlayMode && <ClickThroughManager />}
 
             <Suspense fallback={null}>
                 <Physics gravity={[0, -32, 0]} timeStep={1 / 60}>

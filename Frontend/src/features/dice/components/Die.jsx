@@ -184,7 +184,12 @@ export function Die({
     const handlePointerDown = (e) => {
         if (isRemoteRoll) return;
         e.stopPropagation();
-        e.target.setPointerCapture(e.pointerId);
+
+        try {
+            e.target.setPointerCapture(e.pointerId);
+        } catch {
+            // fallback امن برای مرورگرهای لمسی
+        }
 
         isDraggingRef.current = true;
         isSettledRef.current = true;
@@ -193,7 +198,6 @@ export function Die({
         document.body.style.cursor = 'grabbing';
 
         if (rigidBodyRef.current) {
-            // حذف جاذبه موقت جهت از بین بردن ۱۰۰٪ پرش و لرزش تاس در زمان نگه داشتن با ماوس
             rigidBodyRef.current.setGravityScale(0, true);
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
             rigidBodyRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -206,7 +210,6 @@ export function Die({
 
         const targetPoint = new THREE.Vector3();
         if (e.ray && e.ray.intersectPlane(DRAG_PLANE, targetPoint)) {
-            // مهار موقعیت در محدوده امن دیواره‌ها برای جلوگیری از خروج تاس از کادر
             const clampedX = THREE.MathUtils.clamp(targetPoint.x, -safeLimitX, safeLimitX);
             const clampedZ = THREE.MathUtils.clamp(targetPoint.z, -safeLimitZ, safeLimitZ);
 
@@ -226,12 +229,16 @@ export function Die({
     const handlePointerUp = (e) => {
         if (isRemoteRoll || !isDraggingRef.current || !rigidBodyRef.current) return;
         e.stopPropagation();
-        e.target.releasePointerCapture(e.pointerId);
+
+        try {
+            e.target.releasePointerCapture(e.pointerId);
+        } catch {
+            // fallback امن
+        }
 
         isDraggingRef.current = false;
         document.body.style.cursor = 'default';
 
-        // بازگرداندن جاذبه طبیعی به تاس
         rigidBodyRef.current.setGravityScale(1, true);
 
         let vx = (Math.random() - 0.5) * 4;
@@ -248,7 +255,6 @@ export function Die({
             const calcVx = (last.x - first.x) / dt;
             const calcVz = (last.z - first.z) / dt;
 
-            // محدودسازی سرعت پرتاب برای تضمین عملکرد الگوریتم ضدتونلینگ CCD دیواره‌ها
             vx = THREE.MathUtils.clamp(calcVx * 0.75, -20, 20);
             vz = THREE.MathUtils.clamp(calcVz * 0.75, -20, 20);
         }
@@ -302,6 +308,7 @@ export function Die({
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
                 onPointerOver={() => {
                     if (!isRemoteRoll && !isDraggingRef.current) document.body.style.cursor = 'grab';
                 }}
