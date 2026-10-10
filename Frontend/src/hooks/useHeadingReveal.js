@@ -30,10 +30,27 @@ export function useHeadingReveal(options = {}) {
 
         if (prefersReducedMotion) return;
 
+        // مهار امن خطاهای ارزیابی سلکتور DOM
+        const safeQuery = (target, selector) => {
+            try {
+                return typeof selector === 'string' && selector.trim() ? target.querySelector(selector) : null;
+            } catch {
+                return null;
+            }
+        };
+
+        const safeQueryAll = (target, selector) => {
+            try {
+                return typeof selector === 'string' && selector.trim() ? target.querySelectorAll(selector) : [];
+            } catch {
+                return [];
+            }
+        };
+
         const ctx = gsap.context(() => {
-            const eyebrow = el.querySelector(eyebrowSelector);
-            const lines = el.querySelectorAll(lineSelector);
-            const subtitle = el.querySelector(subtitleSelector);
+            const eyebrow = safeQuery(el, eyebrowSelector);
+            const lines = safeQueryAll(el, lineSelector);
+            const subtitle = safeQuery(el, subtitleSelector);
 
             if (!lines.length && !eyebrow && !subtitle) return;
 
@@ -47,7 +64,7 @@ export function useHeadingReveal(options = {}) {
                 delay,
             });
 
-            // انیمیشن‌های بهینه شده بدون فیلتر Blur که باعث افت فریم می‌شدند
+            // انیمیشن‌های بهینه شده بدون فیلتر Blur
             if (eyebrow) {
                 tl.fromTo(
                     eyebrow,

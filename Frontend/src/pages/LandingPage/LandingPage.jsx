@@ -29,6 +29,13 @@ export default function LandingPage() {
 
     const isSessionValid = Boolean(isAuthenticated && token && !isTokenExpired(token));
 
+    // پاکسازی امن توکن‌های منقضی‌شده جهت جلوگیری از عدم تطابق وضعیت نشست
+    useEffect(() => {
+        if (token && isTokenExpired(token)) {
+            useAuthStore.getState().logout?.();
+        }
+    }, [token]);
+
     useEffect(() => {
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.height = 'auto';

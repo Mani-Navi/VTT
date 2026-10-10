@@ -81,23 +81,26 @@ export const ScenariosSection = ({ onSelectScenario }) => {
                                         src={scenario.image}
                                         alt={scenario.title}
                                         referrerPolicy="no-referrer"
+                                        crossOrigin="anonymous"
+                                        loading="lazy"
+                                        decoding="async"
                                         className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
                                     <div className="absolute inset-0 p-5 sm:p-7 flex flex-col justify-between text-right">
                                         <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono font-bold text-white/90 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                        {scenario.tag}
-                      </span>
+                                            <span className="text-[11px] font-mono font-bold text-white/90 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+                                                {scenario.tag}
+                                            </span>
                                             <span className="text-xs font-semibold text-[#f59e0b]">
-                        {scenario.suggestedLevel}
-                      </span>
+                                                {scenario.suggestedLevel}
+                                            </span>
                                         </div>
 
                                         <div>
-                      <span className="text-xs font-medium text-neutral-300">
-                        {scenario.genre}
-                      </span>
+                                            <span className="text-xs font-medium text-neutral-300">
+                                                {scenario.genre}
+                                            </span>
                                             <h3 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
                                                 {scenario.title}
                                             </h3>
@@ -150,13 +153,17 @@ export const ScenariosSection = ({ onSelectScenario }) => {
                                 <img
                                     src={inspectedScenario.image}
                                     alt={inspectedScenario.title}
+                                    referrerPolicy="no-referrer"
+                                    crossOrigin="anonymous"
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-[#0d0e14] via-transparent to-transparent" />
                                 <div className="absolute bottom-4 right-6 text-white">
-                  <span className="text-xs text-[#f59e0b] font-bold">
-                    {inspectedScenario.genre} · {inspectedScenario.suggestedLevel}
-                  </span>
+                                    <span className="text-xs text-[#f59e0b] font-bold">
+                                        {inspectedScenario.genre} · {inspectedScenario.suggestedLevel}
+                                    </span>
                                     <h3 className="text-2xl sm:text-3xl font-black mt-1">
                                         {inspectedScenario.title}
                                     </h3>
